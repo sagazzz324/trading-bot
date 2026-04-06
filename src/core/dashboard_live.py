@@ -96,7 +96,55 @@ def get_data():
 def index():
     return TEMPLATE.read_text(encoding="utf-8")
 
+@app.route("/webhook/tradingview", methods=["POST"])
+def tradingview_webhook():
+    try:
+        data = request.json
+        symbol   = data.get("symbol", "BTCUSDT").replace("BINANCE:", "").replace(".P", "")
+        action   = data.get("action", "")   # "buy" o "sell"
+        price    = float(data.get("price", 0))
+        strategy = data.get("strategy", "scalping")
 
+        state.add_log(f"TradingView: {action.upper()} {symbol} @ ${price:.4f}", "#f0c040")
+        logger.info(f"Webhook TradingView: {action} {symbol} @ {price}")
+
+        if action.lower() == "buy":
+            from src.strategies.scalper import ScalpingBot
+            bot = ScalpingBot(capital=state.capital if hasattr(state, 'capital') else 1000)
+            klines = bot.client.get_klines(symbol, interval="5m", limit=100)
+            if klines:
+                signal = {
+                    "symbol":        symbol,
+                    "direction":     "long",
+                    "strength":      80,
+                    "reasons":       [f"TradingView alert"],
+                    "price":         price or klines[-1]["close"],
+                    "rsi":           50,
+                    "momentum":      0,
+                    "atr_pct":       0.2,
+                    "claude_regime": "tradingview",
+                    "claude_risk":   "medium"
+                }
+                bot.open_position(signal)
+                state.add_log(f"Posicion abierta: LONG {symbol}", "#5db05e")
+
+        elif action.lower() == "sell":
+            from src.strategies.scalper import ScalpingBot
+            bot = ScalpingBot(capital=1000)
+            bot.state = bot.state
+            for pos in bot.state["open_positions"]:
+                if pos["symbol"] == symbol:
+                    current = bot.client.get_price(symbol)
+                    pnl = pos["position_usdt"] * ((current - pos["entry_price"]) / pos["entry_price"])
+                    bot._close_position(pos, current, "tradingview_signal", pnl)
+                    state.add_log(f"Posicion cerrada: {symbol} PnL ${pnl:+.2f}", "#d558b7")
+                    break
+
+        return jsonify({"ok": True, "symbol": symbol, "action": action})
+
+    except Exception as e:
+        logger.error(f"Error en webhook TradingView: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 400
 @app.route("/api/data")
 def api_data():
     return jsonify(get_data())
