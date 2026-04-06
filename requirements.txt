@@ -1,0 +1,8 @@
+anthropic
+flask
+flask-socketio
+eventlet
+python-binance
+feedparser
+python-dotenv
+requests
