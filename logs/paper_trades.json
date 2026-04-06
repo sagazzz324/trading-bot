@@ -1,0 +1,125 @@
+{
+  "bankroll": 514.53,
+  "initial_bankroll": 1000.0,
+  "trades": [
+    {
+      "id": 1,
+      "timestamp": "2026-04-02T20:17:17.918523",
+      "market_id": "0x833cc6faa82931969b47abd4d4a245ef8df7df8be5357e86dd7c6240911a9f14",
+      "question": "Timberwolves vs. Pistons",
+      "true_prob": 0.62,
+      "market_prob": 0.335,
+      "ev": 0.285,
+      "position_size": 96.82,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-04-03T19:20:38.858990",
+      "market_id": "0x6d0e09d0f04572d9b1adad84703458b0297bc5603b69dccbde93147ee4443246",
+      "question": "US forces enter Iran by April 30?",
+      "true_prob": 0.93,
+      "market_prob": 0.845,
+      "ev": 0.085,
+      "position_size": 87.14,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-04-03T19:20:45.558071",
+      "market_id": "0xe4b9a52d2bb336ff9d84799b70e72e8e5f4507df881af60f3f4daeb9f541a80e",
+      "question": "US forces enter Iran by December 31?",
+      "true_prob": 0.97,
+      "market_prob": 0.88,
+      "ev": 0.09,
+      "position_size": 78.42,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-04-04T18:22:13.426777",
+      "market_id": "0x6d0e09d0f04572d9b1adad84703458b0297bc5603b69dccbde93147ee4443246",
+      "question": "US forces enter Iran by April 30?",
+      "true_prob": 0.91,
+      "market_prob": 0.825,
+      "ev": 0.085,
+      "position_size": 70.58,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 5,
+      "timestamp": "2026-04-04T19:40:17.297632",
+      "market_id": "0xf01f219b5c84dedd842fc94649d82cd4c84f4c74109346692814f558b8cd3025",
+      "question": "Connecticut Huskies vs. Illinois Fighting Illini",
+      "true_prob": 0.72,
+      "market_prob": 0.495,
+      "ev": 0.225,
+      "position_size": 63.52,
+      "status": "resolved",
+      "result": "loss",
+      "pnl": -63.52
+    },
+    {
+      "id": 6,
+      "timestamp": "2026-04-05T05:45:40.736747",
+      "market_id": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+      "question": "Will the U.S. invade Iran before 2027?",
+      "true_prob": 0.95,
+      "market_prob": 0.585,
+      "ev": 0.365,
+      "position_size": 57.17,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    }
+  ],
+  "active_trades": [
+    {
+      "id": 3,
+      "timestamp": "2026-04-03T19:20:45.558071",
+      "market_id": "0xe4b9a52d2bb336ff9d84799b70e72e8e5f4507df881af60f3f4daeb9f541a80e",
+      "question": "US forces enter Iran by December 31?",
+      "true_prob": 0.97,
+      "market_prob": 0.88,
+      "ev": 0.09,
+      "position_size": 78.42,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-04-04T18:22:13.426777",
+      "market_id": "0x6d0e09d0f04572d9b1adad84703458b0297bc5603b69dccbde93147ee4443246",
+      "question": "US forces enter Iran by April 30?",
+      "true_prob": 0.91,
+      "market_prob": 0.825,
+      "ev": 0.085,
+      "position_size": 70.58,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    },
+    {
+      "id": 6,
+      "timestamp": "2026-04-05T05:45:40.736747",
+      "market_id": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+      "question": "Will the U.S. invade Iran before 2027?",
+      "true_prob": 0.95,
+      "market_prob": 0.585,
+      "ev": 0.365,
+      "position_size": 57.17,
+      "status": "active",
+      "result": null,
+      "pnl": null
+    }
+  ]
+}

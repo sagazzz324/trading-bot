@@ -1,0 +1,32 @@
+[
+  {
+    "question": "NBA: Will the Suns beat the Warriors by more than 5.5 points",
+    "market_prob": 0.10000023527501617,
+    "true_prob": 0.18,
+    "ev": 0.08,
+    "size": 22.22,
+    "winner": false,
+    "pnl": -22.22,
+    "bankroll": 977.78
+  },
+  {
+    "question": "1. FC Union Berlin vs. Bayer 04 Leverkusen: Both Teams to Sc",
+    "market_prob": 0.1,
+    "true_prob": 0.58,
+    "ev": 0.48,
+    "size": 97.78,
+    "winner": false,
+    "pnl": -97.78,
+    "bankroll": 880.0
+  },
+  {
+    "question": "Will Slovan Bratislava beat Dinamo Zagreb?",
+    "market_prob": 0.1,
+    "true_prob": 0.18,
+    "ev": 0.08,
+    "size": 19.56,
+    "winner": false,
+    "pnl": -19.56,
+    "bankroll": 860.44
+  }
+]
