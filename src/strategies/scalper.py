@@ -8,6 +8,14 @@ logger = logging.getLogger(__name__)
 
 LOG_FILE = Path("logs/scalping_trades.json")
 
+WHITELIST = [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT",
+    "XRPUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT",
+    "LTCUSDT", "DOTUSDT", "ADAUSDT", "MATICUSDT",
+    "NEARUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT",
+    "INJUSDT", "SUIUSDT", "APTUSDT", "ARBUSDT"
+]
+
 
 def load_state():
     if LOG_FILE.exists():
@@ -41,21 +49,21 @@ class ScalpingBot:
         self.state = load_state()
 
     def scan_pairs(self):
-        print("\n🔍 Escaneando pares con mayor volumen...")
-        movers = self.client.get_top_movers(limit=30)
+        print("\n🔍 Escaneando pares de calidad...")
+        movers = self.client.get_top_movers(limit=100)
         candidates = []
         for m in movers:
             sym = m["symbol"]
-            if any(s in sym for s in ["BUSD", "USDC", "TUSD", "USDP", "DAI", "FDUSD"]):
+            if sym not in WHITELIST:
                 continue
             if any(p["symbol"] == sym for p in self.state["open_positions"]):
                 continue
-            if abs(m["change_pct"]) < 0.5:
+            if abs(m["change_pct"]) < 0.3:
                 continue
             candidates.append(m)
         candidates.sort(key=lambda x: x["volume"], reverse=True)
-        print(f"   {len(candidates)} candidatos con volumen y movimiento")
-        return candidates[:15]
+        print(f"   {len(candidates)} candidatos de calidad encontrados")
+        return candidates[:10]
 
     def analyze_pair(self, symbol):
         klines = self.client.get_klines(symbol, interval="5m", limit=100)
@@ -68,19 +76,20 @@ class ScalpingBot:
 
         rsi = signal.get("rsi", 50)
         atr_pct = signal.get("atr_pct", 0)
+        momentum = signal.get("momentum", 0)
 
         if atr_pct > 2.0:
             print(f"   ⚠️  {symbol}: volatilidad extrema ({atr_pct:.2f}%) — saltando")
             return None
 
-        movers = self.client.get_top_movers(limit=50)
+        movers = self.client.get_top_movers(limit=100)
         mover = next((m for m in movers if m["symbol"] == symbol), None)
         if mover and abs(mover["change_pct"]) > 30:
             print(f"   ⚠️  {symbol}: movimiento extremo ({mover['change_pct']:+.1f}%) — saltando")
             return None
 
-        if signal["strength"] < 65:
-            print(f"   📉 {symbol}: señal debil ({signal['strength']}/100) — necesitamos 65+")
+        if signal["strength"] < 55:
+            print(f"   📉 {symbol}: señal {signal['strength']}/100 — RSI:{rsi:.0f} momentum:{momentum:+.2f}% — skip")
             return None
 
         current_price = klines[-1]["close"]
@@ -92,7 +101,7 @@ class ScalpingBot:
             "reasons": signal["reasons"],
             "price": current_price,
             "rsi": rsi,
-            "momentum": signal.get("momentum", 0),
+            "momentum": momentum,
             "atr_pct": atr_pct,
             "claude_regime": "technical_only",
             "claude_risk": "medium"
@@ -244,7 +253,7 @@ class ScalpingBot:
             return
         candidates = self.scan_pairs()
         if not candidates:
-            print("   Sin candidatos con suficiente movimiento")
+            print("   Sin candidatos de calidad")
             self.print_stats()
             return
         entered = 0
