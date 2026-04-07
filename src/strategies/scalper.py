@@ -48,22 +48,33 @@ class ScalpingBot:
         self.capital = capital
         self.state = load_state()
 
-    def scan_pairs(self):
-        print("\n🔍 Escaneando pares de calidad...")
-        movers = self.client.get_top_movers(limit=100)
-        candidates = []
-        for m in movers:
-            sym = m["symbol"]
-            if sym not in WHITELIST:
-                continue
-            if any(p["symbol"] == sym for p in self.state["open_positions"]):
-                continue
-            if abs(m["change_pct"]) < 0.3:
-                continue
-            candidates.append(m)
-        candidates.sort(key=lambda x: x["volume"], reverse=True)
-        print(f"   {len(candidates)} candidatos de calidad encontrados")
-        return candidates[:10]
+def scan_pairs(self):
+    print("\n🔍 Escaneando pares de calidad...")
+    movers = self.client.get_top_movers(limit=100)
+    movers_dict = {m["symbol"]: m for m in movers}
+
+    candidates = []
+    for sym in WHITELIST:
+        if any(p["symbol"] == sym for p in self.state["open_positions"]):
+            continue
+        if sym in movers_dict:
+            m = movers_dict[sym]
+            if abs(m["change_pct"]) >= 0.1:
+                candidates.append(m)
+        else:
+            # Si no está en movers, obtener precio directo
+            price = self.client.get_price(sym)
+            if price:
+                candidates.append({
+                    "symbol": sym,
+                    "price": price,
+                    "change_pct": 0,
+                    "volume": 0
+                })
+
+    candidates.sort(key=lambda x: abs(x["change_pct"]), reverse=True)
+    print(f"   {len(candidates)} candidatos de calidad encontrados")
+    return candidates[:10]
 
     def analyze_pair(self, symbol):
         klines = self.client.get_klines(symbol, interval="5m", limit=100)
