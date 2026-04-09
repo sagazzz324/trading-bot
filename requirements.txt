@@ -6,3 +6,4 @@ python-binance
 feedparser
 python-dotenv
 requests
+websockets
