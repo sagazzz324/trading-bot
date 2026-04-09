@@ -46,6 +46,33 @@ def get_data():
 def index():
     return TEMPLATE.read_text(encoding="utf-8")
 
+@app.route("/api/positions")
+def api_positions():
+    """Endpoint para Pine Script de TradingView."""
+    positions = []
+    for pos in state.open_positions:
+        positions.append({
+            "symbol":    pos["symbol"],
+            "direction": pos["direction"],
+            "entry":     pos["entry_price"],
+            "sl":        pos["sl_price"],
+            "tp":        pos["tp_price"],
+            "size":      pos["position_usdt"],
+            "time":      pos["timestamp"],
+            "status":    "open"
+        })
+    for trade in state.closed_trades[:20]:
+        positions.append({
+            "symbol":    trade["symbol"],
+            "direction": trade["direction"],
+            "entry":     trade["entry_price"],
+            "exit":      trade.get("exit_price", 0),
+            "pnl":       trade.get("pnl_usdt", 0),
+            "reason":    trade.get("exit_reason", ""),
+            "time":      trade["timestamp"],
+            "status":    "closed"
+        })
+    return jsonify({"ok": True, "positions": positions, "count": len(positions)})
 
 @app.route("/api/data")
 def api_data():
@@ -97,6 +124,49 @@ def resolve_trade():
     state.add_log(f"Trade #{trade_id} → {'WIN' if outcome else 'LOSS'}", "#d558b7")
     return jsonify({"ok": True})
 
+@app.route("/api/positions")
+def api_positions():
+    positions = []
+    for pos in state.open_positions:
+        positions.append({
+            "symbol":    pos["symbol"],
+            "direction": pos["direction"],
+            "entry":     pos["entry_price"],
+            "sl":        pos["sl_price"],
+            "tp":        pos["tp_price"],
+            "size":      pos["position_usdt"],
+            "time":      pos["timestamp"],
+            "status":    "open"
+        })
+    for trade in state.closed_trades[:20]:
+        positions.append({
+            "symbol":    trade["symbol"],
+            "direction": trade["direction"],
+            "entry":     trade["entry_price"],
+            "exit":      trade.get("exit_price", 0),
+            "pnl":       trade.get("pnl_usdt", 0),
+            "reason":    trade.get("exit_reason", ""),
+            "time":      trade["timestamp"],
+            "status":    "closed"
+        })
+    return jsonify({"ok": True, "positions": positions})
+
+
+@app.route("/api/tv/signal")
+def tv_signal():
+    if not state.open_positions:
+        return jsonify({"active": False, "signal": "none"})
+    pos = state.open_positions[-1]
+    return jsonify({
+        "active":    True,
+        "signal":    pos["direction"],
+        "symbol":    pos["symbol"],
+        "entry":     pos["entry_price"],
+        "sl":        pos["sl_price"],
+        "tp":        pos["tp_price"],
+        "size":      pos["position_usdt"],
+        "strength":  pos.get("strength", 0),
+    })
 
 @app.route("/webhook/tradingview", methods=["POST"])
 def tradingview_webhook():
