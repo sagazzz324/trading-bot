@@ -160,16 +160,52 @@ def run_binance_bot(st):
 
 
 def _run_scalping_cycle(st):
-    """Corre un ciclo de scalping y sincroniza el estado en memoria."""
     from src.strategies.scalper import ScalpingBot
-    from src.exchanges.binance_client import BinanceClient
 
-    # Crear bot con estado actual en memoria
-    bot = ScalpingBot(
-        max_positions=3,
-        risk_per_trade=0.01,
-        capital=st.balance
-    )
+    bot = ScalpingBot(max_positions=3, risk_per_trade=0.01, capital=st.balance)
+    bot.state["open_positions"] = list(st.open_positions)
+
+    # Inyectar logger real al bot
+    import builtins
+    original_print = builtins.print
+
+    def log_print(*args, **kwargs):
+        msg = " ".join(str(a) for a in args).strip()
+        if not msg or msg.startswith("="):
+            return
+        color = "#00FF9C" if any(x in msg for x in ["✅","🟢","🎯","LONG"]) else \
+                "#FF4D4D" if any(x in msg for x in ["🛑","🔴","SL","SHORT","Error"]) else \
+                "#41d6fc" if any(x in msg for x in ["📡","📈","⚡","ciclo","Scan"]) else \
+                "#ffffff70"
+        st.add_log(msg, color)
+        original_print(*args, **kwargs)
+
+    builtins.print = log_print
+
+    try:
+        original_close = bot._close_position
+        def close_and_sync(pos, exit_price, reason, pnl):
+            original_close(pos, exit_price, reason, pnl)
+            st.close_position(pos["id"], exit_price, reason, pnl)
+        bot._close_position = close_and_sync
+
+        original_open = bot.open_position
+        def open_and_sync(signal):
+            pos = original_open(signal)
+            if pos:
+                st.add_position(pos)
+            return pos
+        bot.open_position = open_and_sync
+
+        bot.run_once()
+
+        st.balance     = bot.capital
+        st.session_pnl = round(bot.state.get("session_pnl", 0), 4)
+        st.win_count   = bot.state.get("win_count", st.win_count)
+        st.loss_count  = bot.state.get("loss_count", st.loss_count)
+
+    finally:
+        builtins.print = original_print
 
     # Sincronizar posiciones abiertas desde memoria
     bot.state["open_positions"] = list(st.open_positions)
