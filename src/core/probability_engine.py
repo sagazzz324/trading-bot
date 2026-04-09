@@ -62,7 +62,7 @@ Respondé SOLO con JSON, sin markdown:
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -136,7 +136,7 @@ Respondé SOLO con JSON:
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=400,
             messages=[{"role": "user", "content": prompt}]
         )

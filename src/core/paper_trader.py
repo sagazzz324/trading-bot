@@ -20,15 +20,14 @@ class PaperTrader:
         self.log_file.parent.mkdir(exist_ok=True)
         self._load_state()
 
-    def _load_state(self):
-        """Carga trades anteriores si existen."""
-        if self.log_file.exists():
-            with open(self.log_file, "r") as f:
-                data = json.load(f)
-                self.trades = data.get("trades", [])
-                self.bankroll = data.get("bankroll", self.bankroll)
-                self.active_trades = data.get("active_trades", [])
-            logger.info(f"Estado cargado: {len(self.trades)} trades, bankroll ${self.bankroll:.2f}")
+    def load_state(self):
+        self._load_state()
+        return {
+        "bankroll": self.bankroll,
+        "initial_bankroll": self.initial_bankroll,
+        "trades": self.trades,
+        "active_trades": self.active_trades
+    }
 
     def _save_state(self):
         """Guarda el estado actual."""

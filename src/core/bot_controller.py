@@ -88,7 +88,12 @@ def run_binance_bot(st):
                 params = PROFILES[profile_key]["params"]
                 bot = MarketMaker(symbol="BTCUSDT", params=params)
                 bot.run()
-            elif strategy == "Scalping Momentum":
+            elif strategy in ("Scalping", "Scalping Momentum"):
+                from src.strategies.scalper import ScalpingBot
+                bot = ScalpingBot(max_positions=3, risk_per_trade=0.01, capital=1000)
+                bot.run_once()
+                pnl = bot.state.get("session_pnl", 0)
+                st.add_log(f"Scalping ciclo · PnL sesión: ${pnl:+.4f}", "#41d6fc")
                 bot = MomentumScalper(symbol="BTCUSDT")
                 bot.run(cycles=3)
             elif strategy == "Mean Reversion":
