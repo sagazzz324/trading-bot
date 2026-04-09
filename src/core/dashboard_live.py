@@ -46,34 +46,6 @@ def get_data():
 def index():
     return TEMPLATE.read_text(encoding="utf-8")
 
-@app.route("/api/positions")
-def api_positions():
-    """Endpoint para Pine Script de TradingView."""
-    positions = []
-    for pos in state.open_positions:
-        positions.append({
-            "symbol":    pos["symbol"],
-            "direction": pos["direction"],
-            "entry":     pos["entry_price"],
-            "sl":        pos["sl_price"],
-            "tp":        pos["tp_price"],
-            "size":      pos["position_usdt"],
-            "time":      pos["timestamp"],
-            "status":    "open"
-        })
-    for trade in state.closed_trades[:20]:
-        positions.append({
-            "symbol":    trade["symbol"],
-            "direction": trade["direction"],
-            "entry":     trade["entry_price"],
-            "exit":      trade.get("exit_price", 0),
-            "pnl":       trade.get("pnl_usdt", 0),
-            "reason":    trade.get("exit_reason", ""),
-            "time":      trade["timestamp"],
-            "status":    "closed"
-        })
-    return jsonify({"ok": True, "positions": positions, "count": len(positions)})
-
 @app.route("/api/data")
 def api_data():
     return jsonify(get_data())
