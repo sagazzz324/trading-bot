@@ -27,3 +27,6 @@ if not PAPER_TRADING:
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
 BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
 BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
+BYBIT_API_KEY    = os.getenv("BYBIT_API_KEY")
+BYBIT_SECRET_KEY = os.getenv("BYBIT_SECRET_KEY")
+BYBIT_TESTNET    = os.getenv("BYBIT_TESTNET", "true").lower() == "true"

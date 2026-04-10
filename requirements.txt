@@ -2,7 +2,7 @@ anthropic
 flask
 flask-socketio
 eventlet
-python-binance
+pybit
 feedparser
 python-dotenv
 requests

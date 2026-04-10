@@ -123,6 +123,18 @@ def run_poly_bot(st: BotState):
 def run_binance_bot(st: BotState):
     st.add_log(f"Bot Binance iniciado · {st.binance_strategy}", "#00E887")
 
+    # Test conexión antes de arrancar
+    try:
+        from src.exchanges.binance_client import BinanceClient
+        BinanceClient().get_price("BTCUSDT")
+    except Exception as e:
+        if "restricted location" in str(e).lower():
+            st.add_log("⚠️ Binance bloqueado en esta región — activá testnet en .env", "#F5A623")
+        else:
+            st.add_log(f"⚠️ Error conectando a Binance: {str(e)[:60]}", "#FF5050")
+        st.binance_running = False
+        return
+
     while st.binance_running:
         if not _circuit_ok(st):
             st.binance_running = False
