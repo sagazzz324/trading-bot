@@ -1,5 +1,6 @@
 import threading
 import logging
+import traceback
 import time
 from datetime import datetime
 
@@ -16,7 +17,7 @@ class BotState:
         self.poly_thread      = None
         self.binance_thread   = None
         self.poly_interval    = 15
-        self.binance_interval = 1       # minutes between cycles
+        self.binance_interval = 1
         self.binance_strategy = "Scalping"
         self.binance_profile  = "Moderado"
         self.last_cycle       = None
@@ -24,15 +25,14 @@ class BotState:
         self._lock            = threading.Lock()
         self._stop_event      = threading.Event()
 
-        # In-memory state — no file dependency in Railway
-        self.logs           = []
-        self.open_positions = []
-        self.closed_trades  = []
-        self.balance        = 1000.0
+        self.logs            = []
+        self.open_positions  = []
+        self.closed_trades   = []
+        self.balance         = 1000.0
         self.initial_balance = 1000.0
-        self.win_count      = 0
-        self.loss_count     = 0
-        self.session_pnl    = 0.0
+        self.win_count       = 0
+        self.loss_count      = 0
+        self.session_pnl     = 0.0
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -54,9 +54,14 @@ class BotState:
             if not pos:
                 return
             self.open_positions = [p for p in self.open_positions if p["id"] != pos_id]
-            trade = {**pos, "exit_price": exit_price, "exit_reason": reason,
-                     "pnl_usdt": round(pnl, 4), "closed_at": datetime.now().isoformat(),
-                     "status": "closed"}
+            trade = {
+                **pos,
+                "exit_price":  exit_price,
+                "exit_reason": reason,
+                "pnl_usdt":    round(pnl, 4),
+                "closed_at":   datetime.now().isoformat(),
+                "status":      "closed"
+            }
             self.closed_trades.insert(0, trade)
             if len(self.closed_trades) > 50:
                 self.closed_trades.pop()
@@ -80,7 +85,7 @@ class BotState:
 state = BotState()
 
 
-# ── CIRCUIT BREAKER CHECK ─────────────────────────────────────────────────────
+# ── CIRCUIT BREAKER ───────────────────────────────────────────────────────────
 
 def _circuit_ok(st: BotState) -> bool:
     dd = (st.initial_balance - st.balance) / st.initial_balance
@@ -88,12 +93,12 @@ def _circuit_ok(st: BotState) -> bool:
         st.add_log(f"⛔ Circuit breaker: drawdown {dd:.1%} — bot halted", "#FF5050")
         return False
     if st.session_pnl <= DAILY_LOSS_LIM:
-        st.add_log(f"⛔ Daily loss limit ${st.session_pnl:.2f} — bot halted", "#FF5050")
+        st.add_log(f"⛔ Daily loss ${st.session_pnl:.2f} — bot halted", "#FF5050")
         return False
     return True
 
 
-# ── POLYMARKET BOT ────────────────────────────────────────────────────────────
+# ── POLYMARKET ────────────────────────────────────────────────────────────────
 
 def run_poly_bot(st: BotState):
     from src.core.bot import TradingBot
@@ -111,25 +116,32 @@ def run_poly_bot(st: BotState):
             st._stop_event.wait(timeout=st.poly_interval * 60)
             st._stop_event.clear()
         except Exception as e:
-            st.add_log(f"Error Poly: {str(e)[:60]}", "#FF5050")
-            logger.error(f"Poly error: {e}")
+            tb = traceback.format_exc()
+            st.add_log(f"❌ Poly error: {str(e)[:80]}", "#FF5050")
+            for line in [l.strip() for l in tb.strip().split("\n") if l.strip()][-4:]:
+                st.add_log(f"  {line[:90]}", "#FF5050")
+            logger.error(f"Poly error:\n{tb}")
             time.sleep(60)
 
     st.add_log("Bot Polymarket detenido", "#FF5050")
 
 
-# ── BINANCE BOT ───────────────────────────────────────────────────────────────
+# ── BINANCE/BYBIT BOT ─────────────────────────────────────────────────────────
 
 def run_binance_bot(st: BotState):
-    st.add_log(f"Bot Binance iniciado · {st.binance_strategy}", "#00E887")
+    st.add_log(f"Bot iniciado · {st.binance_strategy}", "#00E887")
 
     # Test conexión Bybit
     try:
         from src.exchanges.bybit_client import BybitClient
-        BybitClient().get_price("BTCUSDT")
-        st.add_log("✅ Bybit conectado", "#00E887")
+        price = BybitClient().get_price("BTCUSDT")
+        st.add_log(f"✅ Bybit conectado · BTC ${price:,.2f}", "#00E887")
     except Exception as e:
+        tb = traceback.format_exc()
         st.add_log(f"⚠️ Error conectando a Bybit: {str(e)[:60]}", "#FF5050")
+        for line in [l.strip() for l in tb.strip().split("\n") if l.strip()][-3:]:
+            st.add_log(f"  {line[:90]}", "#FF5050")
+        logger.error(f"Bybit connection error:\n{tb}")
         st.binance_running = False
         return
 
@@ -149,21 +161,27 @@ def run_binance_bot(st: BotState):
                 _run_mm_cycle(st)
             elif strategy == "Mean Reversion":
                 _run_mr_cycle(st)
+            else:
+                st.add_log(f"Estrategia desconocida: {strategy}", "#FF5050")
 
-            # Non-blocking sleep
             st._stop_event.wait(timeout=st.binance_interval * 60)
             st._stop_event.clear()
 
         except Exception as e:
-            st.add_log(f"Error Binance: {str(e)[:80]}", "#FF5050")
-            logger.error(f"Binance error: {e}", exc_info=True)
+            tb = traceback.format_exc()
+            lines = [l.strip() for l in tb.strip().split("\n") if l.strip()]
+            st.add_log(f"❌ Error ciclo: {str(e)[:80]}", "#FF5050")
+            for line in lines[-4:]:
+                st.add_log(f"  {line[:90]}", "#FF5050")
+            logger.error(f"Binance loop error:\n{tb}")
             time.sleep(30)
 
-    st.add_log("Bot Binance detenido", "#FF5050")
+    st.add_log("Bot detenido", "#FF5050")
 
+
+# ── SCALPING CYCLE ────────────────────────────────────────────────────────────
 
 def _run_scalping_cycle(st: BotState):
-    """Intercept all bot prints → dashboard logs. Sync positions to memory."""
     import builtins
     from src.strategies.scalper import ScalpingBot
 
@@ -173,13 +191,11 @@ def _run_scalping_cycle(st: BotState):
         capital=st.balance
     )
 
-    # Sync open positions from memory state
     with st._lock:
         bot.state["open_positions"] = list(st.open_positions)
-    bot.capital      = st.balance
-    bot.initial_cap  = st.initial_balance
+    bot.capital     = st.balance
+    bot.initial_cap = st.initial_balance
 
-    # Route all print() → dashboard log
     orig_print = builtins.print
 
     def log_print(*args, **kwargs):
@@ -187,9 +203,9 @@ def _run_scalping_cycle(st: BotState):
         if not msg or set(msg) <= {"=", "-", " "}:
             return
         color = (
-            "#00E887" if any(x in msg for x in ["✅","🟢","🎯","LONG","TP","seeded"]) else
-            "#FF5050" if any(x in msg for x in ["🛑","🔴","SL","SHORT","⛔","Error"]) else
-            "#41d6fc" if any(x in msg for x in ["📡","📈","⚡","Ciclo","Scan","📐","Trailing"]) else
+            "#00E887" if any(x in msg for x in ["✅","🟢","🎯","LONG","TP","seeded","conectado"]) else
+            "#FF5050" if any(x in msg for x in ["🛑","🔴","SL","SHORT","⛔","Error","❌"]) else
+            "#41d6fc" if any(x in msg for x in ["📡","📈","⚡","Ciclo","Scan","📐","Trailing","ciclo"]) else
             "#ffffff60"
         )
         st.add_log(msg, color)
@@ -198,14 +214,12 @@ def _run_scalping_cycle(st: BotState):
     builtins.print = log_print
 
     try:
-        # Patch close → sync to memory
         orig_close = bot._close_position
         def close_sync(pos, exit_price, reason, pnl):
             orig_close(pos, exit_price, reason, pnl)
             st.close_position(pos["id"], exit_price, reason, pnl)
         bot._close_position = close_sync
 
-        # Patch open → sync to memory
         orig_open = bot.open_position
         def open_sync(signal):
             pos = orig_open(signal)
@@ -216,40 +230,60 @@ def _run_scalping_cycle(st: BotState):
 
         bot.run_once()
 
-        # Sync final state
         with st._lock:
             st.balance = bot.capital
 
         stats = st.get_stats()
         st.add_log(
-            f"Scalping · ${stats['balance']:.2f} · WR {stats['win_rate']:.0f}% · "
-            f"DD {stats['drawdown']:.1f}% · {stats['open']} abiertas",
+            f"Scalping · ${stats['balance']:.2f} · "
+            f"WR {stats['win_rate']:.0f}% · "
+            f"DD {stats['drawdown']:.1f}% · "
+            f"{stats['open']} abiertas",
             "#41d6fc"
         )
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        lines = [l.strip() for l in tb.strip().split("\n") if l.strip()]
+        st.add_log(f"❌ Error en scalping: {str(e)[:80]}", "#FF5050")
+        for line in lines[-4:]:
+            st.add_log(f"  {line[:90]}", "#FF5050")
+        logger.error(f"Scalping cycle error:\n{tb}")
 
     finally:
         builtins.print = orig_print
 
 
 def _run_mm_cycle(st: BotState):
-    from src.strategies.market_making import MarketMaker
-    from src.strategies.market_making_profiles import PROFILES
-    profile_key = next(
-        (k for k, v in PROFILES.items() if v["name"].split(" ", 1)[-1] == st.binance_profile), "2"
-    )
-    bot = MarketMaker(symbol="BTCUSDT", params=PROFILES[profile_key]["params"])
-    bot.run()
-    st.add_log("Market Making · ciclo completado", "#41d6fc")
+    try:
+        from src.strategies.market_making import MarketMaker
+        from src.strategies.market_making_profiles import PROFILES
+        profile_key = next(
+            (k for k, v in PROFILES.items()
+             if v["name"].split(" ", 1)[-1] == st.binance_profile), "2"
+        )
+        bot = MarketMaker(symbol="BTCUSDT", params=PROFILES[profile_key]["params"])
+        bot.run()
+        st.add_log("Market Making · ciclo completado", "#41d6fc")
+    except Exception as e:
+        tb = traceback.format_exc()
+        st.add_log(f"❌ MM error: {str(e)[:80]}", "#FF5050")
+        logger.error(f"MM error:\n{tb}")
 
 
 def _run_mr_cycle(st: BotState):
-    from src.strategies.mean_reversion import MeanReversionStrategy
-    bot = MeanReversionStrategy(symbol="BTCUSDT")
-    bot.run(cycles=2)
-    st.add_log("Mean Reversion · ciclo completado", "#41d6fc")
+    try:
+        from src.strategies.mean_reversion import MeanReversionStrategy
+        bot = MeanReversionStrategy(symbol="BTCUSDT")
+        bot.run(cycles=2)
+        st.add_log("Mean Reversion · ciclo completado", "#41d6fc")
+    except Exception as e:
+        tb = traceback.format_exc()
+        st.add_log(f"❌ MR error: {str(e)[:80]}", "#FF5050")
+        logger.error(f"MR error:\n{tb}")
 
 
-# ── CONTROLS ─────────────────────────────────────────────────────────────────
+# ── CONTROLS ──────────────────────────────────────────────────────────────────
 
 def start_poly(st: BotState) -> bool:
     if st.poly_running:
@@ -260,10 +294,12 @@ def start_poly(st: BotState) -> bool:
     st.poly_thread.start()
     return True
 
+
 def stop_poly(st: BotState) -> bool:
     st.poly_running = False
     st._stop_event.set()
     return True
+
 
 def start_binance(st: BotState) -> bool:
     if st.binance_running:
@@ -273,6 +309,7 @@ def start_binance(st: BotState) -> bool:
     st.binance_thread = threading.Thread(target=run_binance_bot, args=(st,), daemon=True)
     st.binance_thread.start()
     return True
+
 
 def stop_binance(st: BotState) -> bool:
     st.binance_running = False
