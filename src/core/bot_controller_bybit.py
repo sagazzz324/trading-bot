@@ -234,7 +234,7 @@ def _run_grid_cycle(st: BybitState):
         logger.error(f"Grid cycle:\n{tb}")
 
 
-def start_bybit() -> bool:
+def start_bybit(strategy=None) -> bool:
     if bybit_state.running:
         return False
     bybit_state.running = True

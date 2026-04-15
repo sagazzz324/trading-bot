@@ -147,3 +147,6 @@ Respondé SOLO con JSON:
     except Exception as e:
         logger.error(f"Error analizando mercado: {e}")
         return {"should_trade": False, "strategy": "Pausar", "reasoning": str(e), "risk_level": "high", "spread_recommendation": 0.0001, "confidence": "low", "market_regime": "unknown"}
+    
+def calculate_ev(true_prob, market_prob):
+    return true_prob * (1 - market_prob) - (1 - true_prob) * market_prob
