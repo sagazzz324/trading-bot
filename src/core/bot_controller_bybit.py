@@ -12,21 +12,24 @@ DAILY_LOSS_LIM = -50.0
 
 class BybitState:
     def __init__(self):
-        self.running         = False
-        self.strategy        = "Scalping"
-        self.thread          = None
-        self._lock           = threading.Lock()
-        self._stop_event     = threading.Event()
-        self.last_cycle      = None
-        self.cycle_count     = 0
-        self.logs            = []
-        self.open_positions  = []
-        self.closed_trades   = []
-        self.balance         = 1000.0
-        self.initial_balance = 1000.0
-        self.win_count       = 0
-        self.loss_count      = 0
-        self.session_pnl     = 0.0
+        self.running          = False
+        self.strategy         = "Auto"      # lo decide el orquestador
+        self.active_strategy  = "—"         # estrategia actual corriendo
+        self.regime           = "—"
+        self.orch_reason      = "—"
+        self.thread           = None
+        self._lock            = threading.Lock()
+        self._stop_event      = threading.Event()
+        self.last_cycle       = None
+        self.cycle_count      = 0
+        self.logs             = []
+        self.open_positions   = []
+        self.closed_trades    = []
+        self.balance          = 1000.0
+        self.initial_balance  = 1000.0
+        self.win_count        = 0
+        self.loss_count       = 0
+        self.session_pnl      = 0.0
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -67,12 +70,15 @@ class BybitState:
     def get_stats(self):
         total = self.win_count + self.loss_count
         return {
-            "balance":      self.balance,
-            "session_pnl":  self.session_pnl,
-            "win_rate":     round(self.win_count / total * 100, 1) if total else 0.0,
-            "total_trades": total,
-            "open":         len(self.open_positions),
-            "drawdown":     round((self.initial_balance - self.balance) / self.initial_balance * 100, 2),
+            "balance":         self.balance,
+            "session_pnl":     self.session_pnl,
+            "win_rate":        round(self.win_count / total * 100, 1) if total else 0.0,
+            "total_trades":    total,
+            "open":            len(self.open_positions),
+            "drawdown":        round((self.initial_balance - self.balance) / self.initial_balance * 100, 2),
+            "active_strategy": self.active_strategy,
+            "regime":          self.regime,
+            "orch_reason":     self.orch_reason,
         }
 
 
@@ -91,12 +97,16 @@ def _circuit_ok(st: BybitState) -> bool:
 
 
 def _run_bot(st: BybitState):
-    st.add_log(f"Bot Bybit iniciado · {st.strategy}", "#00E887")
+    st.add_log("Bot Bybit iniciado · modo Auto", "#00E887")
 
+    # Test conexión + crear orquestador
     try:
         from src.exchanges.bybit_client import BybitClient
-        price = BybitClient().get_price("BTCUSDT")
+        from src.strategies.strategy_orchestrator import StrategyOrchestrator
+        client = BybitClient()
+        price  = client.get_price("BTCUSDT")
         st.add_log(f"✅ Bybit conectado · BTC ${price:,.2f}", "#00E887")
+        orchestrator = StrategyOrchestrator(client)
     except Exception as e:
         st.add_log(f"❌ Error Bybit: {str(e)[:60]}", "#FF5050")
         logger.error(traceback.format_exc())
@@ -110,14 +120,32 @@ def _run_bot(st: BybitState):
         try:
             st.cycle_count += 1
             st.last_cycle   = datetime.now().strftime("%H:%M:%S")
-            st.add_log(f"Ciclo #{st.cycle_count} · {st.strategy}", "#ffffff30")
 
-            if st.strategy == "Scalping":
+            # ── Orquestador decide estrategia ──
+            decision = orchestrator.decide()
+            strategy = decision["strategy"]
+            st.active_strategy = strategy
+            st.regime          = decision["regime"]
+            st.orch_reason     = decision["reason"]
+
+            st.add_log(
+                f"Ciclo #{st.cycle_count} · {strategy} · {decision['regime']} · "
+                f"slope={decision['slope']:.5f} ATR={decision['atr_pct']:.2f}%",
+                "#ffffff40"
+            )
+
+            if strategy == "Pause":
+                st.add_log(f"⏸️  Pausado — {decision['reason']}", "#F5A623")
+
+            elif strategy == "Scalping":
                 _run_scalping_cycle(st)
-            elif st.strategy == "Grid":
+
+            elif strategy == "Grid":
                 _run_grid_cycle(st)
 
-            st._stop_event.wait(timeout=60)
+            # Intervalo más corto en scalping, más largo en grid
+            wait = 60 if strategy == "Scalping" else 120
+            st._stop_event.wait(timeout=wait)
             st._stop_event.clear()
 
         except Exception as e:
@@ -175,14 +203,14 @@ def _run_scalping_cycle(st: BybitState):
         bot.open_position = open_sync
 
         bot.run_once()
-
         with st._lock:
             st.balance = bot.capital
 
         s = st.get_stats()
         st.add_log(
-            f"Scalping · ${s['balance']:.2f} · WR {s['win_rate']:.0f}% · "
-            f"DD {s['drawdown']:.1f}% · {s['open']} abiertas", "#41d6fc"
+            f"Scalping · ${s['balance']:.2f} · "
+            f"WR {s['win_rate']:.0f}% · DD {s['drawdown']:.1f}%",
+            "#41d6fc"
         )
 
     except Exception as e:
@@ -206,11 +234,10 @@ def _run_grid_cycle(st: BybitState):
         logger.error(f"Grid cycle:\n{tb}")
 
 
-def start_bybit(strategy: str = "Scalping") -> bool:
+def start_bybit() -> bool:
     if bybit_state.running:
         return False
-    bybit_state.strategy = strategy
-    bybit_state.running  = True
+    bybit_state.running = True
     bybit_state._stop_event.clear()
     bybit_state.thread = threading.Thread(
         target=_run_bot, args=(bybit_state,), daemon=True
