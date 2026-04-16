@@ -18,31 +18,29 @@ STOP_LOSS_PCT   = 0.20   # salir si el precio bajó 20% en contra
 
 def get_btc_momentum():
     try:
-        from src.exchanges.bybit_client import BybitClient
-        client = BybitClient()
-
-        klines = client.get_klines("BTCUSDT", interval="1", limit=10)
-        if not klines or len(klines) < 6:
-            logger.error(f"get_btc_momentum: solo {len(klines) if klines else 0} velas")
+        # CoinGecko — no bloquea servidores cloud
+        r = requests.get(
+            "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
+            params={"vs_currency": "usd", "days": "1"},
+            timeout=10
+        )
+        data = r.json()
+        if not data or len(data) < 6:
+            logger.error(f"CoinGecko: {len(data) if data else 0} puntos")
             return {"direction": "up", "change_pct": 0, "price": 0, "vol_ratio": 1, "confidence": "low"}
 
-        closes  = [k["close"]  for k in klines]
-        volumes = [k["volume"] for k in klines]
-
+        # data = [[timestamp, open, high, low, close], ...]
+        closes  = [candle[4] for candle in data]
         current = closes[-1]
         prev5   = closes[-6]
         change  = (current - prev5) / prev5 * 100
-
-        vol_recent = sum(volumes[-3:]) / 3
-        vol_prior  = sum(volumes[-6:-3]) / 3
-        vol_ratio  = vol_recent / vol_prior if vol_prior > 0 else 1.0
 
         return {
             "direction":  "up" if change > 0 else "down",
             "change_pct": round(change, 4),
             "price":      round(current, 2),
-            "vol_ratio":  round(vol_ratio, 2),
-            "confidence": "high"   if abs(change) > 0.15 and vol_ratio > 1.2 else
+            "vol_ratio":  1.0,
+            "confidence": "high"   if abs(change) > 0.15 else
                           "medium" if abs(change) > 0.05 else "low"
         }
     except Exception as e:
