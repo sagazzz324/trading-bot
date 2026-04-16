@@ -141,13 +141,20 @@ def decide_trade(momentum, prices):
     direction  = momentum["direction"]
     confidence = momentum["confidence"]
     change_pct = abs(momentum["change_pct"])
+
     if confidence == "low":
         return None
+
     market_prob = prices["up_price"] if direction == "up" else prices["down_price"]
-    true_prob   = min(0.72, 0.50 + change_pct * 0.8)
+
+    # Limitar true_prob a máximo 0.65 — nada en Polymarket tiene 72% de edge real
+    true_prob = min(0.65, 0.50 + change_pct * 0.15)
+
     ev = true_prob * (1 - market_prob) - (1 - true_prob) * market_prob
+
     if ev < 0.03:
         return None
+
     return {
         "direction":   direction,
         "true_prob":   round(true_prob, 3),
