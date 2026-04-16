@@ -10,15 +10,30 @@ from src.skills.news_fetcher import get_news_context
 
 logger = logging.getLogger(__name__)
 
-KEYWORDS_ALLOW = [
-    "bitcoin", "btc", "ethereum", "eth", "crypto", "solana", "sol",
-    "trump", "biden", "election", "president", "congress", "fed",
-    "inflation", "rate", "gdp", "recession", "iran", "russia",
-    "ukraine", "china", "war", "nuclear", "oil", "gold",
-    "republican", "democrat", "senate", "house", "vote",
-    "powell", "interest rate", "dollar", "yen", "euro",
-    "artificial intelligence", "ai", "openai", "elon", "musk"
-]
+MODES = {
+    "crypto": [
+        "bitcoin", "btc", "ethereum", "eth", "crypto", "solana", "sol",
+        "bnb", "xrp", "doge", "avax", "link", "matic", "near", "atom",
+        "defi", "nft", "web3", "binance", "coinbase", "token", "airdrop"
+    ],
+    "politics": [
+        "trump", "biden", "harris", "election", "president", "congress",
+        "fed", "inflation", "rate", "gdp", "recession", "iran", "russia",
+        "ukraine", "china", "war", "nuclear", "republican", "democrat",
+        "senate", "house", "vote", "powell", "dollar", "oil", "gold",
+        "musk", "elon", "openai", "ai", "artificial intelligence"
+    ],
+    "all": [
+        "bitcoin", "btc", "ethereum", "eth", "crypto", "solana", "sol",
+        "bnb", "xrp", "doge", "avax", "link", "matic", "near", "atom",
+        "defi", "nft", "web3", "binance", "coinbase", "token", "airdrop",
+        "trump", "biden", "harris", "election", "president", "congress",
+        "fed", "inflation", "rate", "gdp", "recession", "iran", "russia",
+        "ukraine", "china", "war", "nuclear", "republican", "democrat",
+        "senate", "house", "vote", "powell", "dollar", "oil", "gold",
+        "musk", "elon", "openai", "ai", "artificial intelligence"
+    ]
+}
 
 KEYWORDS_BLOCK = [
     "nba", "nfl", "nhl", "mlb", "soccer", "football", "basketball",
@@ -32,14 +47,17 @@ class TradingBot:
     def __init__(self):
         self.trader = PaperTrader()
 
-    def run_once(self):
+    def run_once(self, mode="all"):
         state      = self.trader.load_state()
         bankroll   = state["bankroll"]
         active     = state["active_trades"]
         all_trades = state["trades"]
 
+        keywords = MODES.get(mode, MODES["all"])
+        mode_label = {"crypto": "🪙 Crypto", "politics": "🏛️ Política", "all": "🌐 Todo"}.get(mode, mode)
+
         print("\n" + "="*50)
-        print("🤖 CICLO DEL BOT - PAPER TRADING")
+        print(f"🤖 CICLO DEL BOT - PAPER TRADING [{mode_label}]")
         print("="*50)
         print(f"   Bankroll: ${bankroll:.2f} | Trades activos: {len(active)}")
 
@@ -58,7 +76,6 @@ class TradingBot:
 
         # 2. Riesgo global
         resolved = [t for t in all_trades if t["status"] == "resolved"]
-        wins     = [t for t in resolved if t["result"] == "win"]
         drawdown = (state["initial_bankroll"] - bankroll) / state["initial_bankroll"]
 
         risk_ok, risk_msg = check_risk_rules(drawdown, len(active))
@@ -67,7 +84,7 @@ class TradingBot:
             return
 
         # 3. Escanear mercados
-        print("\n🔍 Escaneando mercados...")
+        print(f"\n🔍 Escaneando mercados [{mode_label}]...")
         raw_markets = get_markets(limit=50)
         if not raw_markets:
             print("   Sin mercados disponibles")
@@ -80,11 +97,9 @@ class TradingBot:
 
             if not (0.03 < fm["precio"] < 0.97 and fm["volumen"] > 100000):
                 continue
-
             if any(kw in question_lower for kw in KEYWORDS_BLOCK):
                 continue
-
-            if any(kw in question_lower for kw in KEYWORDS_ALLOW):
+            if any(kw in question_lower for kw in keywords):
                 markets.append({
                     "question": fm["pregunta"],
                     "price":    fm["precio"],

@@ -18,6 +18,7 @@ class PolyState:
         self.last_cycle   = None
         self.cycle_count  = 0
         self.logs         = []
+        self.market_mode  = "all"   # "crypto" | "politics" | "all"
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -37,7 +38,8 @@ def _run_bot(st: PolyState):
     from src.core.bot import TradingBot
     from src.core.resolver import auto_resolve_trades
 
-    st.add_log("Bot Polymarket iniciado", "#00E887")
+    mode_label = {"crypto": "🪙 Crypto", "politics": "🏛️ Política", "all": "🌐 Todo"}.get(st.market_mode, st.market_mode)
+    st.add_log(f"Bot Polymarket iniciado · modo {mode_label}", "#00E887")
     bot = TradingBot()
     orig_print = builtins.print
 
@@ -48,8 +50,8 @@ def _run_bot(st: PolyState):
         color = (
             "#00E887" if any(x in msg for x in ["✅","🟢","TRADE","WIN","bankroll"]) else
             "#FF5050" if any(x in msg for x in ["❌","🔴","LOSS","Error","STOP","🛑"]) else
-            "#F5A623" if any(x in msg for x in ["⏭️","skip","Skip","sin señal","EV","Confianza"]) else
-            "#41d6fc" if any(x in msg for x in ["🔍","📊","Ciclo","Evaluando","Escaneando","mercados","Bankroll","whale"]) else
+            "#F5A623" if any(x in msg for x in ["⏭️","skip","Skip","sin señal","EV","Confianza","🚫","🤷","💰","🎯"]) else
+            "#41d6fc" if any(x in msg for x in ["🔍","📊","Ciclo","Evaluando","Escaneando","mercados","Bankroll","whale","🛡️"]) else
             "#ffffff60"
         )
         st.add_log(msg, color)
@@ -62,9 +64,9 @@ def _run_bot(st: PolyState):
             try:
                 st.cycle_count += 1
                 st.last_cycle   = datetime.now().strftime("%H:%M:%S")
-                st.add_log(f"━━ Ciclo #{st.cycle_count} ━━", "#41d6fc")
+                st.add_log(f"━━ Ciclo #{st.cycle_count} · {mode_label} ━━", "#41d6fc")
                 auto_resolve_trades()
-                bot.run_once()
+                bot.run_once(mode=st.market_mode)
                 st._stop_event.wait(timeout=st.interval * 60)
                 st._stop_event.clear()
 
@@ -81,9 +83,10 @@ def _run_bot(st: PolyState):
         st.add_log("Bot Polymarket detenido", "#FF5050")
 
 
-def start_poly() -> bool:
+def start_poly(mode="all") -> bool:
     if poly_state.running:
         return False
+    poly_state.market_mode = mode
     poly_state.running = True
     poly_state._stop_event.clear()
     poly_state.thread = threading.Thread(
@@ -97,3 +100,7 @@ def stop_poly() -> bool:
     poly_state.running = False
     poly_state._stop_event.set()
     return True
+
+def set_poly_mode(mode: str):
+    poly_state.market_mode = mode
+    poly_state.add_log(f"Modo cambiado → {mode}", "#41d6fc")

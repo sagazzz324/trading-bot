@@ -32,7 +32,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 @keyframes row-in{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
 @keyframes grad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes slide-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@keyframes scan-line{0%{top:-2px}100%{top:100%}}
 
 /* ── LANDING ─────────────────────────────────────────────────────────────── */
 #view-landing{display:block;min-height:100vh}
@@ -108,7 +107,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 /* ── DASHBOARD ────────────────────────────────────────────────────────────── */
 .dash-wrap{display:flex;flex:1;overflow:hidden}
 
-/* Sidebar */
 .sidebar{
   width:240px;flex-shrink:0;
   border-right:1px solid var(--border);
@@ -127,7 +125,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .divider{height:1px;background:var(--border);margin:0 6px}
 .slabel{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--t3);padding:0 6px;font-weight:700}
 
-/* Bot cards in sidebar */
 .sb-bot-card{
   background:var(--bg2);border:1px solid var(--border);
   border-radius:var(--r-lg);padding:12px;
@@ -145,6 +142,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .sb-bot-card.running-b .sb-card-state{color:var(--blue)}
 .sb-card-meta{font-size:9px;color:var(--t3);font-family:var(--mono)}
 
+/* Mode selector */
+.mode-btns{display:flex;gap:4px;margin-top:8px}
+.mode-btn{
+  flex:1;padding:4px 0;border-radius:6px;
+  border:1px solid rgba(79,142,247,.2);
+  background:var(--bg3);color:var(--t3);
+  font-size:8px;font-weight:700;cursor:pointer;
+  font-family:var(--mono);transition:all .15s;
+  letter-spacing:.3px;
+}
+.mode-btn:hover{border-color:rgba(79,142,247,.4);color:var(--t2)}
+.mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(79,142,247,.4)}
+
 /* Toggle */
 .toggle{width:38px;height:21px;background:var(--bg3);border:1px solid var(--border-hi);border-radius:11px;position:relative;flex-shrink:0;cursor:pointer;transition:background var(--spring),box-shadow var(--spring),border-color var(--spring)}
 .toggle.on-g{background:var(--green);border-color:var(--green);box-shadow:0 0 12px var(--green-glow)}
@@ -152,7 +162,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .toggle-knob{position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform var(--spring),background var(--spring)}
 .toggle.on-g .toggle-knob,.toggle.on-b .toggle-knob{transform:translateX(17px);background:#fff}
 
-/* Strategy badge */
 .strat-badge{
   display:inline-flex;align-items:center;gap:5px;
   font-size:8px;font-weight:700;letter-spacing:.5px;
@@ -185,10 +194,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .sb-back:hover{background:var(--bg2);color:var(--t2);border-color:var(--border)}
 .sb-back svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 
-/* Main */
 .dash-main{flex:1;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto;min-width:0}
 
-/* Top bar */
 .dash-topbar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .topbar-left{display:flex;align-items:center;gap:10px}
 .page-title{font-size:14px;font-weight:700;letter-spacing:-.3px}
@@ -204,17 +211,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .icon-btn:hover{border-color:var(--border-hi);color:var(--t1);transform:scale(1.06)}
 .icon-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* Tab panels */
 .tab-panel{display:none;flex-direction:column;gap:14px;animation:slide-in .25s ease both}
 .tab-panel.active{display:flex}
 
-/* Cards */
 .card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
 .card-hdr{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .card-title{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t2)}
 .card-meta{font-size:9px;color:var(--t3);font-family:var(--mono)}
 
-/* Stats grid */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;transition:border-color .2s}
 .stat-card:hover{border-color:var(--border-hi)}
@@ -223,7 +227,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .stat-num.g{color:var(--green)}.stat-num.r{color:var(--red)}.stat-num.b{color:var(--blue)}.stat-num.a{color:var(--amber)}
 .stat-hint{font-size:8px;color:var(--t3);margin-top:5px;font-family:var(--mono)}
 
-/* Orchestrator card */
 .orch-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .orch-left{display:flex;align-items:center;gap:10px}
 .orch-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-dim);border:1px solid rgba(79,142,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -235,10 +238,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .orch-metric-val{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--blue)}
 .orch-metric-lbl{font-size:8px;color:var(--t3);letter-spacing:.5px}
 
-/* Chart */
 .chart-body{padding:12px;height:170px;position:relative}
 
-/* Trades */
 .trade-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);animation:row-in .3s ease both;transition:background .1s}
 .trade-row:hover{background:rgba(255,255,255,.01)}
 .trade-row:last-child{border-bottom:none}
@@ -251,7 +252,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .t-pnl.p{color:var(--green)}.t-pnl.l{color:var(--red)}.t-pnl.o{color:var(--t3)}
 .empty-msg{padding:26px;text-align:center;color:var(--t3);font-size:10px;font-family:var(--mono)}
 
-/* Log */
 .log-body{height:190px;overflow-y:auto;padding:8px 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .log-body::-webkit-scrollbar{width:2px}
 .log-body::-webkit-scrollbar-thumb{background:var(--border-hi)}
@@ -262,10 +262,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .log-msg.green{color:var(--green)}.log-msg.red{color:var(--red)}.log-msg.blue{color:var(--blue)}.log-msg.amber{color:var(--amber)}.log-msg.dim{color:var(--t3)}
 .log-empty{padding:22px;text-align:center;color:var(--t3);font-size:9px;font-family:var(--mono)}
 
-/* Two-col layout */
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-/* Mobile bottom nav */
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,8,.97);border-top:1px solid var(--border);backdrop-filter:blur(24px);z-index:50}
 .bn-grid{display:grid;grid-template-columns:repeat(4,1fr)}
 .bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;cursor:pointer}
@@ -275,7 +273,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .bn-lbl{font-size:8px;color:var(--t3);font-weight:600;letter-spacing:.2px}
 .bn-item.active .bn-lbl{color:var(--t1)}
 
-/* Responsive */
 @media(max-width:960px){
   .stats-grid{grid-template-columns:1fr 1fr}
   .two-col{grid-template-columns:1fr}
@@ -388,6 +385,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
             <div class="toggle" id="sb-toggle-poly"><div class="toggle-knob"></div></div>
           </div>
           <div class="sb-card-meta" style="margin-top:4px">Claude AI · Kelly Criterion</div>
+          <!-- Mode selector -->
+          <div class="mode-btns" onclick="event.stopPropagation()">
+            <button class="mode-btn active" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
+            <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POLÍTICA</button>
+            <button class="mode-btn" id="mode-all" onclick="setPolyMode('all')">🌐 TODO</button>
+          </div>
         </div>
       </div>
 
@@ -445,7 +448,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
       <!-- ══ BYBIT TAB ══ -->
       <div class="tab-panel active" id="panel-bybit">
 
-        <!-- Orchestrator status -->
         <div class="orch-card" id="orch-card">
           <div class="orch-left">
             <div class="orch-icon">
@@ -470,7 +472,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           </div>
         </div>
 
-        <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-lbl">Balance</div><div class="stat-num b" id="bybit-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
           <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="bybit-pnl">$0.00</div><div class="stat-hint" id="bybit-pnl-pct">0.0%</div></div>
@@ -478,7 +479,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           <div class="stat-card"><div class="stat-lbl">Posiciones</div><div class="stat-num" id="bybit-pos" style="color:var(--t1)">0</div><div class="stat-hint">abiertas</div></div>
         </div>
 
-        <!-- Chart + trades -->
         <div class="two-col">
           <div class="card">
             <div class="card-hdr"><span class="card-title">Balance</span><span class="card-meta" id="bybit-chart-meta">paper mode</span></div>
@@ -490,7 +490,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           </div>
         </div>
 
-        <!-- Log -->
         <div class="card">
           <div class="card-hdr"><span class="card-title">Log · Bybit</span><span class="card-meta" id="bybit-log-ts">—</span></div>
           <div class="log-body" id="bybit-log"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
@@ -500,7 +499,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
       <!-- ══ POLY TAB ══ -->
       <div class="tab-panel" id="panel-poly">
 
-        <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
           <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
@@ -508,7 +506,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
         </div>
 
-        <!-- Trades + log -->
         <div class="two-col">
           <div class="card">
             <div class="card-hdr"><span class="card-title">Trades Polymarket</span><span class="card-meta" id="poly-trades-meta">0 trades</span></div>
@@ -556,6 +553,7 @@ let balH=[1000], balL=['Inicio'];
 let bybitChart=null;
 let dashInited=false;
 let currentTab='bybit';
+let currentPolyMode='crypto';
 const INIT_BAL=1000;
 
 /* ══ LANDING ══ */
@@ -622,7 +620,6 @@ function initSocket(){
 }
 
 function applyBybit(d){
-  // Stats
   if(d.bankroll!=null){ setEl('bybit-balance','$'+d.bankroll.toFixed(2)); setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2)); }
   const pnl=d.total_pnl||0;
   setEl('bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
@@ -636,11 +633,8 @@ function applyBybit(d){
   setEl('bybit-pos',npos);
   if(d.recent_trades) renderBybitTrades(d.recent_trades);
   if(d.running!=null) applyBybitState(d.running);
-  // Orchestrator
   if(d.active_strategy) updateOrchCard(d);
-  // Logs
   if(d.logs&&d.logs.length){ bybitLogs=d.logs.map(l=>({ts:l.time,msg:l.msg,color:hexClass(l.color)})); renderLog('bybit-log','bybit-log-ts',bybitLogs); }
-  // Chart
   if(d.bankroll!=null){ const last=balH[balH.length-1]; if(Math.abs(d.bankroll-last)>0.01){balH.push(d.bankroll);const n=new Date();balL.push(n.getHours()+':'+String(n.getMinutes()).padStart(2,'0'));if(balH.length>60){balH.shift();balL.shift()}buildBybitChart()}}
 }
 
@@ -659,6 +653,7 @@ function applyPoly(d){
   if(d.recent_trades) renderPolyTrades(d.recent_trades);
   if(d.running!=null) applyPolyState(d.running);
   if(d.logs&&d.logs.length){ polyLogs=d.logs.map(l=>({ts:l.time,msg:l.msg,color:hexClass(l.color)})); renderLog('poly-log','poly-log-ts',polyLogs); }
+  if(d.market_mode) syncModeButtons(d.market_mode);
 }
 
 /* ══ BOT STATE ══ */
@@ -698,11 +693,31 @@ function toggleBybit(){
   else fetch(bybitOn?'/api/bybit/stop':'/api/bybit/start',{method:'POST'});
 }
 function togglePoly(){
-  if(socket&&socket.connected) socket.emit(polyOn?'stop_poly':'start_poly');
+  if(socket&&socket.connected) socket.emit(polyOn?'stop_poly':('start_poly'), polyOn?{}:{mode: currentPolyMode});
   else fetch(polyOn?'/api/poly/stop':'/api/poly/start',{method:'POST'});
 }
 function toggleBybitMob(){ toggleBybit(); }
 function togglePolyMob(){ togglePoly(); }
+
+/* ══ POLY MODE ══ */
+function setPolyMode(mode){
+  currentPolyMode = mode;
+  syncModeButtons(mode);
+  if(socket&&socket.connected) socket.emit('set_poly_mode', {mode});
+}
+
+function syncModeButtons(mode){
+  currentPolyMode = mode;
+  ['crypto','politics','all'].forEach(m=>{
+    const btn=document.getElementById('mode-'+m);
+    if(!btn)return;
+    if(m===mode){
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
 
 /* ══ ORCHESTRATOR CARD ══ */
 function updateOrchCard(d){
@@ -721,7 +736,6 @@ function updateOrchCard(d){
   if(slope!=null) setEl('orch-slope',parseFloat(slope).toFixed(5));
   if(atr!=null) setEl('orch-atr',parseFloat(atr).toFixed(2)+'%');
 
-  // Color card based on regime
   const card=document.getElementById('orch-card');
   if(card){
     card.style.borderColor=regime==='trending'?'rgba(0,232,135,.2)':regime==='lateral'?'rgba(167,139,250,.2)':regime==='volatile'?'rgba(245,166,35,.2)':'var(--border)';
@@ -736,7 +750,7 @@ function renderBybitTrades(list){
   if(!el)return;
   if(!bybitTrades.length){ el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>'; return; }
   el.innerHTML=bybitTrades.slice(0,12).map((t,i)=>{
-    const buy=(t.side||t.direction||'').toLowerCase().includes('long'||(t.direction||'').includes('buy'));
+    const buy=(t.direction||'').toLowerCase().includes('long')||((t.side||'').toLowerCase().includes('buy'));
     const pnl=t.pnl_usdt!=null?t.pnl_usdt:null;
     const pnlHtml=pnl==null?'<span class="t-pnl o">abierto</span>':`<span class="t-pnl ${pnl>=0?'p':'l'}">${pnl>=0?'+':''}${parseFloat(pnl).toFixed(4)}</span>`;
     const price=parseFloat(t.entry_price||t.price||0);

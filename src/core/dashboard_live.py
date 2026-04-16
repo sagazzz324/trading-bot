@@ -69,6 +69,8 @@ def get_data() -> dict:
         "last_cycle":     poly_state.last_cycle,
         "cycle_count":    poly_state.cycle_count,
         "interval":       poly_state.interval,
+        "interval":       poly_state.interval,
+        "market_mode":    poly_state.market_mode,
     }
 
     return {"bybit": bybit, "poly": poly}
@@ -155,8 +157,16 @@ def on_stop_bybit():
 
 # Polymarket
 @socketio.on("start_poly")
-def on_start_poly():
-    start_poly()
+def on_start_poly(data=None):
+    mode = (data or {}).get("mode", poly_state.market_mode)
+    start_poly(mode)
+    emit("update", get_data())
+
+@socketio.on("set_poly_mode")
+def on_set_poly_mode(data=None):
+    mode = (data or {}).get("mode", "all")
+    from src.core.bot_controller_poly import set_poly_mode
+    set_poly_mode(mode)
     emit("update", get_data())
 
 
