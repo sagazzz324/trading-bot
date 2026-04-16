@@ -53,38 +53,53 @@ def get_btc_momentum():
 
 
 def find_active_btc_5m_market():
-    """
-    Busca el mercado BTC Up/Down 5m activo en Polymarket.
-    """
     try:
-        params = {
-            "limit": 100,
-            "active": "true",
-            "closed": "false",
-            "order": "volume24hr",
-            "ascending": "false"
-        }
-        r = requests.get(f"{GAMMA_API}/markets", params=params, timeout=10)
-        markets = r.json()
+        # Buscar por evento con slug que empiece con btc-updown-5m
+        r = requests.get(
+            "https://gamma-api.polymarket.com/events",
+            params={"limit": 10, "active": "true", "slug_contains": "btc-updown-5m"},
+            timeout=10
+        )
+        events = r.json() if r.status_code == 200 else []
 
-        candidates = []
-        for m in markets:
-            q = (m.get("question") or "").lower()
-            slug = (m.get("slug") or "").lower()
-            if ("btc" in q or "bitcoin" in q) and ("up" in q or "down" in q or "higher" in q or "lower" in q):
-                candidates.append(m)
-            elif "btc-updown" in slug or "btc-up-down" in slug:
-                candidates.append(m)
+        if events:
+            event = events[0]
+            markets = event.get("markets", [])
+            if markets:
+                market = markets[0]
+                logger.info(f"BTC 5m encontrado via event: {market.get('question','')[:60]}")
+                return market
 
-        if not candidates:
-            logger.warning("No se encontró mercado BTC Up/Down activo")
-            return None
+        # Fallback: buscar en markets con slug_contains
+        r2 = requests.get(
+            "https://gamma-api.polymarket.com/markets",
+            params={"limit": 50, "active": "true", "closed": "false", "slug_contains": "btc-updown"},
+            timeout=10
+        )
+        if r2.status_code == 200:
+            markets = r2.json()
+            if markets:
+                markets.sort(key=lambda x: float(x.get("volume24hr") or 0), reverse=True)
+                logger.info(f"BTC 5m encontrado via markets: {markets[0].get('question','')[:60]}")
+                return markets[0]
 
-        # Preferir el de mayor volumen
-        candidates.sort(key=lambda x: float(x.get("volume24hr") or 0), reverse=True)
-        market = candidates[0]
-        logger.info(f"Mercado BTC encontrado: {market.get('question', '')[:60]}")
-        return market
+        # Fallback 2: búsqueda amplia
+        r3 = requests.get(
+            "https://gamma-api.polymarket.com/markets",
+            params={"limit": 100, "active": "true", "closed": "false"},
+            timeout=10
+        )
+        if r3.status_code == 200:
+            all_markets = r3.json()
+            for m in all_markets:
+                slug = (m.get("slug") or "").lower()
+                q = (m.get("question") or "").lower()
+                if "btc-updown" in slug or ("btc" in q and "up" in q and "5" in q):
+                    logger.info(f"BTC 5m encontrado via fallback: {m.get('question','')[:60]}")
+                    return m
+
+        logger.warning("No se encontró mercado BTC Up/Down 5m activo")
+        return None
 
     except Exception as e:
         logger.error(f"find_active_btc_5m_market: {e}")
