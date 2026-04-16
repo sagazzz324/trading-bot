@@ -18,27 +18,36 @@ STOP_LOSS_PCT   = 0.20   # salir si el precio bajó 20% en contra
 
 def get_btc_momentum():
     try:
-        r = requests.get(BINANCE_KLINES, params={"symbol":"BTCUSDT","interval":"1m","limit":10}, timeout=5)
-        klines = r.json()
-        closes = [float(k[4]) for k in klines]
+        from src.exchanges.bybit_client import BybitClient
+        client = BybitClient()
+
+        klines = client.get_klines("BTCUSDT", interval="1", limit=10)
+        if not klines or len(klines) < 6:
+            logger.error(f"get_btc_momentum: solo {len(klines) if klines else 0} velas")
+            return {"direction": "up", "change_pct": 0, "price": 0, "vol_ratio": 1, "confidence": "low"}
+
+        closes  = [k["close"]  for k in klines]
+        volumes = [k["volume"] for k in klines]
+
         current = closes[-1]
-        prev5   = closes[-6] if len(closes) >= 6 else closes[0]
+        prev5   = closes[-6]
         change  = (current - prev5) / prev5 * 100
-        vol_recent = sum(float(k[5]) for k in klines[-3:])
-        vol_prior  = sum(float(k[5]) for k in klines[-6:-3])
+
+        vol_recent = sum(volumes[-3:]) / 3
+        vol_prior  = sum(volumes[-6:-3]) / 3
         vol_ratio  = vol_recent / vol_prior if vol_prior > 0 else 1.0
+
         return {
             "direction":  "up" if change > 0 else "down",
             "change_pct": round(change, 4),
             "price":      round(current, 2),
             "vol_ratio":  round(vol_ratio, 2),
-            "confidence": "high" if abs(change) > 0.15 and vol_ratio > 1.2 else
+            "confidence": "high"   if abs(change) > 0.15 and vol_ratio > 1.2 else
                           "medium" if abs(change) > 0.05 else "low"
         }
     except Exception as e:
-        logger.error(f"get_btc_momentum: {e}")
         import traceback
-        logger.error(traceback.format_exc())
+        logger.error(f"get_btc_momentum:\n{traceback.format_exc()}")
         return {"direction": "up", "change_pct": 0, "price": 0, "vol_ratio": 1, "confidence": "low"}
 
 
