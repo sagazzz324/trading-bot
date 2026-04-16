@@ -387,12 +387,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           <div class="sb-card-meta" style="margin-top:4px">Claude AI · Kelly Criterion</div>
           <!-- Mode selector -->
           <div class="mode-btns" onclick="event.stopPropagation()">
-            <button class="mode-btn active" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
-            <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POLÍTICA</button>
-            <button class="mode-btn" id="mode-all" onclick="setPolyMode('all')">🌐 TODO</button>
-          </div>
+          <button class="mode-btn active" id="mode-btc_scalp" onclick="setPolyMode('btc_scalp')">⚡ BTC</button>
+          <button class="mode-btn" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
+          <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POL</button>
+          <button class="mode-btn" id="mode-all" onclick="setPolyMode('all')">🌐 TODO</button>
         </div>
       </div>
+    </div>
 
       <!-- Navigation -->
       <div>
@@ -638,22 +639,14 @@ function applyBybit(d){
   if(d.bankroll!=null){ const last=balH[balH.length-1]; if(Math.abs(d.bankroll-last)>0.01){balH.push(d.bankroll);const n=new Date();balL.push(n.getHours()+':'+String(n.getMinutes()).padStart(2,'0'));if(balH.length>60){balH.shift();balL.shift()}buildBybitChart()}}
 }
 
-function applyPoly(d){
-  if(d.bankroll!=null){ setEl('poly-balance','$'+d.bankroll.toFixed(2)); setEl('sb-poly-bal','$'+d.bankroll.toFixed(2)); }
-  const pnl=d.total_pnl||0;
-  setEl('poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
-  document.getElementById('poly-pnl').className='stat-num '+(pnl>=0?'g':'r');
-  setEl('poly-pnl-pct',(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%');
-  setEl('sb-poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
-  document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r');
-  if(d.win_rate!=null) setEl('poly-wr',d.win_rate+'%');
-  if(d.total_trades!=null) setEl('poly-trades',d.total_trades+' trades');
-  const npos=Array.isArray(d.open_positions)?d.open_positions.length:0;
-  setEl('poly-pos',npos);
-  if(d.recent_trades) renderPolyTrades(d.recent_trades);
-  if(d.running!=null) applyPolyState(d.running);
-  if(d.logs&&d.logs.length){ polyLogs=d.logs.map(l=>({ts:l.time,msg:l.msg,color:hexClass(l.color)})); renderLog('poly-log','poly-log-ts',polyLogs); }
-  if(d.market_mode) syncModeButtons(d.market_mode);
+function syncModeButtons(mode){
+  currentPolyMode = mode;
+  ['btc_scalp','crypto','politics','all'].forEach(m=>{
+    const btn=document.getElementById('mode-'+m);
+    if(!btn)return;
+    if(m===mode){ btn.classList.add('active'); }
+    else { btn.classList.remove('active'); }
+  });
 }
 
 /* ══ BOT STATE ══ */
