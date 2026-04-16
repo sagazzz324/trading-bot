@@ -107,6 +107,18 @@ class PaperTrader:
         print(f"\n{'🟢 GANADO' if outcome else '🔴 PERDIDO'} - Trade #{trade_id}")
         print(f"   PnL: ${pnl:.2f} | Bankroll: ${self.bankroll:.2f}")
 
+    def resolve_trade_with_pnl(self, trade_id, pnl):
+        """Cierra un trade con PnL calculado externamente (salida anticipada)."""
+        trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
+        if not trade:
+            return
+        trade["status"] = "resolved"
+        trade["result"] = "win" if pnl >= 0 else "loss"
+        trade["pnl"]    = round(pnl, 2)
+        self.bankroll  += trade["position_size"] + pnl
+        self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
+        self._save_state()
+
     def get_stats(self):
         resolved = [t for t in self.trades if t["status"] == "resolved"]
         if not resolved:

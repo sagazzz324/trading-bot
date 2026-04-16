@@ -102,8 +102,8 @@ def _run_btc_scalp(st: PolyState):
             # Ejecutar ciclo
             scalper.run_once()
 
-            # Esperar ~5 minutos (el ciclo del mercado)
-            st._stop_event.wait(timeout=300)
+            # Esperar ~60 segundos (el ciclo del mercado)
+            st._stop_event.wait(timeout=60)
             st._stop_event.clear()
 
         except Exception as e:
