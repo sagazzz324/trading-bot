@@ -202,6 +202,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 </head>
 <body>
 
+<!-- LANDING -->
 <div id="view-landing">
   <nav class="lp-nav">
     <div class="lp-logo"><div class="logo-dot"></div>Neural Trade OS</div>
@@ -239,6 +240,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
   </div>
 </div>
 
+<!-- DASHBOARD -->
 <div id="view-dashboard">
   <div class="dash-wrap">
     <aside class="sidebar">
@@ -309,6 +311,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
         </div>
       </div>
 
+      <!-- ══ BYBIT TAB ══ -->
       <div class="tab-panel active" id="panel-bybit">
         <div class="orch-card" id="orch-card">
           <div class="orch-left">
@@ -345,59 +348,72 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
         </div>
       </div>
 
-      <div id="btc-embed-wrap" style="display:none">
-  <div class="two-col" style="align-items:start">
-    <div class="card" style="overflow:hidden">
-      <div class="card-hdr">
-        <span class="card-title">⚡ BTC Up/Down · 5m</span>
-        <span class="card-meta" id="btc-embed-slug">—</span>
-      </div>
-      <div style="padding:12px">
-        <iframe id="btc-embed-iframe"
-          src=""
-          width="100%"
-          height="320"
-          frameborder="0"
-          allowtransparency="true"
-          style="border-radius:6px;display:block">
-        </iframe>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
-        <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
-        <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
-        <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
-        <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
-      </div>
-      <div class="card">
-        <div class="card-hdr"><span class="card-title">Log · Polymarket</span><span class="card-meta" id="poly-log-ts">—</span></div>
-        <div class="log-body" id="poly-log"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-hdr"><span class="card-title">Trades Polymarket</span><span class="card-meta" id="poly-trades-meta">0 trades</span></div>
-    <div id="poly-trades-list"><div class="empty-msg">Sin operaciones todavía</div></div>
-  </div>
-</div>
-        <div class="stats-grid">
-          <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
-          <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
-          <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
-          <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
-        </div>
-        <div class="two-col">
-          <div class="card">
-            <div class="card-hdr"><span class="card-title">Trades Polymarket</span><span class="card-meta" id="poly-trades-meta">0 trades</span></div>
+      <!-- ══ POLY TAB ══ -->
+      <div class="tab-panel" id="panel-poly">
+
+        <!-- Layout BTC: embed izq + stats/log der -->
+        <div id="btc-embed-wrap" style="display:none">
+          <div class="two-col" style="align-items:start">
+            <!-- Embed Polymarket -->
+            <div class="card">
+              <div class="card-hdr">
+                <span class="card-title">⚡ BTC Up/Down · 5m</span>
+                <span class="card-meta" id="btc-embed-slug">—</span>
+              </div>
+              <div style="padding:12px">
+                <iframe id="btc-embed-iframe"
+                  src=""
+                  width="100%"
+                  height="320"
+                  frameborder="0"
+                  allowtransparency="true"
+                  style="border-radius:6px;display:block">
+                </iframe>
+              </div>
+            </div>
+            <!-- Stats + Log -->
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+                <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
+                <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
+                <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
+                <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones</div></div>
+              </div>
+              <div class="card">
+                <div class="card-hdr"><span class="card-title">Log · Polymarket</span><span class="card-meta" id="poly-log-ts">—</span></div>
+                <div class="log-body" id="poly-log"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
+              </div>
+            </div>
+          </div>
+          <!-- Trades abajo full width -->
+          <div class="card" style="margin-top:14px">
+            <div class="card-hdr"><span class="card-title">Trades</span><span class="card-meta" id="poly-trades-meta">0 trades</span></div>
             <div id="poly-trades-list"><div class="empty-msg">Sin operaciones todavía</div></div>
           </div>
-          <div class="card">
-            <div class="card-hdr"><span class="card-title">Log · Polymarket</span><span class="card-meta" id="poly-log-ts">—</span></div>
-            <div class="log-body" id="poly-log"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
+        </div>
+
+        <!-- Layout general (crypto/politics/all) -->
+        <div id="poly-general-wrap">
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance-g">$1000</div><div class="stat-hint">capital simulado</div></div>
+            <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl-g">$0.00</div><div class="stat-hint" id="poly-pnl-pct-g">0.0%</div></div>
+            <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr-g">—</div><div class="stat-hint" id="poly-trades-g">0 trades</div></div>
+            <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos-g" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="card-hdr"><span class="card-title">Trades Polymarket</span><span class="card-meta" id="poly-trades-meta-g">0 trades</span></div>
+              <div id="poly-trades-list-g"><div class="empty-msg">Sin operaciones todavía</div></div>
+            </div>
+            <div class="card">
+              <div class="card-hdr"><span class="card-title">Log · Polymarket</span><span class="card-meta" id="poly-log-ts-g">—</span></div>
+              <div class="log-body" id="poly-log-g"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
+            </div>
           </div>
         </div>
-      </div>
+
+      </div><!-- end panel-poly -->
+
     </main>
   </div>
 
@@ -491,33 +507,56 @@ function applyBybit(d){
   if(d.bankroll!=null){var last=balH[balH.length-1];if(Math.abs(d.bankroll-last)>0.01){balH.push(d.bankroll);var n=new Date();balL.push(n.getHours()+':'+String(n.getMinutes()).padStart(2,'0'));if(balH.length>60){balH.shift();balL.shift();}buildBybitChart();}}
 }
 function applyPoly(d){
-  if(d.bankroll!=null){setEl('poly-balance','$'+d.bankroll.toFixed(2));setEl('sb-poly-bal','$'+d.bankroll.toFixed(2));}
+  var isBtc = d.market_mode === 'btc_scalp';
+  var btcWrap = document.getElementById('btc-embed-wrap');
+  var genWrap = document.getElementById('poly-general-wrap');
+  if(btcWrap) btcWrap.style.display = isBtc ? 'block' : 'none';
+  if(genWrap) genWrap.style.display = isBtc ? 'none' : 'block';
+
+  if(d.bankroll!=null){
+    setEl('sb-poly-bal','$'+d.bankroll.toFixed(2));
+    if(isBtc){ setEl('poly-balance','$'+d.bankroll.toFixed(2)); }
+    else      { setEl('poly-balance-g','$'+d.bankroll.toFixed(2)); }
+  }
   var pnl=d.total_pnl||0;
-  setEl('poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
-  document.getElementById('poly-pnl').className='stat-num '+(pnl>=0?'g':'r');
-  setEl('poly-pnl-pct',(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%');
-  setEl('sb-poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
-  document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r');
-  if(d.win_rate!=null)setEl('poly-wr',d.win_rate+'%');
-  if(d.total_trades!=null)setEl('poly-trades',d.total_trades+' trades');
-  setEl('poly-pos',Array.isArray(d.open_positions)?d.open_positions.length:0);
-  if(d.recent_trades)renderPolyTrades(d.recent_trades);
-  if(d.running!=null)applyPolyState(d.running);
-  if(d.logs&&d.logs.length){polyLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});renderLog('poly-log','poly-log-ts',polyLogs);}
-  if(d.market_mode)syncModeButtons(d.market_mode);
-  if(d.btc_embed_slug && d.market_mode === 'btc_scalp'){
-    var wrap  = document.getElementById('btc-embed-wrap');
-    var iframe = document.getElementById('btc-embed-iframe');
-    var slugEl = document.getElementById('btc-embed-slug');
-    if(wrap && iframe){
-      wrap.style.display = 'block';
-      var newSrc = 'https://embed.polymarket.com/market?market='+d.btc_embed_slug+'&theme=dark&liveactivity=true&border=true&width=500&height=350';
-      if(iframe.src !== newSrc){ iframe.src = newSrc; }
-      if(slugEl) slugEl.textContent = d.btc_embed_slug;
-    }
+  var pnlStr=(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2);
+  var pnlPct=(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%';
+  var pnlCls='stat-num '+(pnl>=0?'g':'r');
+  if(isBtc){
+    setEl('poly-pnl',pnlStr); document.getElementById('poly-pnl').className=pnlCls;
+    setEl('poly-pnl-pct',pnlPct);
   } else {
-    var wrap = document.getElementById('btc-embed-wrap');
-    if(wrap) wrap.style.display = 'none';
+    setEl('poly-pnl-g',pnlStr); document.getElementById('poly-pnl-g').className=pnlCls;
+    setEl('poly-pnl-pct-g',pnlPct);
+  }
+  setEl('sb-poly-pnl',pnlStr);
+  document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r');
+
+  if(d.win_rate!=null){ setEl(isBtc?'poly-wr':'poly-wr-g', d.win_rate+'%'); }
+  if(d.total_trades!=null){ setEl(isBtc?'poly-trades':'poly-trades-g', d.total_trades+' trades'); }
+  var npos=Array.isArray(d.open_positions)?d.open_positions.length:0;
+  setEl(isBtc?'poly-pos':'poly-pos-g', npos);
+
+  if(d.recent_trades) renderPolyTrades(d.recent_trades, isBtc);
+  if(d.running!=null) applyPolyState(d.running);
+  if(d.logs&&d.logs.length){
+    polyLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});
+    renderLog(isBtc?'poly-log':'poly-log-g', isBtc?'poly-log-ts':'poly-log-ts-g', polyLogs);
+  }
+  if(d.market_mode) syncModeButtons(d.market_mode);
+
+  // BTC embed
+  if(isBtc && d.btc_embed_slug){
+    var iframe=document.getElementById('btc-embed-iframe');
+    var slugEl=document.getElementById('btc-embed-slug');
+    if(iframe){
+      var newSrc='https://embed.polymarket.com/market?market='+d.btc_embed_slug+'&theme=dark&liveactivity=true&border=true&width=500&height=320';
+      if(iframe.getAttribute('data-slug')!==d.btc_embed_slug){
+        iframe.src=newSrc;
+        iframe.setAttribute('data-slug',d.btc_embed_slug);
+      }
+    }
+    if(slugEl) slugEl.textContent=d.btc_embed_slug;
   }
 }
 function applyBybitState(on){
@@ -552,8 +591,7 @@ function togglePoly(){
   }
 }
 function setPolyMode(mode){
-  currentPolyMode=mode;
-  syncModeButtons(mode);
+  currentPolyMode=mode;syncModeButtons(mode);
   if(socket&&socket.connected)socket.emit('set_poly_mode',{mode:mode});
 }
 function syncModeButtons(mode){
@@ -588,9 +626,12 @@ function renderBybitTrades(list){
     return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(buy?'buy':'sell')+'">'+(buy?'LONG':'SHORT')+'</div><div style="flex:1"><div class="t-pair">'+(t.symbol||'—')+'</div><div class="t-sub">'+((t.timestamp||'').slice(11,19)||'—')+'</div></div><div><div class="t-sub">$'+price.toFixed(4)+'</div>'+ph+'</div></div>';
   }).join('');
 }
-function renderPolyTrades(list){
-  polyTrades=list||polyTrades;setEl('poly-trades-meta',polyTrades.length+' trades');
-  var el=document.getElementById('poly-trades-list');if(!el)return;
+function renderPolyTrades(list, isBtc){
+  polyTrades=list||polyTrades;
+  var metaId  = isBtc ? 'poly-trades-meta'   : 'poly-trades-meta-g';
+  var listId  = isBtc ? 'poly-trades-list'   : 'poly-trades-list-g';
+  setEl(metaId, polyTrades.length+' trades');
+  var el=document.getElementById(listId);if(!el)return;
   if(!polyTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return;}
   el.innerHTML=polyTrades.slice(0,12).map(function(t,i){
     var win=t.result==='win';
