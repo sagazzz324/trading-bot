@@ -239,7 +239,7 @@ class BTCScalper:
         )
 
         if momentum["price"] == 0:
-            self.log(f"❌ Binance API falló — sin precio BTC", "#FF5050")
+            self.log(f"❌ Sin precio BTC — revisar Bybit client", "#FF5050")
             return False
 
         if momentum["confidence"] == "low":
