@@ -25,44 +25,25 @@
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
-
 @keyframes breathe{0%,100%{opacity:.45}50%{opacity:1;box-shadow:0 0 8px currentColor}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.7)}}
 @keyframes fade-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes row-in{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
 @keyframes grad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes slide-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-
-/* ── LANDING ─────────────────────────────────────────────────────────────── */
 #view-landing{display:block;min-height:100vh}
 #view-dashboard{display:none}
 #view-landing.hidden{display:none!important}
 #view-dashboard.visible{display:flex;flex-direction:column;min-height:100vh}
-
-.lp-nav{
-  position:sticky;top:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 48px;height:56px;
-  background:rgba(8,8,8,0.9);
-  border-bottom:1px solid var(--border);
-  backdrop-filter:blur(28px);
-}
+.lp-nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:56px;background:rgba(8,8,8,0.9);border-bottom:1px solid var(--border);backdrop-filter:blur(28px)}
 .lp-logo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:-.3px}
 .logo-dot{width:6px;height:6px;border-radius:50%;background:var(--green);color:var(--green);animation:breathe 2.2s ease-in-out infinite}
 .lp-nav-links{display:flex;gap:28px}
 .lp-nav-links a{font-size:12px;color:var(--t2);text-decoration:none;transition:color .15s;cursor:pointer}
 .lp-nav-links a:hover{color:var(--t1)}
-.nav-cta{
-  display:flex;align-items:center;gap:6px;
-  background:var(--green);color:#000;border:none;
-  padding:7px 16px;border-radius:8px;
-  font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);
-  transition:transform .16s,box-shadow .16s;
-}
+.nav-cta{display:flex;align-items:center;gap:6px;background:var(--green);color:#000;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:transform .16s,box-shadow .16s}
 .nav-cta:hover{transform:scale(1.03);box-shadow:0 0 18px var(--green-glow)}
-.nav-cta:active{transform:scale(.96)}
 .nav-cta svg{width:12px;height:12px;stroke:#000;fill:none;stroke-width:2.5;stroke-linecap:round}
-
 .lp-hero{max-width:1100px;margin:0 auto;padding:104px 48px 72px;text-align:center}
 .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,232,135,.07);border:1px solid rgba(0,232,135,.16);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600;color:var(--green);margin-bottom:30px;letter-spacing:.6px;animation:fade-up .5s ease both}
 .badge-dot{width:4px;height:4px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite}
@@ -75,7 +56,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .btn-p svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
 .btn-g{background:transparent;color:var(--t1);border:1px solid var(--border-hi);padding:11px 24px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:all .16s}
 .btn-g:hover{background:var(--bg2);border-color:rgba(255,255,255,.16)}
-
 .lp-bots{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1100px;margin:60px auto 0;padding:0 48px}
 .bot-hero-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-xl);padding:28px;cursor:pointer;transition:border-color .2s,transform .2s;position:relative;overflow:hidden}
 .bot-hero-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s}
@@ -99,23 +79,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .bot-hero-card.poly:hover .bh-arrow{background:var(--blue);border-color:var(--blue)}
 .bh-arrow svg{width:13px;height:13px;stroke:var(--t2);fill:none;stroke-width:2;stroke-linecap:round}
 .bot-hero-card.bybit:hover .bh-arrow svg,.bot-hero-card.poly:hover .bh-arrow svg{stroke:#000}
-
 .lp-footer{border-top:1px solid var(--border);padding:22px 48px;max-width:1100px;margin:60px auto 0;display:flex;align-items:center;justify-content:space-between}
 .footer-logo{font-size:12px;font-weight:700}
 .footer-note{font-size:10px;color:var(--t3);font-family:var(--mono)}
-
-/* ── DASHBOARD ────────────────────────────────────────────────────────────── */
 .dash-wrap{display:flex;flex:1;overflow:hidden}
-
-.sidebar{
-  width:240px;flex-shrink:0;
-  border-right:1px solid var(--border);
-  background:rgba(8,8,8,.98);
-  display:flex;flex-direction:column;
-  padding:18px 12px;gap:16px;
-  overflow-y:auto;scrollbar-width:none;
-  height:calc(100vh - 0px);position:sticky;top:0;
-}
+.sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);background:rgba(8,8,8,.98);display:flex;flex-direction:column;padding:18px 12px;gap:16px;overflow-y:auto;scrollbar-width:none;height:100vh;position:sticky;top:0}
 .sidebar::-webkit-scrollbar{display:none}
 .sb-brand{display:flex;align-items:center;gap:8px;padding:2px 6px}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--t3);transition:all var(--ease);flex-shrink:0}
@@ -124,15 +92,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .sb-ver{font-size:8px;color:var(--t3);font-family:var(--mono);letter-spacing:.8px;text-transform:uppercase}
 .divider{height:1px;background:var(--border);margin:0 6px}
 .slabel{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--t3);padding:0 6px;font-weight:700}
-
-.sb-bot-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:var(--r-lg);padding:12px;
-  cursor:pointer;user-select:none;
-  transition:border-color var(--ease),background var(--ease);
-}
-.sb-bot-card:hover{border-color:var(--border-hi)}
-.sb-bot-card.active-tab{border-color:rgba(255,255,255,.14)}
+.sb-bot-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;user-select:none;transition:border-color var(--ease),background var(--ease)}
 .sb-bot-card.running-g{border-color:rgba(0,232,135,.22)!important;background:rgba(0,232,135,.03)!important}
 .sb-bot-card.running-b{border-color:rgba(79,142,247,.22)!important;background:rgba(79,142,247,.03)!important}
 .sb-card-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -141,61 +101,34 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .sb-bot-card.running-g .sb-card-state{color:var(--green)}
 .sb-bot-card.running-b .sb-card-state{color:var(--blue)}
 .sb-card-meta{font-size:9px;color:var(--t3);font-family:var(--mono)}
-
-/* Mode selector */
-.mode-btns{display:flex;gap:4px;margin-top:8px}
-.mode-btn{
-  flex:1;padding:4px 0;border-radius:6px;
-  border:1px solid rgba(79,142,247,.2);
-  background:var(--bg3);color:var(--t3);
-  font-size:8px;font-weight:700;cursor:pointer;
-  font-family:var(--mono);transition:all .15s;
-  letter-spacing:.3px;
-}
-.mode-btn:hover{border-color:rgba(79,142,247,.4);color:var(--t2)}
-.mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(79,142,247,.4)}
-
-/* Toggle */
 .toggle{width:38px;height:21px;background:var(--bg3);border:1px solid var(--border-hi);border-radius:11px;position:relative;flex-shrink:0;cursor:pointer;transition:background var(--spring),box-shadow var(--spring),border-color var(--spring)}
 .toggle.on-g{background:var(--green);border-color:var(--green);box-shadow:0 0 12px var(--green-glow)}
 .toggle.on-b{background:var(--blue);border-color:var(--blue);box-shadow:0 0 12px rgba(79,142,247,.3)}
-.toggle-knob{position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform var(--spring),background var(--spring)}
+.toggle-knob{position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform var(--spring),background var(--spring);pointer-events:none}
 .toggle.on-g .toggle-knob,.toggle.on-b .toggle-knob{transform:translateX(17px);background:#fff}
-
-.strat-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:8px;font-weight:700;letter-spacing:.5px;
-  padding:2px 8px;border-radius:5px;font-family:var(--mono);
-  text-transform:uppercase;
-}
+.mode-btns{display:flex;gap:4px;margin-top:8px}
+.mode-btn{flex:1;padding:4px 0;border-radius:6px;border:1px solid rgba(255,255,255,.08);background:var(--bg3);color:var(--t3);font-size:8px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;letter-spacing:.3px}
+.mode-btn:hover{border-color:rgba(79,142,247,.3);color:var(--t2)}
+.mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(79,142,247,.4)}
+.strat-badge{display:inline-flex;align-items:center;gap:5px;font-size:8px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:5px;font-family:var(--mono);text-transform:uppercase}
 .strat-badge.scalping{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,135,.15)}
 .strat-badge.grid{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,.15)}
 .strat-badge.pause{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.15)}
 .strat-badge.auto{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(79,142,247,.15)}
-
 .sb-nav{display:flex;flex-direction:column;gap:2px}
-.sb-nav-item{
-  display:flex;align-items:center;gap:8px;
-  padding:7px 8px;border-radius:var(--r);cursor:pointer;
-  font-size:11px;font-weight:500;color:var(--t3);
-  border:1px solid transparent;transition:all .16s;
-}
+.sb-nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r);cursor:pointer;font-size:11px;font-weight:500;color:var(--t3);border:1px solid transparent;transition:all .16s}
 .sb-nav-item:hover{background:var(--bg2);color:var(--t2)}
 .sb-nav-item.active{background:var(--bg2);border-color:var(--border-hi);color:var(--t1)}
 .sb-nav-item svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
-
 .sb-stats-mini{border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:4px}
 .ssm-row{display:flex;justify-content:space-between;padding:2px 6px}
 .ssm-lbl{font-size:9px;color:var(--t3)}
 .ssm-val{font-size:9px;font-family:var(--mono);font-weight:500}
-.ssm-val.g{color:var(--green)}.ssm-val.r{color:var(--red)}.ssm-val.b{color:var(--blue)}.ssm-val.a{color:var(--amber)}
-
+.ssm-val.g{color:var(--green)}.ssm-val.r{color:var(--red)}.ssm-val.b{color:var(--blue)}
 .sb-back{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:var(--r);font-size:10px;color:var(--t3);cursor:pointer;transition:all .16s;border:1px solid transparent;font-family:var(--mono)}
 .sb-back:hover{background:var(--bg2);color:var(--t2);border-color:var(--border)}
 .sb-back svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
-
 .dash-main{flex:1;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto;min-width:0}
-
 .dash-topbar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .topbar-left{display:flex;align-items:center;gap:10px}
 .page-title{font-size:14px;font-weight:700;letter-spacing:-.3px}
@@ -210,23 +143,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .icon-btn{width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);transition:all .16s}
 .icon-btn:hover{border-color:var(--border-hi);color:var(--t1);transform:scale(1.06)}
 .icon-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
 .tab-panel{display:none;flex-direction:column;gap:14px;animation:slide-in .25s ease both}
 .tab-panel.active{display:flex}
-
 .card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
 .card-hdr{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .card-title{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t2)}
 .card-meta{font-size:9px;color:var(--t3);font-family:var(--mono)}
-
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;transition:border-color .2s}
 .stat-card:hover{border-color:var(--border-hi)}
 .stat-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px;font-weight:700}
 .stat-num{font-size:22px;font-weight:700;letter-spacing:-1.5px;font-family:var(--mono);line-height:1}
-.stat-num.g{color:var(--green)}.stat-num.r{color:var(--red)}.stat-num.b{color:var(--blue)}.stat-num.a{color:var(--amber)}
+.stat-num.g{color:var(--green)}.stat-num.r{color:var(--red)}.stat-num.b{color:var(--blue)}
 .stat-hint{font-size:8px;color:var(--t3);margin-top:5px;font-family:var(--mono)}
-
 .orch-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .orch-left{display:flex;align-items:center;gap:10px}
 .orch-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-dim);border:1px solid rgba(79,142,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -237,9 +166,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .orch-metric{text-align:right}
 .orch-metric-val{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--blue)}
 .orch-metric-lbl{font-size:8px;color:var(--t3);letter-spacing:.5px}
-
 .chart-body{padding:12px;height:170px;position:relative}
-
 .trade-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);animation:row-in .3s ease both;transition:background .1s}
 .trade-row:hover{background:rgba(255,255,255,.01)}
 .trade-row:last-child{border-bottom:none}
@@ -251,19 +178,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .t-pnl{font-size:11px;font-weight:700;font-family:var(--mono);text-align:right}
 .t-pnl.p{color:var(--green)}.t-pnl.l{color:var(--red)}.t-pnl.o{color:var(--t3)}
 .empty-msg{padding:26px;text-align:center;color:var(--t3);font-size:10px;font-family:var(--mono)}
-
 .log-body{height:190px;overflow-y:auto;padding:8px 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .log-body::-webkit-scrollbar{width:2px}
 .log-body::-webkit-scrollbar-thumb{background:var(--border-hi)}
-.log-entry{display:flex;gap:8px;align-items:flex-start;padding:2px 16px;animation:fade-up .2s ease both;transition:background .1s}
-.log-entry:hover{background:rgba(255,255,255,.01)}
+.log-entry{display:flex;gap:8px;align-items:flex-start;padding:2px 16px;animation:fade-up .2s ease both}
 .log-time{color:var(--t3);flex-shrink:0;font-size:8px;font-family:var(--mono);margin-top:2px;min-width:58px}
 .log-msg{font-size:10px;font-family:var(--mono);color:var(--t2);line-height:1.52;word-break:break-word}
 .log-msg.green{color:var(--green)}.log-msg.red{color:var(--red)}.log-msg.blue{color:var(--blue)}.log-msg.amber{color:var(--amber)}.log-msg.dim{color:var(--t3)}
 .log-empty{padding:22px;text-align:center;color:var(--t3);font-size:9px;font-family:var(--mono)}
-
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,8,.97);border-top:1px solid var(--border);backdrop-filter:blur(24px);z-index:50}
 .bn-grid{display:grid;grid-template-columns:repeat(4,1fr)}
 .bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;cursor:pointer}
@@ -272,44 +195,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 .bn-ico svg{width:18px;height:18px;stroke:var(--t1);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .bn-lbl{font-size:8px;color:var(--t3);font-weight:600;letter-spacing:.2px}
 .bn-item.active .bn-lbl{color:var(--t1)}
-
-@media(max-width:960px){
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .two-col{grid-template-columns:1fr}
-  .sidebar{display:none!important}
-  .dash-main{padding:14px;padding-bottom:74px}
-  .bottom-nav{display:block}
-}
-@media(max-width:768px){
-  .lp-nav{padding:0 18px}.lp-nav-links{display:none}
-  .lp-hero,.lp-bots,.lp-footer{padding-left:18px;padding-right:18px}
-  .lp-bots{grid-template-columns:1fr}
-  .lp-hero{padding-top:68px}
-}
+@media(max-width:960px){.stats-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}.sidebar{display:none!important}.dash-main{padding:14px;padding-bottom:74px}.bottom-nav{display:block}}
+@media(max-width:768px){.lp-nav{padding:0 18px}.lp-nav-links{display:none}.lp-hero,.lp-bots,.lp-footer{padding-left:18px;padding-right:18px}.lp-bots{grid-template-columns:1fr}.lp-hero{padding-top:68px}}
 @media(max-width:380px){.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<!-- ══════════ LANDING ══════════ -->
 <div id="view-landing">
   <nav class="lp-nav">
     <div class="lp-logo"><div class="logo-dot"></div>Neural Trade OS</div>
     <div class="lp-nav-links"><a>Producto</a><a>Estrategias</a><a>Deploy</a></div>
-    <button class="nav-cta" onclick="goTo('bybit')">
-      <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Launch
-    </button>
+    <button class="nav-cta" onclick="goTo('bybit')"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Launch</button>
   </nav>
   <div class="lp-hero">
     <div class="hero-badge"><div class="badge-dot"></div>Orquestación automática · Paper mode</div>
     <h1 class="lp-h1">Trading algorítmico.<br><span class="grad">Sin emociones.</span></h1>
     <p class="lp-sub">El bot analiza el mercado y elige la estrategia óptima solo. Scalping en tendencia, Grid en lateralidad, pausa en volatilidad extrema.</p>
     <div class="hero-btns">
-      <button class="btn-p" onclick="goTo('bybit')">
-        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Bybit Bot
-      </button>
+      <button class="btn-p" onclick="goTo('bybit')"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Bybit Bot</button>
       <button class="btn-g" onclick="goTo('poly')">Polymarket Bot</button>
     </div>
   </div>
@@ -318,22 +222,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
       <div class="bh-tag g">Bybit · Futuros</div>
       <div class="bh-name">Bot de Trading</div>
       <div class="bh-desc">Orquestación automática de estrategias. Scalping event-driven con WebSocket, Grid neutral en mercados laterales.</div>
-      <div class="bh-pills">
-        <span class="bh-pill g">Scalping</span>
-        <span class="bh-pill g">Grid</span>
-        <span class="bh-pill a">Auto-orchestration</span>
-      </div>
+      <div class="bh-pills"><span class="bh-pill g">Scalping</span><span class="bh-pill g">Grid</span><span class="bh-pill a">Auto-orchestration</span></div>
       <div class="bh-arrow"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
     </div>
     <div class="bot-hero-card poly" onclick="goTo('poly')">
       <div class="bh-tag b">Polymarket · Predicción</div>
       <div class="bh-name">Bot de Predicción</div>
       <div class="bh-desc">Evalúa mercados de predicción con Claude AI. Kelly Criterion para sizing, detección de whale signals.</div>
-      <div class="bh-pills">
-        <span class="bh-pill b">Claude AI</span>
-        <span class="bh-pill b">Kelly Criterion</span>
-        <span class="bh-pill b">Whale Tracker</span>
-      </div>
+      <div class="bh-pills"><span class="bh-pill b">Claude AI</span><span class="bh-pill b">Kelly Criterion</span><span class="bh-pill b">Whale Tracker</span></div>
       <div class="bh-arrow"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
     </div>
   </div>
@@ -343,28 +239,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
   </div>
 </div>
 
-<!-- ══════════ DASHBOARD ══════════ -->
 <div id="view-dashboard">
   <div class="dash-wrap">
-
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sb-brand">
         <div class="sb-dot" id="sb-dot-bybit"></div>
         <div><div class="sb-name">Neural Trade OS</div><div class="sb-ver">v2.0 · paper</div></div>
       </div>
       <div class="divider"></div>
-
-      <!-- Bybit card -->
       <div>
         <div class="slabel" style="margin-bottom:8px">Bybit</div>
-        <div class="sb-bot-card bybit" id="sb-card-bybit" onclick="toggleBybit()">
+        <div class="sb-bot-card bybit" id="sb-card-bybit">
           <div class="sb-card-row">
-            <div>
-              <div class="sb-card-name">Trading Bot</div>
-              <div class="sb-card-state" id="sb-state-bybit">Inactivo</div>
-            </div>
-            <div class="toggle" id="sb-toggle-bybit"><div class="toggle-knob"></div></div>
+            <div><div class="sb-card-name">Trading Bot</div><div class="sb-card-state" id="sb-state-bybit">Inactivo</div></div>
+            <div class="toggle" id="sb-toggle-bybit" onclick="toggleBybit()"><div class="toggle-knob"></div></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
             <div class="sb-card-meta">Scalping + Grid · Auto</div>
@@ -372,114 +260,75 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           </div>
         </div>
       </div>
-
-      <!-- Polymarket card -->
       <div>
         <div class="slabel" style="margin-bottom:8px">Polymarket</div>
-        <div class="sb-bot-card poly" id="sb-card-poly" onclick="togglePoly()">
+        <div class="sb-bot-card poly" id="sb-card-poly">
           <div class="sb-card-row">
-            <div>
-              <div class="sb-card-name">Prediction Bot</div>
-              <div class="sb-card-state" id="sb-state-poly">Inactivo</div>
-            </div>
-            <div class="toggle" id="sb-toggle-poly"><div class="toggle-knob"></div></div>
+            <div><div class="sb-card-name">Prediction Bot</div><div class="sb-card-state" id="sb-state-poly">Inactivo</div></div>
+            <div class="toggle" id="sb-toggle-poly" onclick="togglePoly()"><div class="toggle-knob"></div></div>
           </div>
           <div class="sb-card-meta" style="margin-top:4px">Claude AI · Kelly Criterion</div>
-          <!-- Mode selector -->
-          <div class="mode-btns" onclick="event.stopPropagation()">
-          <button class="mode-btn active" id="mode-btc_scalp" onclick="setPolyMode('btc_scalp')">⚡ BTC</button>
-          <button class="mode-btn" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
-          <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POL</button>
-          <button class="mode-btn" id="mode-all" onclick="setPolyMode('all')">🌐 TODO</button>
+          <div class="mode-btns">
+            <button class="mode-btn active" id="mode-btc_scalp" onclick="setPolyMode('btc_scalp')">⚡ BTC</button>
+            <button class="mode-btn" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
+            <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POL</button>
+            <button class="mode-btn" id="mode-all" onclick="setPolyMode('all')">🌐 TODO</button>
+          </div>
         </div>
       </div>
-    </div>
-
-      <!-- Navigation -->
       <div>
         <div class="slabel" style="margin-bottom:8px">Vista</div>
         <div class="sb-nav">
           <div class="sb-nav-item active" id="nav-bybit" onclick="switchTab('bybit',this)">
-            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Bybit Bot
+            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Bybit Bot
           </div>
           <div class="sb-nav-item" id="nav-poly" onclick="switchTab('poly',this)">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
-            Polymarket Bot
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>Polymarket Bot
           </div>
         </div>
       </div>
-
-      <!-- Mini stats -->
       <div class="sb-stats-mini">
         <div class="ssm-row"><span class="ssm-lbl">Bybit balance</span><span class="ssm-val b" id="sb-bybit-bal">$1000</span></div>
         <div class="ssm-row"><span class="ssm-lbl">Bybit PnL</span><span class="ssm-val" id="sb-bybit-pnl">$0</span></div>
         <div class="ssm-row"><span class="ssm-lbl">Poly bankroll</span><span class="ssm-val b" id="sb-poly-bal">$1000</span></div>
         <div class="ssm-row"><span class="ssm-lbl">Poly PnL</span><span class="ssm-val" id="sb-poly-pnl">$0</span></div>
       </div>
-
       <div class="sb-back" onclick="goToLanding()">
-        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-        Volver al inicio
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Volver al inicio
       </div>
     </aside>
 
-    <!-- Main -->
     <main class="dash-main">
-
-      <!-- Topbar -->
       <div class="dash-topbar">
         <div class="topbar-left">
-          <div>
-            <div class="page-title" id="page-title">Bybit Bot</div>
-            <div class="page-sub" id="page-sub">Scalping + Grid · orquestación automática</div>
-          </div>
+          <div><div class="page-title" id="page-title">Bybit Bot</div><div class="page-sub" id="page-sub">Scalping + Grid · orquestación automática</div></div>
         </div>
         <div class="topbar-right">
-          <div class="status-chip" id="status-chip">
-            <div class="chip-dot"></div>
-            <span id="status-txt">Inactivo</span>
-          </div>
-          <div class="icon-btn" onclick="goToLanding()" title="Inicio">
-            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-          </div>
+          <div class="status-chip" id="status-chip"><div class="chip-dot"></div><span id="status-txt">Inactivo</span></div>
+          <div class="icon-btn" onclick="goToLanding()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
         </div>
       </div>
 
-      <!-- ══ BYBIT TAB ══ -->
       <div class="tab-panel active" id="panel-bybit">
-
         <div class="orch-card" id="orch-card">
           <div class="orch-left">
-            <div class="orch-icon">
-              <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
+            <div class="orch-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
             <div>
-              <div class="orch-title">Orquestador de Estrategias
-                <span class="strat-badge auto" id="orch-strat-badge" style="margin-left:8px">AUTO</span>
-              </div>
-              <div class="orch-reason" id="orch-reason">Esperando datos del mercado...</div>
+              <div class="orch-title">Orquestador<span class="strat-badge auto" id="orch-strat-badge" style="margin-left:8px">AUTO</span></div>
+              <div class="orch-reason" id="orch-reason">Esperando datos...</div>
             </div>
           </div>
           <div class="orch-metrics">
-            <div class="orch-metric">
-              <div class="orch-metric-val" id="orch-slope">—</div>
-              <div class="orch-metric-lbl">EMA SLOPE</div>
-            </div>
-            <div class="orch-metric">
-              <div class="orch-metric-val" id="orch-atr">—</div>
-              <div class="orch-metric-lbl">ATR %</div>
-            </div>
+            <div class="orch-metric"><div class="orch-metric-val" id="orch-slope">—</div><div class="orch-metric-lbl">EMA SLOPE</div></div>
+            <div class="orch-metric"><div class="orch-metric-val" id="orch-atr">—</div><div class="orch-metric-lbl">ATR %</div></div>
           </div>
         </div>
-
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-lbl">Balance</div><div class="stat-num b" id="bybit-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
           <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="bybit-pnl">$0.00</div><div class="stat-hint" id="bybit-pnl-pct">0.0%</div></div>
           <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num g" id="bybit-wr">—</div><div class="stat-hint" id="bybit-trades">0 trades</div></div>
           <div class="stat-card"><div class="stat-lbl">Posiciones</div><div class="stat-num" id="bybit-pos" style="color:var(--t1)">0</div><div class="stat-hint">abiertas</div></div>
         </div>
-
         <div class="two-col">
           <div class="card">
             <div class="card-hdr"><span class="card-title">Balance</span><span class="card-meta" id="bybit-chart-meta">paper mode</span></div>
@@ -490,23 +339,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
             <div id="bybit-trades-list"><div class="empty-msg">Sin operaciones todavía</div></div>
           </div>
         </div>
-
         <div class="card">
           <div class="card-hdr"><span class="card-title">Log · Bybit</span><span class="card-meta" id="bybit-log-ts">—</span></div>
           <div class="log-body" id="bybit-log"><div class="log-empty">Iniciá el bot para ver los logs</div></div>
         </div>
       </div>
 
-      <!-- ══ POLY TAB ══ -->
       <div class="tab-panel" id="panel-poly">
-
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
           <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
           <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
           <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
         </div>
-
         <div class="two-col">
           <div class="card">
             <div class="card-hdr"><span class="card-title">Trades Polymarket</span><span class="card-meta" id="poly-trades-meta">0 trades</span></div>
@@ -518,11 +363,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
           </div>
         </div>
       </div>
-
     </main>
   </div>
 
-  <!-- Bottom nav mobile -->
   <nav class="bottom-nav">
     <div class="bn-grid">
       <div class="bn-item active" onclick="switchTabMob('bybit',this)">
@@ -533,11 +376,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
         <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></div>
         <span class="bn-lbl">Polymarket</span>
       </div>
-      <div class="bn-item" onclick="toggleBybitMob()">
+      <div class="bn-item" onclick="toggleBybit()">
         <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
         <span class="bn-lbl">Bybit ON</span>
       </div>
-      <div class="bn-item" onclick="togglePolyMob()">
+      <div class="bn-item" onclick="togglePoly()">
         <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
         <span class="bn-lbl">Poly ON</span>
       </div>
@@ -546,292 +389,184 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 </div>
 
 <script>
-/* ══ STATE ══ */
-let bybitOn=false, polyOn=false;
-let bybitLogs=[], polyLogs=[];
-let bybitTrades=[], polyTrades=[];
-let balH=[1000], balL=['Inicio'];
-let bybitChart=null;
-let dashInited=false;
-let currentTab='bybit';
-let currentPolyMode='crypto';
-const INIT_BAL=1000;
+var bybitOn=false,polyOn=false;
+var bybitLogs=[],polyLogs=[];
+var bybitTrades=[],polyTrades=[];
+var balH=[1000],balL=['Inicio'];
+var bybitChart=null,dashInited=false;
+var currentTab='bybit',currentPolyMode='btc_scalp';
+var INIT_BAL=1000,socket=null;
 
-/* ══ LANDING ══ */
 function goTo(bot){
-  const lp=document.getElementById('view-landing');
-  const db=document.getElementById('view-dashboard');
-  lp.style.transition='opacity .35s ease';
-  lp.style.opacity='0';
-  setTimeout(()=>{
-    lp.classList.add('hidden');
-    db.classList.add('visible');
-    window.scrollTo(0,0);
-    if(bot==='poly') switchTab('poly', document.getElementById('nav-poly'));
-    else switchTab('bybit', document.getElementById('nav-bybit'));
+  var lp=document.getElementById('view-landing'),db=document.getElementById('view-dashboard');
+  lp.style.transition='opacity .35s ease';lp.style.opacity='0';
+  setTimeout(function(){
+    lp.classList.add('hidden');db.classList.add('visible');window.scrollTo(0,0);
+    switchTab(bot==='poly'?'poly':'bybit',document.getElementById('nav-'+(bot==='poly'?'poly':'bybit')));
     initDashboard();
   },350);
 }
 function goToLanding(){
-  const lp=document.getElementById('view-landing');
-  const db=document.getElementById('view-dashboard');
-  db.classList.remove('visible');
-  lp.classList.remove('hidden');
-  lp.style.opacity='0';
-  requestAnimationFrame(()=>{lp.style.transition='opacity .35s ease';lp.style.opacity='1'});
+  var lp=document.getElementById('view-landing'),db=document.getElementById('view-dashboard');
+  db.classList.remove('visible');lp.classList.remove('hidden');lp.style.opacity='0';
+  requestAnimationFrame(function(){lp.style.transition='opacity .35s ease';lp.style.opacity='1';});
   window.scrollTo(0,0);
 }
-
-/* ══ TABS ══ */
-function switchTab(tab, el){
+function switchTab(tab,el){
   currentTab=tab;
-  document.querySelectorAll('.sb-nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.sb-nav-item').forEach(function(i){i.classList.remove('active');});
   if(el)el.classList.add('active');
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
   document.getElementById('panel-'+tab).classList.add('active');
-  const titles={bybit:['Bybit Bot','Scalping + Grid · orquestación automática'],poly:['Polymarket Bot','Claude AI · Kelly Criterion · Whale Tracker']};
-  document.getElementById('page-title').textContent=titles[tab][0];
-  document.getElementById('page-sub').textContent=titles[tab][1];
+  var t={bybit:['Bybit Bot','Scalping + Grid · orquestación automática'],poly:['Polymarket Bot','Claude AI · Kelly Criterion']};
+  document.getElementById('page-title').textContent=t[tab][0];
+  document.getElementById('page-sub').textContent=t[tab][1];
   updateStatusChip();
 }
 function switchTabMob(tab,el){
-  switchTab(tab, document.getElementById('nav-'+tab));
-  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  switchTab(tab,document.getElementById('nav-'+tab));
+  document.querySelectorAll('.bn-item').forEach(function(b){b.classList.remove('active');});
   if(el)el.classList.add('active');
 }
-
-/* ══ INIT ══ */
 function initDashboard(){
-  if(dashInited)return;dashInited=true;
-  buildBybitChart();
-  initSocket();
+  if(dashInited)return;dashInited=true;buildBybitChart();initSocket();
 }
-
-/* ══ SOCKET ══ */
-let socket=null;
 function initSocket(){
   try{
     socket=io({transports:['websocket'],reconnection:true,reconnectionDelay:2000});
-    socket.on('connect',()=>{ loadData(); });
-    socket.on('update',d=>{
-      if(d.bybit) applyBybit(d.bybit);
-      if(d.poly)  applyPoly(d.poly);
-    });
-  }catch(e){ loadData(); }
+    socket.on('connect',function(){loadData();});
+    socket.on('update',function(d){if(d.bybit)applyBybit(d.bybit);if(d.poly)applyPoly(d.poly);});
+  }catch(e){loadData();}
 }
-
 function applyBybit(d){
-  if(d.bankroll!=null){ setEl('bybit-balance','$'+d.bankroll.toFixed(2)); setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2)); }
-  const pnl=d.total_pnl||0;
+  if(d.bankroll!=null){setEl('bybit-balance','$'+d.bankroll.toFixed(2));setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2));}
+  var pnl=d.total_pnl||0;
   setEl('bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
   document.getElementById('bybit-pnl').className='stat-num '+(pnl>=0?'g':'r');
   setEl('bybit-pnl-pct',(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%');
   setEl('sb-bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
   document.getElementById('sb-bybit-pnl').className='ssm-val '+(pnl>=0?'g':'r');
-  if(d.win_rate!=null){ setEl('bybit-wr',d.win_rate+'%'); }
-  if(d.total_trades!=null){ setEl('bybit-trades',d.total_trades+' trades'); }
-  const npos=Array.isArray(d.open_positions)?d.open_positions.length:0;
-  setEl('bybit-pos',npos);
-  if(d.recent_trades) renderBybitTrades(d.recent_trades);
-  if(d.running!=null) applyBybitState(d.running);
-  if(d.active_strategy) updateOrchCard(d);
-  if(d.logs&&d.logs.length){ bybitLogs=d.logs.map(l=>({ts:l.time,msg:l.msg,color:hexClass(l.color)})); renderLog('bybit-log','bybit-log-ts',bybitLogs); }
-  if(d.bankroll!=null){ const last=balH[balH.length-1]; if(Math.abs(d.bankroll-last)>0.01){balH.push(d.bankroll);const n=new Date();balL.push(n.getHours()+':'+String(n.getMinutes()).padStart(2,'0'));if(balH.length>60){balH.shift();balL.shift()}buildBybitChart()}}
+  if(d.win_rate!=null)setEl('bybit-wr',d.win_rate+'%');
+  if(d.total_trades!=null)setEl('bybit-trades',d.total_trades+' trades');
+  setEl('bybit-pos',Array.isArray(d.open_positions)?d.open_positions.length:0);
+  if(d.recent_trades)renderBybitTrades(d.recent_trades);
+  if(d.running!=null)applyBybitState(d.running);
+  if(d.active_strategy)updateOrchCard(d);
+  if(d.logs&&d.logs.length){bybitLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});renderLog('bybit-log','bybit-log-ts',bybitLogs);}
+  if(d.bankroll!=null){var last=balH[balH.length-1];if(Math.abs(d.bankroll-last)>0.01){balH.push(d.bankroll);var n=new Date();balL.push(n.getHours()+':'+String(n.getMinutes()).padStart(2,'0'));if(balH.length>60){balH.shift();balL.shift();}buildBybitChart();}}
 }
-
-function syncModeButtons(mode){
-  currentPolyMode = mode;
-  ['btc_scalp','crypto','politics','all'].forEach(m=>{
-    const btn=document.getElementById('mode-'+m);
-    if(!btn)return;
-    if(m===mode){ btn.classList.add('active'); }
-    else { btn.classList.remove('active'); }
-  });
+function applyPoly(d){
+  if(d.bankroll!=null){setEl('poly-balance','$'+d.bankroll.toFixed(2));setEl('sb-poly-bal','$'+d.bankroll.toFixed(2));}
+  var pnl=d.total_pnl||0;
+  setEl('poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
+  document.getElementById('poly-pnl').className='stat-num '+(pnl>=0?'g':'r');
+  setEl('poly-pnl-pct',(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%');
+  setEl('sb-poly-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2));
+  document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r');
+  if(d.win_rate!=null)setEl('poly-wr',d.win_rate+'%');
+  if(d.total_trades!=null)setEl('poly-trades',d.total_trades+' trades');
+  setEl('poly-pos',Array.isArray(d.open_positions)?d.open_positions.length:0);
+  if(d.recent_trades)renderPolyTrades(d.recent_trades);
+  if(d.running!=null)applyPolyState(d.running);
+  if(d.logs&&d.logs.length){polyLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});renderLog('poly-log','poly-log-ts',polyLogs);}
+  if(d.market_mode)syncModeButtons(d.market_mode);
 }
-
-/* ══ BOT STATE ══ */
 function applyBybitState(on){
   bybitOn=on;
-  const tog=document.getElementById('sb-toggle-bybit');
-  if(tog)tog.className='toggle '+(on?'on-g':'');
-  const card=document.getElementById('sb-card-bybit');
-  if(card){ card.className='sb-bot-card bybit'+(on?' running-g':''); }
+  var tog=document.getElementById('sb-toggle-bybit');if(tog)tog.className='toggle '+(on?'on-g':'');
+  var card=document.getElementById('sb-card-bybit');if(card)card.className='sb-bot-card bybit'+(on?' running-g':'');
   setEl('sb-state-bybit',on?'Activo':'Inactivo');
-  const dot=document.getElementById('sb-dot-bybit');
-  if(dot)dot.className='sb-dot'+(on?' on':'');
+  var dot=document.getElementById('sb-dot-bybit');if(dot)dot.className='sb-dot'+(on?' on':'');
   if(currentTab==='bybit')updateStatusChip();
 }
 function applyPolyState(on){
   polyOn=on;
-  const tog=document.getElementById('sb-toggle-poly');
-  if(tog)tog.className='toggle '+(on?'on-b':'');
-  const card=document.getElementById('sb-card-poly');
-  if(card)card.className='sb-bot-card poly'+(on?' running-b':'');
+  var tog=document.getElementById('sb-toggle-poly');if(tog)tog.className='toggle '+(on?'on-b':'');
+  var card=document.getElementById('sb-card-poly');if(card)card.className='sb-bot-card poly'+(on?' running-b':'');
   setEl('sb-state-poly',on?'Activo':'Inactivo');
   if(currentTab==='poly')updateStatusChip();
 }
 function updateStatusChip(){
-  const chip=document.getElementById('status-chip');
-  const txt=document.getElementById('status-txt');
+  var chip=document.getElementById('status-chip'),txt=document.getElementById('status-txt');
   if(!chip||!txt)return;
-  const on=currentTab==='bybit'?bybitOn:polyOn;
-  const cls=currentTab==='bybit'?'on-g':'on-b';
+  var on=currentTab==='bybit'?bybitOn:polyOn,cls=currentTab==='bybit'?'on-g':'on-b';
   chip.className='status-chip'+(on?' '+cls:'');
   txt.textContent=on?'Activo':'Inactivo';
 }
-
-/* ══ TOGGLES ══ */
 function toggleBybit(){
-  if(socket&&socket.connected) socket.emit(bybitOn?'stop_bybit':'start_bybit');
-  else fetch(bybitOn?'/api/bybit/stop':'/api/bybit/start',{method:'POST'});
+  if(socket&&socket.connected)socket.emit(bybitOn?'stop_bybit':'start_bybit');
 }
 function togglePoly(){
-  if(socket&&socket.connected) socket.emit(polyOn?'stop_poly':('start_poly'), polyOn?{}:{mode: currentPolyMode});
-  else fetch(polyOn?'/api/poly/stop':'/api/poly/start',{method:'POST'});
-}
-function toggleBybitMob(){ toggleBybit(); }
-function togglePolyMob(){ togglePoly(); }
-
-/* ══ POLY MODE ══ */
-function setPolyMode(mode){
-  currentPolyMode = mode;
-  syncModeButtons(mode);
-  if(socket&&socket.connected) socket.emit('set_poly_mode', {mode});
-}
-
-function syncModeButtons(mode){
-  currentPolyMode = mode;
-  ['crypto','politics','all'].forEach(m=>{
-    const btn=document.getElementById('mode-'+m);
-    if(!btn)return;
-    if(m===mode){
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-}
-
-/* ══ ORCHESTRATOR CARD ══ */
-function updateOrchCard(d){
-  const strat=d.active_strategy||'AUTO';
-  const regime=d.regime||'—';
-  const reason=d.orch_reason||'—';
-  const slope=d.bot_state?.orch_slope;
-  const atr=d.bot_state?.orch_atr;
-
-  const badge=document.getElementById('orch-strat-badge');
-  const sbBadge=document.getElementById('sb-strat-badge');
-  const cls=strat==='Scalping'?'scalping':strat==='Grid'?'grid':strat==='Pause'?'pause':'auto';
-  if(badge){ badge.className='strat-badge '+cls; badge.textContent=strat.toUpperCase(); }
-  if(sbBadge){ sbBadge.className='strat-badge '+cls; sbBadge.textContent=strat.toUpperCase(); }
-  setEl('orch-reason',reason);
-  if(slope!=null) setEl('orch-slope',parseFloat(slope).toFixed(5));
-  if(atr!=null) setEl('orch-atr',parseFloat(atr).toFixed(2)+'%');
-
-  const card=document.getElementById('orch-card');
-  if(card){
-    card.style.borderColor=regime==='trending'?'rgba(0,232,135,.2)':regime==='lateral'?'rgba(167,139,250,.2)':regime==='volatile'?'rgba(245,166,35,.2)':'var(--border)';
+  if(socket&&socket.connected){
+    if(polyOn){socket.emit('stop_poly');}
+    else{socket.emit('start_poly',{mode:currentPolyMode});}
   }
 }
-
-/* ══ TRADES ══ */
+function setPolyMode(mode){
+  currentPolyMode=mode;
+  syncModeButtons(mode);
+  if(socket&&socket.connected)socket.emit('set_poly_mode',{mode:mode});
+}
+function syncModeButtons(mode){
+  currentPolyMode=mode;
+  var modes=['btc_scalp','crypto','politics','all'];
+  for(var i=0;i<modes.length;i++){
+    var btn=document.getElementById('mode-'+modes[i]);
+    if(!btn)continue;
+    if(modes[i]===mode)btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+}
+function updateOrchCard(d){
+  var strat=d.active_strategy||'AUTO',regime=d.regime||'—',reason=d.orch_reason||'—';
+  var badge=document.getElementById('orch-strat-badge'),sbBadge=document.getElementById('sb-strat-badge');
+  var cls=strat==='Scalping'?'scalping':strat==='Grid'?'grid':strat==='Pause'?'pause':'auto';
+  if(badge){badge.className='strat-badge '+cls;badge.textContent=strat.toUpperCase();}
+  if(sbBadge){sbBadge.className='strat-badge '+cls;sbBadge.textContent=strat.toUpperCase();}
+  setEl('orch-reason',reason);
+  var card=document.getElementById('orch-card');
+  if(card)card.style.borderColor=regime==='trending'?'rgba(0,232,135,.2)':regime==='lateral'?'rgba(167,139,250,.2)':regime==='volatile'?'rgba(245,166,35,.2)':'var(--border)';
+}
 function renderBybitTrades(list){
-  bybitTrades=list||bybitTrades;
-  setEl('bybit-trades-meta',bybitTrades.length+' trades');
-  const el=document.getElementById('bybit-trades-list');
-  if(!el)return;
-  if(!bybitTrades.length){ el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>'; return; }
-  el.innerHTML=bybitTrades.slice(0,12).map((t,i)=>{
-    const buy=(t.direction||'').toLowerCase().includes('long')||((t.side||'').toLowerCase().includes('buy'));
-    const pnl=t.pnl_usdt!=null?t.pnl_usdt:null;
-    const pnlHtml=pnl==null?'<span class="t-pnl o">abierto</span>':`<span class="t-pnl ${pnl>=0?'p':'l'}">${pnl>=0?'+':''}${parseFloat(pnl).toFixed(4)}</span>`;
-    const price=parseFloat(t.entry_price||t.price||0);
-    return `<div class="trade-row" style="animation-delay:${i*.03}s">
-      <div class="tbadge ${buy?'buy':'sell'}">${buy?'LONG':'SHORT'}</div>
-      <div style="flex:1"><div class="t-pair">${t.symbol||'—'}</div><div class="t-sub">${(t.timestamp||'').slice(11,19)||'—'}</div></div>
-      <div><div class="t-sub">$${price.toFixed(4)}</div>${pnlHtml}</div>
-    </div>`;
+  bybitTrades=list||bybitTrades;setEl('bybit-trades-meta',bybitTrades.length+' trades');
+  var el=document.getElementById('bybit-trades-list');if(!el)return;
+  if(!bybitTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return;}
+  el.innerHTML=bybitTrades.slice(0,12).map(function(t,i){
+    var buy=(t.direction||'').toLowerCase().indexOf('long')>=0||((t.side||'').toLowerCase().indexOf('buy')>=0);
+    var pnl=t.pnl_usdt!=null?t.pnl_usdt:null;
+    var ph=pnl==null?'<span class="t-pnl o">abierto</span>':'<span class="t-pnl '+(pnl>=0?'p':'l')+'">'+(pnl>=0?'+':'')+parseFloat(pnl).toFixed(4)+'</span>';
+    var price=parseFloat(t.entry_price||t.price||0);
+    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(buy?'buy':'sell')+'">'+(buy?'LONG':'SHORT')+'</div><div style="flex:1"><div class="t-pair">'+(t.symbol||'—')+'</div><div class="t-sub">'+((t.timestamp||'').slice(11,19)||'—')+'</div></div><div><div class="t-sub">$'+price.toFixed(4)+'</div>'+ph+'</div></div>';
   }).join('');
 }
-
 function renderPolyTrades(list){
-  polyTrades=list||polyTrades;
-  setEl('poly-trades-meta',polyTrades.length+' trades');
-  const el=document.getElementById('poly-trades-list');
-  if(!el)return;
-  if(!polyTrades.length){ el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>'; return; }
-  el.innerHTML=polyTrades.slice(0,12).map((t,i)=>{
-    const win=t.result==='win';
-    const pnlHtml=t.pnl!=null?`<span class="t-pnl ${t.pnl>=0?'p':'l'}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</span>`:'<span class="t-pnl o">activo</span>';
-    return `<div class="trade-row" style="animation-delay:${i*.03}s">
-      <div class="tbadge ${win?'buy':'sell'}">${win?'WIN':'LOSS'}</div>
-      <div style="flex:1"><div class="t-pair">${(t.question||'—').slice(0,38)}</div><div class="t-sub">${(t.timestamp||'').slice(0,10)||'—'}</div></div>
-      <div>${pnlHtml}</div>
-    </div>`;
+  polyTrades=list||polyTrades;setEl('poly-trades-meta',polyTrades.length+' trades');
+  var el=document.getElementById('poly-trades-list');if(!el)return;
+  if(!polyTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return;}
+  el.innerHTML=polyTrades.slice(0,12).map(function(t,i){
+    var win=t.result==='win';
+    var ph=t.pnl!=null?'<span class="t-pnl '+(t.pnl>=0?'p':'l')+'">'+(t.pnl>=0?'+':'')+'$'+Math.abs(t.pnl).toFixed(2)+'</span>':'<span class="t-pnl o">activo</span>';
+    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(win?'buy':'sell')+'">'+(win?'WIN':'LOSS')+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+((t.timestamp||'').slice(0,10)||'—')+'</div></div><div>'+ph+'</div></div>';
   }).join('');
 }
-
-/* ══ LOG ══ */
-function renderLog(bodyId, tsId, entries){
-  const el=document.getElementById(bodyId);
-  const ts=document.getElementById(tsId);
-  if(!el)return;
-  if(!entries.length){ el.innerHTML='<div class="log-empty">Iniciá el bot para ver los logs</div>'; return; }
-  el.innerHTML=entries.map(e=>`<div class="log-entry"><span class="log-time">${e.ts}</span><span class="log-msg ${e.color||''}">${esc(e.msg)}</span></div>`).join('');
-  el.scrollTop=0;
-  if(ts)ts.textContent=entries[0]?.ts||'—';
+function renderLog(bodyId,tsId,entries){
+  var el=document.getElementById(bodyId),ts=document.getElementById(tsId);if(!el)return;
+  if(!entries.length){el.innerHTML='<div class="log-empty">Iniciá el bot para ver los logs</div>';return;}
+  el.innerHTML=entries.map(function(e){return '<div class="log-entry"><span class="log-time">'+e.ts+'</span><span class="log-msg '+(e.color||'')+'">'+esc(e.msg)+'</span></div>';}).join('');
+  el.scrollTop=0;if(ts)ts.textContent=entries[0]?entries[0].ts:'—';
 }
-
-/* ══ CHART ══ */
 function buildBybitChart(){
-  const ctx=document.getElementById('bybit-chart');
-  if(!ctx)return;
+  var ctx=document.getElementById('bybit-chart');if(!ctx)return;
   if(bybitChart)bybitChart.destroy();
-  const last=balH[balH.length-1],first=balH[0],up=last>=first;
-  const lc=up?'#00E887':'#FF5050';
-  const fc=up?'rgba(0,232,135,.05)':'rgba(255,80,80,.05)';
-  bybitChart=new Chart(ctx,{
-    type:'line',
-    data:{labels:balL,datasets:[{data:balH,borderColor:lc,borderWidth:1.6,
-      pointRadius:balH.map((_,i)=>i===balH.length-1?4:0),
-      pointBackgroundColor:lc,pointBorderColor:'#080808',pointBorderWidth:2,
-      tension:.4,fill:true,backgroundColor:fc}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      animation:{duration:600,easing:'easeInOutQuart'},
-      plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'rgba(10,10,10,.96)',titleColor:'rgba(238,238,240,.28)',
-        bodyColor:lc,borderColor:'rgba(255,255,255,.06)',borderWidth:1,padding:9,
-        titleFont:{family:'DM Mono',size:8},bodyFont:{family:'DM Mono',size:12,weight:'500'},
-        callbacks:{label:c=>' $'+c.parsed.y.toFixed(2)}
-      }},
-      scales:{x:{display:false},y:{
-        grid:{color:'rgba(255,255,255,.03)',drawBorder:false},border:{display:false},
-        ticks:{color:'rgba(238,238,240,.16)',font:{family:'DM Mono',size:8},maxTicksLimit:4,callback:v=>'$'+v.toFixed(0)}
-      }}}
-  });
+  var last=balH[balH.length-1],first=balH[0],up=last>=first;
+  var lc=up?'#00E887':'#FF5050',fc=up?'rgba(0,232,135,.05)':'rgba(255,80,80,.05)';
+  bybitChart=new Chart(ctx,{type:'line',data:{labels:balL,datasets:[{data:balH,borderColor:lc,borderWidth:1.6,pointRadius:balH.map(function(_,i){return i===balH.length-1?4:0;}),pointBackgroundColor:lc,pointBorderColor:'#080808',pointBorderWidth:2,tension:.4,fill:true,backgroundColor:fc}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:600,easing:'easeInOutQuart'},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,10,10,.96)',titleColor:'rgba(238,238,240,.28)',bodyColor:lc,borderColor:'rgba(255,255,255,.06)',borderWidth:1,padding:9,titleFont:{family:'DM Mono',size:8},bodyFont:{family:'DM Mono',size:12,weight:'500'},callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2);}}}},scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,.03)',drawBorder:false},border:{display:false},ticks:{color:'rgba(238,238,240,.16)',font:{family:'DM Mono',size:8},maxTicksLimit:4,callback:function(v){return'$'+v.toFixed(0);}}}}}});
   setEl('bybit-chart-meta',balH.length+' puntos · paper');
 }
-
-/* ══ HELPERS ══ */
-function setEl(id,val){ const el=document.getElementById(id); if(el)el.textContent=val; }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function hexClass(h){
-  if(!h)return'';
-  const u=h.toUpperCase();
-  if(u==='#00E887'||u==='#00FF9C'||u==='#5DB05E')return'green';
-  if(u==='#FF5050'||u==='#FF4D4D')return'red';
-  if(u==='#41D6FC'||u==='#4F8EF7'||u==='#3B82F6')return'blue';
-  if(u==='#F5A623')return'amber';
-  return'dim';
-}
-
-function loadData(){
-  fetch('/api/data').then(r=>r.json()).then(d=>{
-    if(d.bybit)applyBybit(d.bybit);
-    if(d.poly)applyPoly(d.poly);
-  }).catch(()=>{});
-}
+function setEl(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hexClass(h){if(!h)return'';var u=h.toUpperCase();if(u==='#00E887'||u==='#5DB05E')return'green';if(u==='#FF5050')return'red';if(u==='#41D6FC'||u==='#4F8EF7')return'blue';if(u==='#F5A623')return'amber';return'dim';}
+function loadData(){fetch('/api/data').then(function(r){return r.json();}).then(function(d){if(d.bybit)applyBybit(d.bybit);if(d.poly)applyPoly(d.poly);}).catch(function(){});}
 </script>
 </body>
 </html>
