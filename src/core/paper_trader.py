@@ -6,11 +6,6 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 class PaperTrader:
-    """
-    Simula ejecución de trades sin dinero real.
-    Guarda todo en un archivo JSON para análisis posterior.
-    """
-
     def __init__(self, bankroll=1000):
         self.bankroll = bankroll
         self.initial_bankroll = bankroll
@@ -20,17 +15,28 @@ class PaperTrader:
         self.log_file.parent.mkdir(exist_ok=True)
         self._load_state()
 
+    def _load_state(self):
+        if self.log_file.exists():
+            try:
+                with open(self.log_file) as f:
+                    data = json.load(f)
+                    self.bankroll = data.get("bankroll", self.bankroll)
+                    self.initial_bankroll = data.get("initial_bankroll", self.initial_bankroll)
+                    self.trades = data.get("trades", [])
+                    self.active_trades = data.get("active_trades", [])
+            except Exception as e:
+                logger.error(f"Error cargando estado: {e}")
+
     def load_state(self):
         self._load_state()
         return {
-        "bankroll": self.bankroll,
-        "initial_bankroll": self.initial_bankroll,
-        "trades": self.trades,
-        "active_trades": self.active_trades
-    }
+            "bankroll": self.bankroll,
+            "initial_bankroll": self.initial_bankroll,
+            "trades": self.trades,
+            "active_trades": self.active_trades
+        }
 
     def _save_state(self):
-        """Guarda el estado actual."""
         with open(self.log_file, "w") as f:
             json.dump({
                 "bankroll": self.bankroll,
@@ -40,7 +46,6 @@ class PaperTrader:
             }, f, indent=2)
 
     def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size):
-        """Simula colocar un trade."""
         if position_size <= 0:
             logger.warning("Tamaño de posición inválido")
             return None
@@ -78,10 +83,6 @@ class PaperTrader:
         return trade
 
     def resolve_trade(self, trade_id, outcome):
-        """
-        Resuelve un trade cuando el mercado cierra.
-        outcome: True si ganó, False si perdió
-        """
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
             logger.error(f"Trade #{trade_id} no encontrado")
@@ -91,12 +92,10 @@ class PaperTrader:
         market_prob = trade["market_prob"]
 
         if outcome:
-            # Ganamos: recuperamos la posición + ganancia
             payout = position / market_prob
             pnl = payout - position
             self.bankroll += payout
         else:
-            # Perdemos: perdemos la posición
             pnl = -position
 
         trade["status"] = "resolved"
@@ -109,7 +108,6 @@ class PaperTrader:
         print(f"   PnL: ${pnl:.2f} | Bankroll: ${self.bankroll:.2f}")
 
     def get_stats(self):
-        """Retorna estadísticas del portfolio."""
         resolved = [t for t in self.trades if t["status"] == "resolved"]
         if not resolved:
             return {"mensaje": "Sin trades resueltos todavía"}
