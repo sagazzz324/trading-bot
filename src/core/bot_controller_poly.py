@@ -18,7 +18,7 @@ class PolyState:
         self.last_cycle   = None
         self.cycle_count  = 0
         self.logs         = []
-        self.market_mode  = "crypto"
+        self.market_mode  = "btc_scalp"
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -50,8 +50,8 @@ def _run_general(st: PolyState):
         color = (
             "#00E887" if any(x in msg for x in ["✅","🟢","TRADE","WIN","bankroll"]) else
             "#FF5050" if any(x in msg for x in ["❌","🔴","LOSS","Error","STOP","🛑"]) else
-            "#F5A623" if any(x in msg for x in ["⏭️","skip","Skip","EV","Confianza","🚫","🤷","💰","🎯","⏸️"]) else
-            "#41d6fc" if any(x in msg for x in ["🔍","📊","Ciclo","Evaluando","Escaneando","mercados","Bankroll","whale","🛡️"]) else
+            "#F5A623" if any(x in msg for x in ["⏭️","skip","EV","Confianza","🚫","🤷","💰","🎯","⏸️"]) else
+            "#41d6fc" if any(x in msg for x in ["🔍","📊","Ciclo","Evaluando","Escaneando","Bankroll","whale","🛡️"]) else
             "#ffffff60"
         )
         st.add_log(msg, color)
@@ -85,7 +85,6 @@ def _run_general(st: PolyState):
 def _run_btc_scalp(st: PolyState):
     from src.core.paper_trader import PaperTrader
     from src.core.btc_scalper import BTCScalper
-    from src.core.resolver import auto_resolve_trades
 
     st.add_log("Bot BTC Scalp iniciado · Up/Down 5m", "#00E887")
     trader  = PaperTrader()
@@ -95,17 +94,9 @@ def _run_btc_scalp(st: PolyState):
         try:
             st.cycle_count += 1
             st.last_cycle   = datetime.now().strftime("%H:%M:%S")
-
-            # Resolver trades anteriores
-            auto_resolve_trades()
-
-            # Ejecutar ciclo
             scalper.run_once()
-
-            # Esperar ~60 segundos (el ciclo del mercado)
             st._stop_event.wait(timeout=60)
             st._stop_event.clear()
-
         except Exception as e:
             tb    = traceback.format_exc()
             lines = [l.strip() for l in tb.strip().split("\n") if l.strip()]
@@ -118,15 +109,13 @@ def _run_btc_scalp(st: PolyState):
     st.add_log("Bot BTC Scalp detenido", "#FF5050")
 
 
-def start_poly(mode="crypto") -> bool:
+def start_poly(mode="btc_scalp") -> bool:
     if poly_state.running:
         return False
     poly_state.market_mode = mode
     poly_state.running = True
     poly_state._stop_event.clear()
-
     target = _run_btc_scalp if mode == "btc_scalp" else _run_general
-
     poly_state.thread = threading.Thread(
         target=target, args=(poly_state,), daemon=True
     )
