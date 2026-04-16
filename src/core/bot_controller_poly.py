@@ -95,7 +95,7 @@ def _run_btc_scalp(st: PolyState):
             st.cycle_count += 1
             st.last_cycle   = datetime.now().strftime("%H:%M:%S")
             scalper.run_once()
-            st._stop_event.wait(timeout=60)
+            st._stop_event.wait(timeout=20)
             st._stop_event.clear()
         except Exception as e:
             tb    = traceback.format_exc()

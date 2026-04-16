@@ -11,8 +11,8 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 GAMMA_API       = "https://gamma-api.polymarket.com"
-TAKE_PROFIT_PCT = 0.15
-STOP_LOSS_PCT   = 0.20
+TAKE_PROFIT_PCT = 0.05
+STOP_LOSS_PCT   = 0.08
 
 
 def get_btc_momentum():
