@@ -48,31 +48,37 @@ def get_btc_momentum():
 
 def find_active_btc_5m_market():
     try:
-        # 1. Via events slug — más confiable
-        r = requests.get(f"{GAMMA_API}/events",
-            params={"limit": 10, "active": "true", "slug_contains": "btc-updown-5m"},
-            timeout=10)
-        if r.status_code == 200:
-            events = r.json()
-            if events:
-                markets = events[0].get("markets", [])
-                for m in markets:
-                    if _is_valid_btc_updown(m):
-                        logger.info(f"BTC 5m via event: {m.get('question','')[:60]}")
-                        return m
+        import time as time_module
 
-        # 2. Via markets con slug estricto
-        r2 = requests.get(f"{GAMMA_API}/markets",
-            params={"limit": 50, "active": "true", "closed": "false",
-                    "slug_contains": "btc-updown-5m"},
-            timeout=10)
-        if r2.status_code == 200:
-            for m in r2.json():
-                if _is_valid_btc_updown(m):
-                    logger.info(f"BTC 5m via markets: {m.get('question','')[:60]}")
-                    return m
+        # Calcular slugs de los próximos 3 intervalos de 5 minutos
+        now = int(time_module.time())
+        interval = 300  # 5 minutos en segundos
+        slugs = []
+        for i in range(1, 4):  # próximos 3 intervalos
+            ts = ((now // interval) + i) * interval
+            slugs.append(f"btc-updown-5m-{ts}")
 
-        logger.warning("No se encontró mercado BTC Up/Down 5m válido — NO usando fallback amplio")
+        # También agregar intervalo actual
+        ts_current = ((now // interval)) * interval
+        slugs.insert(0, f"btc-updown-5m-{ts_current}")
+
+        for slug in slugs:
+            r = requests.get(
+                f"{GAMMA_API}/events",
+                params={"slug": slug},
+                timeout=10
+            )
+            if r.status_code == 200:
+                events = r.json()
+                if events:
+                    markets = events[0].get("markets", [])
+                    if markets:
+                        market = markets[0]
+                        if _is_valid_btc_updown(market):
+                            logger.info(f"BTC 5m encontrado: {slug}")
+                            return market
+
+        logger.warning(f"No se encontró mercado BTC 5m. Slugs probados: {slugs}")
         return None
 
     except Exception as e:
