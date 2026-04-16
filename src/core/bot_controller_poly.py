@@ -2,6 +2,7 @@ import threading
 import traceback
 import logging
 import time
+import builtins
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -38,27 +39,46 @@ def _run_bot(st: PolyState):
 
     st.add_log("Bot Polymarket iniciado", "#00E887")
     bot = TradingBot()
+    orig_print = builtins.print
 
-    while st.running:
-        try:
-            st.cycle_count += 1
-            st.last_cycle   = datetime.now().strftime("%H:%M:%S")
-            st.add_log(f"Ciclo #{st.cycle_count} · escaneando mercados", "#ffffff40")
-            auto_resolve_trades()
-            bot.run_once()
-            st._stop_event.wait(timeout=st.interval * 60)
-            st._stop_event.clear()
+    def log_print(*args, **kwargs):
+        msg = " ".join(str(a) for a in args).strip()
+        if not msg or set(msg) <= {"=", "-", " "}:
+            return
+        color = (
+            "#00E887" if any(x in msg for x in ["✅","🟢","TRADE","WIN","bankroll"]) else
+            "#FF5050" if any(x in msg for x in ["❌","🔴","LOSS","Error","STOP","🛑"]) else
+            "#F5A623" if any(x in msg for x in ["⏭️","skip","Skip","sin señal","EV","Confianza"]) else
+            "#41d6fc" if any(x in msg for x in ["🔍","📊","Ciclo","Evaluando","Escaneando","mercados","Bankroll","whale"]) else
+            "#ffffff60"
+        )
+        st.add_log(msg, color)
+        orig_print(*args, **kwargs)
 
-        except Exception as e:
-            tb    = traceback.format_exc()
-            lines = [l.strip() for l in tb.strip().split("\n") if l.strip()]
-            st.add_log(f"❌ {str(e)[:80]}", "#FF5050")
-            for line in lines[-3:]:
-                st.add_log(f"  {line[:90]}", "#FF5050")
-            logger.error(f"Poly loop:\n{tb}")
-            time.sleep(60)
+    builtins.print = log_print
 
-    st.add_log("Bot Polymarket detenido", "#FF5050")
+    try:
+        while st.running:
+            try:
+                st.cycle_count += 1
+                st.last_cycle   = datetime.now().strftime("%H:%M:%S")
+                st.add_log(f"━━ Ciclo #{st.cycle_count} ━━", "#41d6fc")
+                auto_resolve_trades()
+                bot.run_once()
+                st._stop_event.wait(timeout=st.interval * 60)
+                st._stop_event.clear()
+
+            except Exception as e:
+                tb    = traceback.format_exc()
+                lines = [l.strip() for l in tb.strip().split("\n") if l.strip()]
+                st.add_log(f"❌ {str(e)[:80]}", "#FF5050")
+                for line in lines[-3:]:
+                    st.add_log(f"  {line[:90]}", "#FF5050")
+                logger.error(f"Poly loop:\n{tb}")
+                time.sleep(60)
+    finally:
+        builtins.print = orig_print
+        st.add_log("Bot Polymarket detenido", "#FF5050")
 
 
 def start_poly() -> bool:
