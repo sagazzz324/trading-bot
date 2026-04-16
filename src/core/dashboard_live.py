@@ -133,6 +133,15 @@ def tradingview_webhook():
         logger.error(traceback.format_exc())
         return jsonify({"ok": False, "error": str(e)}), 400
 
+@app.route("/api/poly/reset", methods=["POST"])
+def poly_reset():
+    import json
+    data = {"bankroll": 1000, "initial_bankroll": 1000, "trades": [], "active_trades": []}
+    POLY_LOG.parent.mkdir(exist_ok=True)
+    with open(POLY_LOG, "w") as f:
+        json.dump(data, f)
+    return jsonify({"ok": True})
+
 
 # ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 
