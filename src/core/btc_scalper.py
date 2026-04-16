@@ -37,6 +37,8 @@ def get_btc_momentum():
         }
     except Exception as e:
         logger.error(f"get_btc_momentum: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {"direction": "up", "change_pct": 0, "price": 0, "vol_ratio": 1, "confidence": "low"}
 
 
@@ -226,6 +228,10 @@ class BTCScalper:
             f"{momentum['change_pct']:+.3f}% · conf {momentum['confidence']}",
             "#ffffff60"
         )
+
+        if momentum["price"] == 0:
+            self.log(f"❌ Binance API falló — sin precio BTC", "#FF5050")
+            return False
 
         if momentum["confidence"] == "low":
             return False
