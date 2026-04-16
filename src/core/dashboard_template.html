@@ -346,6 +346,22 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
       </div>
 
       <div class="tab-panel" id="panel-poly">
+        <div id="btc-embed-wrap" style="display:none;background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;width:100%">
+  <div class="card-hdr">
+    <span class="card-title">⚡ BTC Up/Down · 5m</span>
+    <span class="card-meta" id="btc-embed-slug">—</span>
+  </div>
+  <div style="display:flex;justify-content:center;padding:12px">
+    <iframe id="btc-embed-iframe"
+      src=""
+      width="100%"
+      height="350"
+      frameborder="0"
+      allowtransparency="true"
+      style="max-width:500px;border-radius:8px">
+    </iframe>
+  </div>
+</div>
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
           <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
@@ -470,6 +486,20 @@ function applyPoly(d){
   if(d.running!=null)applyPolyState(d.running);
   if(d.logs&&d.logs.length){polyLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});renderLog('poly-log','poly-log-ts',polyLogs);}
   if(d.market_mode)syncModeButtons(d.market_mode);
+  if(d.btc_embed_slug && d.market_mode === 'btc_scalp'){
+    var wrap  = document.getElementById('btc-embed-wrap');
+    var iframe = document.getElementById('btc-embed-iframe');
+    var slugEl = document.getElementById('btc-embed-slug');
+    if(wrap && iframe){
+      wrap.style.display = 'block';
+      var newSrc = 'https://embed.polymarket.com/market?market='+d.btc_embed_slug+'&theme=dark&liveactivity=true&border=true&width=500&height=350';
+      if(iframe.src !== newSrc){ iframe.src = newSrc; }
+      if(slugEl) slugEl.textContent = d.btc_embed_slug;
+    }
+  } else {
+    var wrap = document.getElementById('btc-embed-wrap');
+    if(wrap) wrap.style.display = 'none';
+  }
 }
 function applyBybitState(on){
   bybitOn=on;

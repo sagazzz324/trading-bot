@@ -69,8 +69,8 @@ def get_data() -> dict:
         "last_cycle":     poly_state.last_cycle,
         "cycle_count":    poly_state.cycle_count,
         "interval":       poly_state.interval,
-        "interval":       poly_state.interval,
         "market_mode":    poly_state.market_mode,
+        "btc_embed_slug": f"btc-updown-5m-{(int(__import__('time').time()) // 300 + 1) * 300}",  # ← ESTA LÍNEA
     }
 
     return {"bybit": bybit, "poly": poly}
@@ -183,6 +183,7 @@ def on_set_poly_mode(data=None):
 def on_stop_poly():
     stop_poly()
     emit("update", get_data())
+    
 
 
 # Legacy — dashboard HTML usa start_bot/stop_bot, los mapeamos a Bybit por defecto
