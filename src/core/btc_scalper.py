@@ -48,7 +48,7 @@ def get_btc_momentum():
 
 def find_active_btc_5m_market():
     try:
-        # 1. Via events slug
+        # 1. Via events slug — más confiable
         r = requests.get(f"{GAMMA_API}/events",
             params={"limit": 10, "active": "true", "slug_contains": "btc-updown-5m"},
             timeout=10)
@@ -56,38 +56,53 @@ def find_active_btc_5m_market():
             events = r.json()
             if events:
                 markets = events[0].get("markets", [])
-                if markets:
-                    logger.info(f"BTC 5m via event: {markets[0].get('question','')[:60]}")
-                    return markets[0]
+                for m in markets:
+                    if _is_valid_btc_updown(m):
+                        logger.info(f"BTC 5m via event: {m.get('question','')[:60]}")
+                        return m
 
-        # 2. Via markets slug
+        # 2. Via markets con slug estricto
         r2 = requests.get(f"{GAMMA_API}/markets",
-            params={"limit": 50, "active": "true", "closed": "false", "slug_contains": "btc-updown"},
+            params={"limit": 50, "active": "true", "closed": "false",
+                    "slug_contains": "btc-updown-5m"},
             timeout=10)
         if r2.status_code == 200:
-            mks = r2.json()
-            if mks:
-                mks.sort(key=lambda x: float(x.get("volume24hr") or 0), reverse=True)
-                logger.info(f"BTC 5m via markets slug: {mks[0].get('question','')[:60]}")
-                return mks[0]
-
-        # 3. Fallback amplio
-        r3 = requests.get(f"{GAMMA_API}/markets",
-            params={"limit": 100, "active": "true", "closed": "false"},
-            timeout=10)
-        if r3.status_code == 200:
-            for m in r3.json():
-                slug = (m.get("slug") or "").lower()
-                q    = (m.get("question") or "").lower()
-                if "btc-updown" in slug or ("btc" in q and ("up" in q or "higher" in q) and ("5m" in q or "5 min" in q)):
-                    logger.info(f"BTC 5m via fallback: {m.get('question','')[:60]}")
+            for m in r2.json():
+                if _is_valid_btc_updown(m):
+                    logger.info(f"BTC 5m via markets: {m.get('question','')[:60]}")
                     return m
 
-        logger.warning("No se encontró mercado BTC Up/Down 5m")
+        logger.warning("No se encontró mercado BTC Up/Down 5m válido — NO usando fallback amplio")
         return None
+
     except Exception as e:
         logger.error(f"find_active_btc_5m_market: {e}")
         return None
+
+
+def _is_valid_btc_updown(market) -> bool:
+    """Valida que el mercado sea realmente BTC Up/Down — rechaza NBA y cualquier otra cosa."""
+    import json
+    q    = (market.get("question") or "").lower()
+    slug = (market.get("slug") or "").lower()
+
+    # Debe tener btc o bitcoin
+    has_btc = "btc" in q or "bitcoin" in q or "btc" in slug
+
+    # Debe tener up/down o higher/lower
+    has_direction = any(w in q for w in ["up", "down", "higher", "lower"]) or \
+                    any(w in slug for w in ["up", "down", "updown"])
+
+    # No debe ser deportes
+    sports_block = ["nba", "nfl", "nhl", "mlb", "soccer", "basketball",
+                    "football", "tennis", "golf", "ufc", "match", "game",
+                    "lakers", "warriors", "mavericks", "grizzlies"]
+    is_sports = any(w in q for w in sports_block)
+
+    valid = has_btc and has_direction and not is_sports
+    if not valid:
+        logger.debug(f"Mercado rechazado: {q[:60]} (btc={has_btc} dir={has_direction} sports={is_sports})")
+    return valid
 
 
 def get_outcome_current_price(market_id, direction):
