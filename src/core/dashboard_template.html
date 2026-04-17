@@ -446,6 +446,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 var bybitOn=false,polyOn=false;
 var bybitLogs=[],polyLogs=[];
 var bybitTrades=[],polyTrades=[];
+var polyTradesHash='',bybitTradesHash='';
 var balH=[1000],balL=['Inicio'];
 var bybitChart=null,dashInited=false;
 var currentTab='bybit',currentPolyMode='btc_scalp';
@@ -544,7 +545,8 @@ function applyPoly(d){
   if(d.running!=null) applyPolyState(d.running);
   if(d.logs&&d.logs.length){
     polyLogs=d.logs.map(function(l){return{ts:l.time,msg:l.msg,color:hexClass(l.color)};});
-    renderLog(isBtc?'poly-log':'poly-log-g', isBtc?'poly-log-ts':'poly-log-ts-g', polyLogs);
+    renderLog('poly-log', 'poly-log-ts', polyLogs);
+    renderLog('poly-log-g', 'poly-log-ts-g', polyLogs);
   }
   if(d.market_mode) syncModeButtons(d.market_mode);
 
@@ -618,7 +620,10 @@ function updateOrchCard(d){
   if(card)card.style.borderColor=regime==='trending'?'rgba(0,232,135,.2)':regime==='lateral'?'rgba(167,139,250,.2)':regime==='volatile'?'rgba(245,166,35,.2)':'var(--border)';
 }
 function renderBybitTrades(list){
-  bybitTrades=list||bybitTrades;setEl('bybit-trades-meta',bybitTrades.length+' trades');
+  bybitTrades=list||bybitTrades;
+  var newHash=JSON.stringify(bybitTrades);
+  if(newHash===bybitTradesHash) return;
+  bybitTradesHash=newHash;
   var el=document.getElementById('bybit-trades-list');if(!el)return;
   if(!bybitTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return;}
   el.innerHTML=bybitTrades.slice(0,12).map(function(t,i){
@@ -631,6 +636,9 @@ function renderBybitTrades(list){
 }
 function renderPolyTrades(list, isBtc){
   polyTrades=list||polyTrades;
+  var newHash=JSON.stringify(polyTrades);
+  if(newHash===polyTradesHash) return;
+  polyTradesHash=newHash;
   var metaId  = isBtc ? 'poly-trades-meta'   : 'poly-trades-meta-g';
   var listId  = isBtc ? 'poly-trades-list'   : 'poly-trades-list-g';
   setEl(metaId, polyTrades.length+' trades');
