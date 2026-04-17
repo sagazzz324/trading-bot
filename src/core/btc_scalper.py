@@ -189,7 +189,16 @@ def _is_valid_btc_updown(market) -> bool:
               "golf","ufc","match","game","lakers","warriors","mavericks"]
     has_btc = "btc" in q or "bitcoin" in q or "btc" in slug
     has_dir = any(w in q for w in ["up","down","higher","lower"]) or "updown" in slug
-    return has_btc and has_dir and not any(w in q for w in sports)
+    if not has_btc or not has_dir: return False
+    if any(w in q for w in sports): return False
+    # filtrar mercados resueltos
+    try:
+        prices = json.loads(market.get("outcomePrices","[]")) if isinstance(market.get("outcomePrices"), str) else (market.get("outcomePrices") or [])
+        if prices and any(float(p) in (0.0, 1.0) for p in prices):
+            return False
+    except:
+        pass
+    return True
 
 
 def get_market_outcome_prices(market) -> dict:

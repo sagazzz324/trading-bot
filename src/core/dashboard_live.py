@@ -8,6 +8,7 @@ from flask_socketio import SocketIO, emit
 
 from src.core.bot_controller_bybit import bybit_state, start_bybit, stop_bybit
 from src.core.bot_controller_poly  import poly_state,  start_poly,  stop_poly
+from src.core.btc_scalper import _price_cache as btc_price_cache
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
@@ -29,48 +30,50 @@ def _load_json(path: Path) -> dict:
 
 
 def get_data() -> dict:
-    # ── Bybit (from memory) ──────────────────────────────────────────────────
+    # ── Bybit (from memory) ───────────────────────────────────────────────────
     s = bybit_state.get_stats()
     bybit = {
-        "bankroll":       s["balance"],
+        "bankroll":        s["balance"],
         "initial_balance": bybit_state.initial_balance,
-        "total_pnl":      round(s["balance"] - bybit_state.initial_balance, 2),
-        "session_pnl":    s["session_pnl"],
-        "win_rate":       s["win_rate"],
-        "total_trades":   s["total_trades"],
-        "open_positions": bybit_state.open_positions,
-        "recent_trades":  bybit_state.closed_trades[:10],
-        "running":        bybit_state.running,
-        "strategy":       bybit_state.strategy,
-        "logs":           bybit_state.logs[:30],
-        "last_cycle":     bybit_state.last_cycle,
-        "cycle_count":    bybit_state.cycle_count,
+        "total_pnl":       round(s["balance"] - bybit_state.initial_balance, 2),
+        "session_pnl":     s["session_pnl"],
+        "win_rate":        s["win_rate"],
+        "total_trades":    s["total_trades"],
+        "open_positions":  bybit_state.open_positions,
+        "recent_trades":   bybit_state.closed_trades[:10],
+        "running":         bybit_state.running,
+        "strategy":        bybit_state.strategy,
+        "logs":            bybit_state.logs[:30],
+        "last_cycle":      bybit_state.last_cycle,
+        "cycle_count":     bybit_state.cycle_count,
     }
 
-    # ── Polymarket (from JSON file) ──────────────────────────────────────────
-    poly_data  = _load_json(POLY_LOG)
-    trades     = poly_data.get("trades", [])
-    resolved   = [t for t in trades if t.get("status") == "resolved"]
-    wins       = [t for t in resolved if t.get("result") == "win"]
-    total_pnl  = sum(t.get("pnl", 0) for t in resolved)
-    bankroll   = poly_data.get("bankroll", 1000)
-    init_bank  = poly_data.get("initial_bankroll", 1000)
+    # ── Polymarket (from JSON file) ───────────────────────────────────────────
+    poly_data = _load_json(POLY_LOG)
+    trades    = poly_data.get("trades", [])
+    resolved  = [t for t in trades if t.get("status") == "resolved"]
+    wins      = [t for t in resolved if t.get("result") == "win"]
+    total_pnl = sum(t.get("pnl", 0) for t in resolved)
+    bankroll  = poly_data.get("bankroll", 1000)
+    init_bank = poly_data.get("initial_bankroll", 1000)
 
+    import time as _t
     poly = {
-        "bankroll":       round(bankroll, 2),
+        "bankroll":        round(bankroll, 2),
         "initial_balance": init_bank,
-        "total_pnl":      round(total_pnl, 2),
-        "win_rate":       round(len(wins) / len(resolved) * 100, 1) if resolved else 0,
-        "total_trades":   len(resolved),
-        "open_positions": poly_data.get("active_trades", []),
-        "recent_trades":  trades[-10:][::-1],
-        "running":        poly_state.running,
-        "logs":           poly_state.logs[:30],
-        "last_cycle":     poly_state.last_cycle,
-        "cycle_count":    poly_state.cycle_count,
-        "interval":       poly_state.interval,
-        "market_mode":    poly_state.market_mode,
-        "btc_embed_slug": f"btc-updown-5m-{(int(__import__('time').time()) // 300 + 1) * 300}",  # ← ESTA LÍNEA
+        "total_pnl":       round(total_pnl, 2),
+        "win_rate":        round(len(wins) / len(resolved) * 100, 1) if resolved else 0,
+        "total_trades":    len(resolved),
+        "open_positions":  poly_data.get("active_trades", []),
+        "recent_trades":   trades[-10:][::-1],
+        "running":         poly_state.running,
+        "logs":            poly_state.logs[:30],
+        "last_cycle":      poly_state.last_cycle,
+        "cycle_count":     poly_state.cycle_count,
+        "interval":        poly_state.interval,
+        "market_mode":     poly_state.market_mode,
+        "btc_embed_slug":  f"btc-updown-5m-{(int(_t.time()) // 300 + 1) * 300}",
+        "btc_price":       btc_price_cache.get("price", 0),
     }
 
     return {"bybit": bybit, "poly": poly}
@@ -133,9 +136,9 @@ def tradingview_webhook():
         logger.error(traceback.format_exc())
         return jsonify({"ok": False, "error": str(e)}), 400
 
+
 @app.route("/api/poly/reset", methods=["POST"])
 def poly_reset():
-    import json
     data = {"bankroll": 1000, "initial_bankroll": 1000, "trades": [], "active_trades": []}
     POLY_LOG.parent.mkdir(exist_ok=True)
     with open(POLY_LOG, "w") as f:
@@ -150,7 +153,6 @@ def on_connect():
     emit("update", get_data())
 
 
-# Bybit
 @socketio.on("start_bybit")
 def on_start_bybit(data=None):
     strategy = (data or {}).get("strategy", "Scalping")
@@ -164,12 +166,12 @@ def on_stop_bybit():
     emit("update", get_data())
 
 
-# Polymarket
 @socketio.on("start_poly")
 def on_start_poly(data=None):
     mode = (data or {}).get("mode", poly_state.market_mode)
     start_poly(mode)
     emit("update", get_data())
+
 
 @socketio.on("set_poly_mode")
 def on_set_poly_mode(data=None):
@@ -183,10 +185,8 @@ def on_set_poly_mode(data=None):
 def on_stop_poly():
     stop_poly()
     emit("update", get_data())
-    
 
 
-# Legacy — dashboard HTML usa start_bot/stop_bot, los mapeamos a Bybit por defecto
 @socketio.on("start_bot")
 def on_start_bot(data=None):
     strategy = (data or {}).get("strategy", "Scalping")

@@ -203,6 +203,9 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
 .stat-num{font-size:22px;font-weight:700;letter-spacing:-1.5px;font-family:var(--mono);line-height:1}
 .stat-num.g{color:var(--green)}.stat-num.r{color:var(--red)}.stat-num.b{color:var(--blue)}
 .stat-hint{font-size:8px;color:var(--t3);margin-top:5px;font-family:var(--mono)}
+.odo{display:inline-flex;overflow:hidden;line-height:1;vertical-align:baseline}
+.odo-digit{display:flex;flex-direction:column;transition:transform 0.55s cubic-bezier(0.22,1,0.36,1)}
+.odo-digit span{display:block;line-height:1;height:1em}
 .orch-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .orch-left{display:flex;align-items:center;gap:10px}
 .orch-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-dim);border:1px solid rgba(79,142,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -450,7 +453,7 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
             </div>
             <div style="display:flex;flex-direction:column;gap:14px">
               <div class="stats-grid" style="grid-template-columns:1fr 1fr">
-                <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
+                <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b odo-wrap" id="poly-balance">$1000</div><div class="stat-hint" id="poly-btc-price">BTC —</div></div>
                 <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
                 <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
                 <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones</div></div>
@@ -742,9 +745,7 @@ function goToDashboard(bot){
   document.getElementById('sb-card-'+hide).style.display='none'
   document.getElementById('nav-'+hide).style.display='none'
   initDashboard()
-  setTimeout(function(){ loadData() }, 400)
 }
-
 
 function goToLanding(){
   var db=document.getElementById('view-dashboard')
@@ -813,7 +814,7 @@ function initSocket(){
   }catch(e){loadData()}
 }
 function applyBybit(d){
-  if(d.bankroll!=null){setEl('bybit-balance','$'+d.bankroll.toFixed(2));setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2))}
+  if(d.bankroll!=null){odoSet('bybit-balance','$'+d.bankroll.toFixed(2));setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2))}
   var pnl=d.total_pnl||0
   setEl('bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2))
   document.getElementById('bybit-pnl').className='stat-num '+(pnl>=0?'g':'r')
@@ -852,7 +853,8 @@ function applyPoly(d){
   if(genWrap)genWrap.style.display=isBtc?'none':'block'
   var bal=d.bankroll||0
   setEl('sb-poly-bal','$'+bal.toFixed(2))
-  setEl(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
+  if(isBtc&&d.btc_price){setEl('poly-btc-price','BTC $'+parseFloat(d.btc_price).toLocaleString('en-US',{maximumFractionDigits:0}))}
+  odoSet(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
   var pnl=d.total_pnl||0
   var pnlStr=(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2)
   var pnlPct=(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%'
@@ -971,6 +973,48 @@ function buildBybitChart(){
   bybitChart=new Chart(c,{type:'line',data:{labels:balL,datasets:[{data:balH,borderColor:lc,borderWidth:1.6,pointRadius:balH.map(function(_,i){return i===balH.length-1?4:0}),pointBackgroundColor:lc,pointBorderColor:'#080808',pointBorderWidth:2,tension:.4,fill:true,backgroundColor:fc}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:600,easing:'easeInOutQuart'},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,10,10,.96)',titleColor:'rgba(238,238,240,.28)',bodyColor:lc,borderColor:'rgba(255,255,255,.06)',borderWidth:1,padding:9,titleFont:{family:'DM Mono',size:8},bodyFont:{family:'DM Mono',size:12,weight:'500'},callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2)}}}},scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,.03)',drawBorder:false},border:{display:false},ticks:{color:'rgba(238,238,240,.16)',font:{family:'DM Mono',size:8},maxTicksLimit:4,callback:function(v){return'$'+v.toFixed(0)}}}}}})
   setEl('bybit-chart-meta',balH.length+' puntos · paper')
 }
+
+// ── ODOMETRO ─────────────────────────────────────────────────────────────────
+var _odoState = {}
+function odoSet(id, val) {
+  var el = document.getElementById(id); if(!el) return
+  var str = String(val)
+  if(_odoState[id] === str) return
+  _odoState[id] = str
+  var chars = str.split('')
+  var html = '<span class="odo" style="font-size:inherit;font-family:inherit;font-weight:inherit;color:inherit">'
+  chars.forEach(function(ch) {
+    if(ch >= '0' && ch <= '9') {
+      var d = parseInt(ch)
+      var rows = ''
+      for(var n = 0; n <= 9; n++) rows += '<span>' + n + '</span>'
+      html += '<span class="odo-digit" data-d="' + d + '" style="transform:translateY(-' + d + 'em)">' + rows + '</span>'
+    } else {
+      html += '<span style="display:inline-block">' + ch + '</span>'
+    }
+  })
+  html += '</span>'
+  // save old digits
+  var oldDigits = el.querySelectorAll('.odo-digit')
+  var oldVals = {}
+  oldDigits.forEach(function(od, i){ oldVals[i] = parseInt(od.getAttribute('data-d') || 0) })
+  el.innerHTML = html
+  // animate each digit from old value
+  var newDigits = el.querySelectorAll('.odo-digit')
+  newDigits.forEach(function(nd, i) {
+    var target = parseInt(nd.getAttribute('data-d') || 0)
+    var from = (oldVals[i] !== undefined) ? oldVals[i] : target
+    nd.style.transition = 'none'
+    nd.style.transform = 'translateY(-' + from + 'em)'
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        nd.style.transition = ''
+        nd.style.transform = 'translateY(-' + target + 'em)'
+      })
+    })
+  })
+}
+
 function setEl(id,val){var el=document.getElementById(id);if(el)el.textContent=val}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function hexClass(h){if(!h)return'';var u=h.toUpperCase();if(u==='#00E887'||u==='#5DB05E')return'green';if(u==='#FF5050')return'red';if(u==='#41D6FC'||u==='#4F8EF7')return'blue';if(u==='#F5A623')return'amber';return'dim'}
