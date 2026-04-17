@@ -3,7 +3,7 @@ import traceback
 import logging
 import time
 import builtins
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class PolyState:
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
             self.logs.insert(0, {
-                "time":  datetime.now().strftime("%H:%M:%S"),
+                "time":  datetime.now(timezone(timedelta(hours=-3))).strftime("%H:%M:%S"),
                 "msg":   msg,
                 "color": color
             })
