@@ -7,3 +7,4 @@ feedparser
 python-dotenv
 requests
 websockets
+numpy
