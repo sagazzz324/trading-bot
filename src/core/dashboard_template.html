@@ -345,7 +345,7 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
       </div>
       <div class="divider"></div>
       <div>
-        <div class="slabel" style="margin-bottom:8px">Bybit</div>
+        <div class="slabel" id="slabel-bybit" style="margin-bottom:8px">Bybit</div>
         <div class="sb-bot-card bybit" id="sb-card-bybit">
           <div class="sb-card-row">
             <div><div class="sb-card-name">Trading Bot</div><div class="sb-card-state" id="sb-state-bybit">Inactivo</div></div>
@@ -358,7 +358,7 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
         </div>
       </div>
       <div>
-        <div class="slabel" style="margin-bottom:8px">Polymarket</div>
+        <div class="slabel" id="slabel-poly" style="margin-bottom:8px">Polymarket</div>
         <div class="sb-bot-card poly" id="sb-card-poly">
           <div class="sb-card-row">
             <div><div class="sb-card-name">Prediction Bot</div><div class="sb-card-state" id="sb-state-poly">Inactivo</div></div>
@@ -729,24 +729,32 @@ function lpSelectBot(bot){
 
 // ══ NAVIGATION ════════════════════════════════════════════════════════════════
 function goToDashboard(bot){
-  // hide landing
   document.getElementById('view-landing').classList.add('hidden')
   document.body.classList.remove('landing-mode')
   document.body.classList.add('dash-mode')
   window.scrollTo(0,0)
-  // show dashboard
   var db=document.getElementById('view-dashboard')
   db.classList.add('visible')
   switchTab(bot==='poly'?'poly':'bybit',document.getElementById('nav-'+(bot==='poly'?'poly':'bybit')))
+  // mostrar solo el bot seleccionado
+  var hide=bot==='bybit'?'poly':'bybit'
+  document.getElementById('slabel-'+hide).style.display='none'
+  document.getElementById('sb-card-'+hide).style.display='none'
+  document.getElementById('nav-'+hide).style.display='none'
   initDashboard()
 }
 
 function goToLanding(){
-  // hide dashboard
   var db=document.getElementById('view-dashboard')
   db.classList.remove('visible')
   document.body.classList.remove('dash-mode')
   document.body.classList.add('landing-mode')
+  // restaurar visibilidad de ambos bots
+  ;['bybit','poly'].forEach(function(b){
+    document.getElementById('slabel-'+b).style.display=''
+    document.getElementById('sb-card-'+b).style.display=''
+    document.getElementById('nav-'+b).style.display=''
+  })
   // reset landing
   lpZoom=false;lpZS=1;lpSpeedMul=1;lpProgress=0
   lpDotX=0;lpDotY=0;lpParOY=0;lpParTY=0;lpScrollP=0;lpChartFill=0
@@ -756,7 +764,6 @@ function goToLanding(){
   ui.style.transform='';ui.classList.remove('visible')
   document.getElementById('lp-card-bybit').classList.remove('show')
   document.getElementById('lp-card-poly').classList.remove('show')
-  // show landing
   document.getElementById('view-landing').classList.remove('hidden')
   window.scrollTo(0,0)
   setTimeout(function(){
