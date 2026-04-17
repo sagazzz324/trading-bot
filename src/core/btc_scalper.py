@@ -103,19 +103,29 @@ def get_btc_candles(n: int = 40) -> list:
 
 def get_btc_current_price() -> float:
     global _price_cache
-    if time_module.time() - _price_cache["ts"] < 30 and _price_cache["price"] > 0:
+    if time_module.time() - _price_cache["ts"] < 15 and _price_cache["price"] > 0:
         return _price_cache["price"]
     try:
         r = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price",
-            params={"ids": "bitcoin", "vs_currencies": "usd"},
-            timeout=8
+            "https://api.binance.com/api/v3/ticker/price",
+            params={"symbol": "BTCUSDT"},
+            timeout=5
         )
-        price = float(r.json()["bitcoin"]["usd"])
+        price = float(r.json()["price"])
         _price_cache = {"price": price, "ts": time_module.time()}
         return price
     except:
-        return _price_cache["price"] if _price_cache["price"] > 0 else 0.0
+        try:
+            r2 = requests.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={"ids": "bitcoin", "vs_currencies": "usd"},
+                timeout=8
+            )
+            price = float(r2.json()["bitcoin"]["usd"])
+            _price_cache = {"price": price, "ts": time_module.time()}
+            return price
+        except:
+            return _price_cache["price"] if _price_cache["price"] > 0 else 0.0
 
 
 # ── MERCADO POLYMARKET ────────────────────────────────────────────────────────
@@ -378,6 +388,7 @@ class BTCScalper:
         )
 
         prices = get_market_outcome_prices(market)
+        self.log(f"💰 up={prices['up_price']:.3f} down={prices['down_price']:.3f}", "#41D6FC")
 
         if Q_MIN <= prices["up_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["up_price"], "up")
