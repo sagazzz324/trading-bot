@@ -242,6 +242,10 @@ class BTCScalper:
             pos     = trade["position_size"]
             elapsed = time_module.time() - meta["entered_at"]
             current = get_outcome_current_price(meta["market_id"], meta["direction"])
+            if current is None:
+                logger.warning(f"get_outcome_current_price devolvio None para {meta['market_id']} {meta['direction']}")
+            else:
+                logger.info(f"precio actual outcome: {current} (entrada: {meta['entry_price']})")
 
             if elapsed >= MAX_TRADE_DURATION:
                 pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2) if current else 0
