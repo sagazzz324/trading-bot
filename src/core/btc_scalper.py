@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 # ── PARÁMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.18   # bajarlo al mínimo alcanzable con los datos actuales
-EPSILON     = 0.05   # subir el gap mínimo para compensar
+TAU         = 0.17   # baja un pelo más
+EPSILON     = 0.03   # baja el gap mínimo requerido
 Q_MIN       = 0.40   # precio mínimo del outcome
 Q_MAX       = 0.65   # precio máximo del outcome
 
