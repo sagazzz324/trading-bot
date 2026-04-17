@@ -742,7 +742,9 @@ function goToDashboard(bot){
   document.getElementById('sb-card-'+hide).style.display='none'
   document.getElementById('nav-'+hide).style.display='none'
   initDashboard()
+  setTimeout(function(){ loadData() }, 400)
 }
+
 
 function goToLanding(){
   var db=document.getElementById('view-dashboard')
