@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 # ── PARÁMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.87   # persistencia mínima del estado (diagonal)
-EPSILON     = 0.04   # gap mínimo entre p_hat y q(w)
-Q_MIN       = 0.83   # precio mínimo del outcome para operar (como Bonereaper)
-Q_MAX       = 0.97   # precio máximo del outcome
+TAU         = 0.32   # máximo alcanzable con ~40 velas
+EPSILON     = 0.02   # gap mínimo vs mercado
+Q_MIN       = 0.40   # BTC 5m cotiza ~0.50, admitir desde 0.40
+Q_MAX       = 0.65   # no entrar si el outcome ya está muy priceado
 
 # ── PARÁMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
