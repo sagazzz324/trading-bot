@@ -147,6 +147,8 @@ def find_active_btc_5m_market():
                     if markets:
                         m = markets[0]
                         if _is_valid_btc_updown(m):
+                            if _is_valid_btc_updown(m):
+                                self.log(f"🏪 mercado: id={m.get('id')} cond={m.get('conditionId')} slug={m.get('slug')}", "#41D6FC")
                             logger.info(f"Mercado: {slug}")
                             return m
         return None
@@ -319,6 +321,7 @@ class BTCScalper:
             return False
 
         market_id = market.get("conditionId") or market.get("id", "")
+        self.log(f"🏪 id={market.get('id')} conditionId={market.get('conditionId')}", "#41D6FC")
         question  = market.get("question", "")
 
         if any(t["market_id"] == market_id for t in active):
@@ -410,6 +413,7 @@ class BTCScalper:
                 "entry_price": market_price,
                 "entered_at":  time_module.time(),
             }
+            self.log(f"📌 market_id guardado: {market_id}", "#41D6FC")
             self.log(
                 f"✅ TRADE #{trade['id']} · "
                 f"{'📈 UP' if direction=='up' else '📉 DOWN'} · "
