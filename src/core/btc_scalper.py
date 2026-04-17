@@ -208,21 +208,34 @@ def get_market_liquidity(market_id) -> dict | None:
 
 def get_outcome_current_price(market_id: str, direction: str) -> float | None:
     try:
+        # intentar con conditionId
         r = requests.get(f"{GAMMA_API}/markets/{market_id}", timeout=5)
         if r.status_code != 200:
-            return None
-        m        = r.json()
+            # intentar buscar por conditionId como query param
+            r2 = requests.get(f"{GAMMA_API}/markets",
+                              params={"condition_id": market_id}, timeout=5)
+            if r2.status_code != 200:
+                return None
+            data = r2.json()
+            if not data:
+                return None
+            m = data[0] if isinstance(data, list) else data
+        else:
+            m = r.json()
+
         outcomes = m.get("outcomes", "[]")
         prices   = m.get("outcomePrices", "[]")
         if isinstance(outcomes, str): outcomes = json.loads(outcomes)
         if isinstance(prices,   str): prices   = json.loads(prices)
+
         for i, o in enumerate(outcomes):
             o_lower = o.lower()
             if (direction == "up"   and any(w in o_lower for w in ["up","higher","above"])) or \
                (direction == "down" and any(w in o_lower for w in ["down","lower","below"])):
                 return float(prices[i]) if i < len(prices) else None
         return None
-    except:
+    except Exception as e:
+        logger.error(f"get_outcome_current_price: {e}")
         return None
 
 
