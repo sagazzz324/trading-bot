@@ -1,16 +1,6 @@
 """
 btc_scalper.py — BTC Up/Down 5m · Polymarket
 Markov Chain + State Persistence + Arbitrage Gap
-
-Estados:
-  0: Strong Bull  (> +0.15%)
-  1: Weak Bull    (0% a +0.15%)
-  2: Weak Bear    (-0.15% a 0%)
-  3: Strong Bear  (< -0.15%)
-
-Condicion de entrada (ambas deben cumplirse):
-  1. p_hat - q(w) >= EPSILON   (edge vs mercado)
-  2. p_j*j* >= TAU             (persistencia del estado)
 """
 import requests
 import logging
@@ -107,8 +97,7 @@ def get_btc_candles(n: int = 40) -> list:
         _btc_cache = {"data": changes, "ts": time_module.time()}
         return changes[-n:]
     except Exception as e:
-        import traceback
-        logger.error(f"get_btc_candles:\n{traceback.format_exc()}")
+        logger.error(f"get_btc_candles: {e}")
         return _btc_cache["data"][-n:] if _btc_cache["data"] else []
 
 
@@ -131,30 +120,56 @@ def get_btc_current_price() -> float:
 
 # ── MERCADO POLYMARKET ────────────────────────────────────────────────────────
 
-def find_active_btc_5m_market():
-    try:
-        now = int(time_module.time())
-        interval = 300
-        slugs = [f"btc-updown-5m-{((now // interval) + i) * interval}"
-         for i in range(-2, 4)]
-        for slug in slugs:
+def find_active_btc_5m_market(log_fn=None):
+    """
+    Busca el mercado BTC Up/Down 5m activo.
+    Estrategia 1: por slug exacto (rango amplio -3 a +4 intervalos)
+    Estrategia 2: fallback buscando por keyword
+    """
+    log = log_fn or (lambda m, c="#ffffff40": None)
+    now = int(time_module.time())
+    interval = 300
+
+    # Estrategia 1: slugs por timestamp
+    slugs_tried = []
+    for i in range(-3, 5):
+        ts = ((now // interval) + i) * interval
+        slug = f"btc-updown-5m-{ts}"
+        slugs_tried.append(slug)
+        try:
             r = requests.get(f"{GAMMA_API}/events",
-                             params={"slug": slug}, timeout=10)
+                             params={"slug": slug}, timeout=6)
             if r.status_code == 200:
                 events = r.json()
-                if events:
-                    markets = events[0].get("markets", [])
-                    if markets:
-                        m = markets[0]
-                        if _is_valid_btc_updown(m):
-                            if _is_valid_btc_updown(m):
-                                self.log(f"🏪 mercado: id={m.get('id')} cond={m.get('conditionId')} slug={m.get('slug')}", "#41D6FC")
-                            logger.info(f"Mercado: {slug}")
-                            return m
-        return None
+                if events and events[0].get("markets"):
+                    m = events[0]["markets"][0]
+                    if _is_valid_btc_updown(m):
+                        logger.info(f"Mercado encontrado por slug: {slug}")
+                        return m
+        except Exception:
+            continue
+
+    # Estrategia 2: buscar entre todos los eventos activos por keyword
+    try:
+        r = requests.get(
+            f"{GAMMA_API}/events",
+            params={"active": "true", "limit": 50, "tag_slug": "crypto"},
+            timeout=8
+        )
+        if r.status_code == 200:
+            events = r.json()
+            for event in events:
+                slug = (event.get("slug") or "").lower()
+                if "btc-updown-5m-" in slug:
+                    markets = event.get("markets", [])
+                    if markets and _is_valid_btc_updown(markets[0]):
+                        logger.info(f"Mercado encontrado por keyword: {slug}")
+                        return markets[0]
     except Exception as e:
-        logger.error(f"find_active_btc_5m_market: {e}")
-        return None
+        logger.error(f"find_active_btc_5m_market fallback: {e}")
+
+    log(f"❌ Sin mercado. Primer slug intentado: {slugs_tried[3]}", "#FF5050")
+    return None
 
 
 def _is_valid_btc_updown(market) -> bool:
@@ -181,7 +196,7 @@ def get_market_outcome_prices(market) -> dict:
                 result["up_price"] = p; result["up_outcome"] = outcome
             elif any(w in o for w in ["down","lower","below"]):
                 result["down_price"] = p; result["down_outcome"] = outcome
-        if "up_price"   not in result:
+        if "up_price" not in result:
             result["up_price"]   = float(prices[0]) if prices else 0.5
             result["up_outcome"] = outcomes[0] if outcomes else "Up"
         if "down_price" not in result:
@@ -193,43 +208,60 @@ def get_market_outcome_prices(market) -> dict:
         return {"up_price":0.5,"down_price":0.5,"up_outcome":"Up","down_outcome":"Down"}
 
 
-def get_market_liquidity(market_id) -> dict | None:
+def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
+    """
+    Obtiene un mercado por conditionId usando el endpoint correcto.
+    El endpoint /markets/{id} espera el id interno, no el conditionId.
+    Hay que usar /markets?condition_ids=...
+    """
     try:
-        r = requests.get(f"{GAMMA_API}/markets/{market_id}", timeout=5)
-        if r.status_code != 200: return None
-        m         = r.json()
+        r = requests.get(
+            f"{GAMMA_API}/markets",
+            params={"condition_ids": condition_id},
+            timeout=5
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        if isinstance(data, list) and data:
+            return data[0]
+        if isinstance(data, dict):
+            return data
+        return None
+    except Exception as e:
+        logger.error(f"_fetch_market_by_condition_id: {e}")
+        return None
+
+
+def get_market_liquidity(market_id: str) -> dict | None:
+    try:
+        m = _fetch_market_by_condition_id(market_id)
+        if not m:
+            return None
         best_bid  = float(m.get("bestBid",  0) or 0)
         best_ask  = float(m.get("bestAsk",  1) or 1)
         liquidity = float(m.get("liquidityNum", 0) or 0)
         spread    = best_ask - best_bid if best_ask > best_bid else 1.0
-        return {"spread": round(spread,4), "liquidity": round(liquidity,2),
-                "best_bid": best_bid, "best_ask": best_ask}
-    except:
+        return {
+            "spread":   round(spread, 4),
+            "liquidity": round(liquidity, 2),
+            "best_bid": best_bid,
+            "best_ask": best_ask,
+        }
+    except Exception as e:
+        logger.error(f"get_market_liquidity: {e}")
         return None
 
 
 def get_outcome_current_price(market_id: str, direction: str) -> float | None:
     try:
-        # intentar con conditionId
-        r = requests.get(f"{GAMMA_API}/markets/{market_id}", timeout=5)
-        if r.status_code != 200:
-            # intentar buscar por conditionId como query param
-            r2 = requests.get(f"{GAMMA_API}/markets",
-                              params={"condition_id": market_id}, timeout=5)
-            if r2.status_code != 200:
-                return None
-            data = r2.json()
-            if not data:
-                return None
-            m = data[0] if isinstance(data, list) else data
-        else:
-            m = r.json()
-
+        m = _fetch_market_by_condition_id(market_id)
+        if not m:
+            return None
         outcomes = m.get("outcomes", "[]")
         prices   = m.get("outcomePrices", "[]")
         if isinstance(outcomes, str): outcomes = json.loads(outcomes)
         if isinstance(prices,   str): prices   = json.loads(prices)
-
         for i, o in enumerate(outcomes):
             o_lower = o.lower()
             if (direction == "up"   and any(w in o_lower for w in ["up","higher","above"])) or \
@@ -264,14 +296,8 @@ class BTCScalper:
             elapsed = time_module.time() - meta["entered_at"]
             current = get_outcome_current_price(meta["market_id"], meta["direction"])
 
-            self.log(
-                f"🔍 #{trade_id} dir={meta['direction']} precio={current} "
-                f"entrada={meta['entry_price']} elapsed={elapsed:.0f}s",
-                "#41D6FC"
-            )
-
             if elapsed >= MAX_TRADE_DURATION:
-                if current and current != meta["entry_price"]:
+                if current and abs(current - meta["entry_price"]) > 0.001:
                     pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2)
                 else:
                     pnl = round(-pos * 0.03, 2)
@@ -315,17 +341,11 @@ class BTCScalper:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
 
-        now = int(time_module.time())
-        interval = 300
-        slugs_intentados = [f"btc-updown-5m-{((now // interval) + i) * interval}" for i in range(0, 4)]
-        self.log(f"🔎 buscando: {slugs_intentados[0]}", "#41D6FC")
-        market = find_active_btc_5m_market()
+        market = find_active_btc_5m_market(log_fn=self.log)
         if not market:
-            self.log("❌ Sin mercado BTC 5m", "#FF5050")
-        return False
+            return False
 
         market_id = market.get("conditionId") or market.get("id", "")
-        self.log(f"🏪 id={market.get('id')} conditionId={market.get('conditionId')}", "#41D6FC")
         question  = market.get("question", "")
 
         if any(t["market_id"] == market_id for t in active):
@@ -389,7 +409,7 @@ class BTCScalper:
                         "#A78BFA"
                     )
             except Exception as e:
-                logger.error(f"auto-tune error: {e}")
+                logger.error(f"auto-tune: {e}")
 
         return False
 
@@ -417,7 +437,6 @@ class BTCScalper:
                 "entry_price": market_price,
                 "entered_at":  time_module.time(),
             }
-            self.log(f"📌 market_id guardado: {market_id}", "#41D6FC")
             self.log(
                 f"✅ TRADE #{trade['id']} · "
                 f"{'📈 UP' if direction=='up' else '📉 DOWN'} · "
