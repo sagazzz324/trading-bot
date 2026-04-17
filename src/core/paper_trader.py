@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -26,7 +27,7 @@ class PaperTrader:
                     self.trades           = data.get("trades",           [])
                     self.active_trades    = data.get("active_trades",    [])
             except Exception as e:
-                logger.error(f"Error cargando estado: {e}")
+                logger.error(f"Error cargando estado: {e}\n{traceback.format_exc()}")
 
     def load_state(self):
         self._load_state()
@@ -38,13 +39,16 @@ class PaperTrader:
         }
 
     def _save_state(self):
-        with open(self.log_file, "w") as f:
-            json.dump({
-                "bankroll":         self.bankroll,
-                "initial_bankroll": self.initial_bankroll,
-                "trades":           self.trades,
-                "active_trades":    self.active_trades
-            }, f, indent=2)
+        try:
+            with open(self.log_file, "w") as f:
+                json.dump({
+                    "bankroll":         self.bankroll,
+                    "initial_bankroll": self.initial_bankroll,
+                    "trades":           self.trades,
+                    "active_trades":    self.active_trades
+                }, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error guardando estado: {e}\n{traceback.format_exc()}")
 
     def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size):
         if position_size <= 0:
@@ -69,25 +73,37 @@ class PaperTrader:
         }
 
         self.bankroll -= position_size
+        # NOTE: ambas listas apuntan al MISMO objeto dict aquí,
+        # pero después de un _load_state() son objetos distintos.
+        # Por eso resolve_trade* siempre sincroniza las dos listas.
         self.active_trades.append(trade)
         self.trades.append(trade)
         self._save_state()
 
         logger.info(f"Trade #{trade['id']} colocado: ${position_size:.2f} en '{question[:50]}'")
-        print(f"\n✅ TRADE SIMULADO")
-        print(f"   Mercado: {question[:60]}")
-        print(f"   Prob: {true_prob:.1%} | Precio: {market_prob:.1%} | EV: {ev:.4f}")
-        print(f"   Posición: ${position_size:.2f} | Bankroll: ${self.bankroll:.2f}")
         return trade
+
+    def _sync_trade_in_history(self, trade_id: int, updates: dict):
+        """
+        Aplica `updates` al trade con trade_id en self.trades.
+        Necesario porque después de _load_state() self.trades y
+        self.active_trades son objetos distintos en memoria.
+        """
+        for t in self.trades:
+            if t["id"] == trade_id:
+                t.update(updates)
+                return True
+        logger.error(f"_sync_trade_in_history: Trade #{trade_id} no encontrado en historial")
+        return False
 
     def resolve_trade(self, trade_id, outcome):
         """Resuelve un trade por resultado binario (True=win, False=loss)."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
-            logger.error(f"Trade #{trade_id} no encontrado")
+            logger.error(f"resolve_trade: Trade #{trade_id} no encontrado en active_trades")
             return
 
-        position   = trade["position_size"]
+        position    = trade["position_size"]
         market_prob = trade["market_prob"]
 
         if outcome:
@@ -97,45 +113,86 @@ class PaperTrader:
         else:
             pnl = -position
 
-        trade["status"] = "resolved"
-        trade["result"] = "win" if outcome else "loss"
-        trade["pnl"]    = round(pnl, 2)
+        updates = {
+            "status": "resolved",
+            "result": "win" if outcome else "loss",
+            "pnl":    round(pnl, 2)
+        }
+
+        # Actualizar en active_trades
+        trade.update(updates)
+        # Sincronizar en historial (distinto objeto tras deserialización JSON)
+        self._sync_trade_in_history(trade_id, updates)
+
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         self._save_state()
 
-        print(f"\n{'🟢 GANADO' if outcome else '🔴 PERDIDO'} - Trade #{trade_id}")
-        print(f"   PnL: ${pnl:.2f} | Bankroll: ${self.bankroll:.2f}")
+        logger.info(f"Trade #{trade_id} resuelto: {'WIN' if outcome else 'LOSS'} PnL ${pnl:.2f}")
 
     def resolve_trade_with_pnl(self, trade_id, pnl):
         """Cierra un trade con PnL calculado externamente (salida anticipada)."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
-            logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado")
+            logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado en active_trades")
             return
 
-        trade["status"] = "resolved"
-        trade["result"] = "win" if pnl >= 0 else "loss"
-        trade["pnl"]    = round(pnl, 2)
-        self.bankroll  += trade["position_size"] + pnl
+        updates = {
+            "status": "resolved",
+            "result": "win" if pnl >= 0 else "loss",
+            "pnl":    round(pnl, 2)
+        }
+
+        # Actualizar en active_trades
+        trade.update(updates)
+        # Sincronizar en historial (distinto objeto tras deserialización JSON)
+        self._sync_trade_in_history(trade_id, updates)
+
+        self.bankroll += trade["position_size"] + pnl
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         self._save_state()
 
-        logger.info(f"Trade #{trade_id} cerrado anticipado: PnL ${pnl:.2f}")
+        logger.info(f"Trade #{trade_id} cerrado: {'WIN' if pnl >= 0 else 'LOSS'} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
+
+    def force_close_stale_trades(self, pnl_per_trade=0.0):
+        """
+        Limpia posiciones activas colgadas marcándolas como resolved.
+        Útil para el reset después del fix.
+        pnl_per_trade: PnL a asignar a cada trade (0 = break even, negativo = loss)
+        """
+        stale = list(self.active_trades)
+        if not stale:
+            logger.info("No hay trades activos para limpiar")
+            return 0
+
+        for trade in stale:
+            self.resolve_trade_with_pnl(trade["id"], pnl_per_trade)
+
+        logger.info(f"force_close_stale_trades: {len(stale)} trades cerrados")
+        return len(stale)
+
+    def reset(self, bankroll=1000):
+        """Reset completo — bankroll fresco, historial limpio."""
+        self.bankroll         = bankroll
+        self.initial_bankroll = bankroll
+        self.trades           = []
+        self.active_trades    = []
+        self._save_state()
+        logger.info(f"PaperTrader reseteado — bankroll ${bankroll}")
 
     def get_stats(self):
-        resolved = [t for t in self.trades if t["status"] == "resolved"]
+        resolved = [t for t in self.trades if t.get("status") == "resolved"]
         if not resolved:
             return {"mensaje": "Sin trades resueltos todavía"}
 
-        wins      = [t for t in resolved if t["result"] == "win"]
-        total_pnl = sum(t["pnl"] for t in resolved)
+        wins      = [t for t in resolved if t.get("result") == "win"]
+        total_pnl = sum(t.get("pnl", 0) for t in resolved)
         win_rate  = len(wins) / len(resolved)
         drawdown  = (self.initial_bankroll - self.bankroll) / self.initial_bankroll
 
         return {
-            "total_trades":   len(resolved),
-            "win_rate":       f"{win_rate:.1%}",
-            "total_pnl":      f"${total_pnl:.2f}",
+            "total_trades":    len(resolved),
+            "win_rate":        f"{win_rate:.1%}",
+            "total_pnl":       f"${total_pnl:.2f}",
             "bankroll_actual": f"${self.bankroll:.2f}",
-            "drawdown":       f"{drawdown:.1%}"
+            "drawdown":        f"{drawdown:.1%}"
         }
