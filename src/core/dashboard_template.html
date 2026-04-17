@@ -349,7 +349,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
       <div class="tab-panel" id="panel-poly">
 
         <!-- BTC SCALP layout -->
-        <div id="btc-embed-wrap" style="display:none">
+        <div id="btc-embed-wrap" style="display:block">
           <div class="two-col" style="align-items:start">
             <div class="card">
               <div class="card-hdr">
@@ -408,26 +408,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
     </main>
   </div>
 
-  <nav class="bottom-nav">
-    <div class="bn-grid">
-      <div class="bn-item active" onclick="switchTabMob('bybit',this)">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <span class="bn-lbl">Bybit</span>
-      </div>
-      <div class="bn-item" onclick="switchTabMob('poly',this)">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></div>
-        <span class="bn-lbl">Polymarket</span>
-      </div>
-      <div class="bn-item" onclick="toggleBybit()">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
-        <span class="bn-lbl">Bybit ON</span>
-      </div>
-      <div class="bn-item" onclick="togglePoly()">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
-        <span class="bn-lbl">Poly ON</span>
-      </div>
-    </div>
-  </nav>
+  
 </div>
 
 <script>

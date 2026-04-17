@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020204;overflow-x:hidden;font-family:'Chivo',sans-serif}
+
+#hero{
+  position:sticky;top:0;width:100%;height:100vh;
+  z-index:10;overflow:hidden
+}
+canvas{position:absolute;inset:0}
+#c-bg{z-index:0}
+#c-chart{z-index:1}
+.grain{position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:0.03}
+.tint{position:absolute;inset:0;pointer-events:none;z-index:3;transition:background 0.7s ease}
+.floats{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
+.fnum{position:absolute;font-family:'Chivo Mono',monospace;font-size:9px;font-weight:300;
+  color:rgba(0,232,135,0.18);letter-spacing:1px;transition:opacity 1.2s ease}
+
+.ui{
+  position:absolute;inset:0;z-index:6;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:48px;
+  opacity:0;transform:translateY(18px);
+  transition:opacity 0.9s ease,transform 0.9s ease
+}
+.ui.visible{opacity:1;transform:translateY(0)}
+.title{text-align:center;position:relative}
+.title h1{
+  font-family:'Chivo',sans-serif;font-size:clamp(26px,5vw,58px);
+  font-weight:900;color:#f0f4f8;letter-spacing:-3px;line-height:0.93;margin-bottom:16px
+}
+.word{display:inline-block;overflow:hidden;margin-right:0.18em}
+.word span{display:inline-block;transform:translateY(100%);opacity:0;
+  transition:transform 0.7s cubic-bezier(0.16,1,0.3,1),opacity 0.5s ease}
+.ui.visible .word span{transform:translateY(0);opacity:1}
+.title p{font-family:'Chivo Mono',monospace;font-size:10px;font-weight:300;
+  color:rgba(255,255,255,0.27);letter-spacing:5px;text-transform:uppercase;
+  opacity:0;transform:translateY(6px);transition:opacity 0.8s ease 0.55s,transform 0.8s ease 0.55s}
+.ui.visible .title p{opacity:1;transform:translateY(0)}
+.sys-status{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
+  font-family:'Chivo Mono',monospace;font-size:8px;font-weight:300;
+  color:rgba(0,232,135,0.22);letter-spacing:3.5px;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sys-dot{width:4px;height:4px;border-radius:50%;background:rgba(0,232,135,0.35);
+  animation:syspulse 2.8s ease-in-out infinite}
+@keyframes syspulse{0%,100%{opacity:0.3}50%{opacity:1}}
+
+.cards{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:0 20px}
+.card{width:220px;padding:24px 22px 20px;
+  background:rgba(255,255,255,0.032);backdrop-filter:blur(40px);
+  border:1px solid rgba(255,255,255,0.075);border-radius:22px;
+  cursor:pointer;text-align:left;
+  transition:transform 0.32s cubic-bezier(0.34,1.4,0.64,1),border-color 0.38s,box-shadow 0.38s,opacity 0.4s;
+  opacity:0;transform:translateY(28px) scale(0.94)}
+.card.show{opacity:1;transform:translateY(0) scale(1)}
+.card:hover{transform:translateY(-7px) scale(1.045)}
+.card.pressing{transform:scale(0.96)!important;transition:transform 0.08s ease}
+.card.bybit:hover{border-color:rgba(59,130,246,0.42);
+  box-shadow:0 0 0 1px rgba(59,130,246,0.1),0 28px 80px rgba(0,0,0,0.75),0 0 80px rgba(59,130,246,0.13)}
+.card.poly:hover{border-color:rgba(139,92,246,0.42);
+  box-shadow:0 0 0 1px rgba(139,92,246,0.1),0 28px 80px rgba(0,0,0,0.75),0 0 80px rgba(139,92,246,0.13)}
+.card.click-flash.bybit{box-shadow:0 0 0 2px rgba(59,130,246,0.6),0 0 60px rgba(59,130,246,0.4)!important}
+.card.click-flash.poly{box-shadow:0 0 0 2px rgba(139,92,246,0.6),0 0 60px rgba(139,92,246,0.4)!important}
+.tag{display:inline-flex;align-items:center;gap:5px;border-radius:7px;padding:3px 9px;
+  margin-bottom:18px;font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:2px}
+.tag-dot{width:4px;height:4px;border-radius:50%}
+.bybit .tag{background:rgba(59,130,246,0.11);border:1px solid rgba(59,130,246,0.22);color:#3b82f6}
+.bybit .tag-dot{background:#3b82f6}
+.poly .tag{background:rgba(139,92,246,0.11);border:1px solid rgba(139,92,246,0.22);color:#8b5cf6}
+.poly .tag-dot{background:#8b5cf6}
+.card-name{font-family:'Chivo',sans-serif;font-size:25px;font-weight:900;color:#fff;
+  letter-spacing:-1px;line-height:1;margin-bottom:4px}
+.card-sub{font-family:'Chivo Mono',monospace;font-size:9px;font-weight:300;
+  color:rgba(255,255,255,0.2);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:14px}
+.card-desc{font-family:'Chivo Mono',monospace;font-size:11px;font-weight:300;
+  color:rgba(255,255,255,0.34);line-height:1.65;margin-bottom:20px}
+.card-line{height:1px;margin-bottom:12px;transform-origin:left;
+  transform:scaleX(0.12);opacity:0.22;transition:transform 0.4s ease,opacity 0.4s ease}
+.bybit .card-line{background:linear-gradient(to right,#3b82f6,transparent)}
+.poly .card-line{background:linear-gradient(to right,#8b5cf6,transparent)}
+.card:hover .card-line{transform:scaleX(1);opacity:1}
+.card-cta{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:1.5px;
+  color:rgba(255,255,255,0.16);transition:color 0.35s,transform 0.3s;
+  display:flex;align-items:center;gap:6px}
+.bybit:hover .card-cta{color:#3b82f6;transform:translateX(5px)}
+.poly:hover .card-cta{color:#8b5cf6;transform:translateX(5px)}
+.footer-hero{font-family:'Chivo Mono',monospace;font-size:9px;font-weight:300;
+  color:rgba(255,255,255,0.09);letter-spacing:3px;text-transform:uppercase}
+
+.flood{position:absolute;inset:0;z-index:20;pointer-events:none;opacity:0}
+.flood.active{animation:fe 0.9s cubic-bezier(0.32,0,0.18,1) forwards}
+@keyframes fe{from{clip-path:var(--s);opacity:1}to{clip-path:var(--e);opacity:1}}
+.flash{position:absolute;inset:0;z-index:19;pointer-events:none;opacity:0;background:#fff}
+.flash.active{animation:fl 0.12s ease forwards}
+@keyframes fl{0%{opacity:0}40%{opacity:0.04}100%{opacity:0}}
+.done-screen{position:absolute;inset:0;z-index:21;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:24px}
+.done-screen.visible{display:flex}
+.done-screen h2{font-family:'Chivo',sans-serif;font-size:22px;font-weight:900;
+  color:rgba(255,255,255,0.95);letter-spacing:-0.8px}
+.back-btn{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:3px;
+  color:rgba(255,255,255,0.4);background:transparent;
+  border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:8px 18px;
+  cursor:pointer;text-transform:uppercase;transition:color 0.2s,border-color 0.2s}
+.back-btn:hover{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.3)}
+
+/* scroll track */
+#scroll-track{height:400vh;position:relative;z-index:1}
+
+/* SECTIONS — dark green world */
+#sections{position:relative;z-index:2;padding:0 0 120px}
+
+.section{max-width:860px;margin:0 auto;padding:90px 32px 0;
+  opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s ease}
+.section.in{opacity:1;transform:translateY(0)}
+
+.sec-eyebrow{font-family:'Chivo Mono',monospace;font-size:8px;font-weight:400;
+  color:rgba(0,232,135,0.5);letter-spacing:4px;text-transform:uppercase;
+  margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.sec-eyebrow::before{content:'';display:block;width:28px;height:1px;background:rgba(0,232,135,0.3)}
+.sec-title{font-family:'Chivo',sans-serif;font-size:clamp(28px,4vw,44px);
+  font-weight:900;color:#eeeef0;letter-spacing:-2px;line-height:1;margin-bottom:32px}
+
+.state-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.state-card{background:rgba(0,232,135,0.04);border:1px solid rgba(0,232,135,0.12);
+  border-radius:16px;padding:20px 22px}
+.sc-label{font-family:'Chivo Mono',monospace;font-size:8px;font-weight:300;
+  color:rgba(0,232,135,0.45);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px}
+.sc-val{font-family:'Chivo Mono',monospace;font-size:28px;font-weight:400;
+  color:#00E887;letter-spacing:-1px;line-height:1}
+.sc-sub{font-family:'Chivo Mono',monospace;font-size:9px;font-weight:300;
+  color:rgba(255,255,255,0.2);margin-top:6px}
+
+.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+.perf-card{background:rgba(0,0,0,0.25);border:1px solid rgba(0,232,135,0.08);
+  border-radius:16px;padding:22px}
+.pc-label{font-family:'Chivo Mono',monospace;font-size:8px;font-weight:300;
+  color:rgba(255,255,255,0.25);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px}
+.pc-val{font-family:'Chivo',sans-serif;font-size:32px;font-weight:900;letter-spacing:-2px;line-height:1}
+.pc-val.green{color:#00E887}.pc-val.white{color:#eeeef0}
+.pc-bar-wrap{margin-top:12px;height:1px;background:rgba(0,232,135,0.1);border-radius:2px;overflow:hidden}
+.pc-bar{height:100%;background:#00E887;width:0;transition:width 1.4s cubic-bezier(0.4,0,0.2,1)}
+
+.strategy-body{border-left:1px solid rgba(0,232,135,0.18);padding-left:28px}
+.strat-line{font-family:'Chivo Mono',monospace;font-size:13px;font-weight:300;
+  color:rgba(255,255,255,0.35);line-height:1.9;
+  opacity:0;transform:translateX(-8px);transition:opacity 0.6s ease,transform 0.6s ease}
+.strat-line.in{opacity:1;transform:translateX(0)}
+.strat-line em{color:rgba(0,232,135,0.85);font-style:normal}
+.strat-line strong{color:rgba(255,255,255,0.7);font-weight:400}
+
+.cta-wrap{text-align:center;padding:60px 0 0}
+.cta-sub{font-family:'Chivo Mono',monospace;font-size:9px;font-weight:300;
+  color:rgba(255,255,255,0.18);letter-spacing:4px;text-transform:uppercase;margin-bottom:28px}
+.cta-btn{display:inline-flex;align-items:center;gap:12px;
+  font-family:'Chivo',sans-serif;font-size:15px;font-weight:700;
+  color:#020204;background:#00E887;border:none;border-radius:14px;padding:16px 40px;
+  cursor:pointer;letter-spacing:-0.3px;
+  transition:transform 0.2s,box-shadow 0.2s;box-shadow:0 0 0 rgba(0,232,135,0)}
+.cta-btn:hover{transform:scale(1.04);box-shadow:0 0 40px rgba(0,232,135,0.25)}
+.cta-btn:active{transform:scale(0.98)}
+.cta-arrow{font-size:18px;transition:transform 0.2s}
+.cta-btn:hover .cta-arrow{transform:translateX(4px)}
+.cta-note{font-family:'Chivo Mono',monospace;font-size:8px;font-weight:300;
+  color:rgba(255,255,255,0.12);letter-spacing:2px;text-transform:uppercase;margin-top:16px}
+
+@media(max-width:640px){
+  .state-grid,.perf-grid{grid-template-columns:1fr 1fr}
+  .section{padding:70px 20px 0}
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&family=Chivo+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- STICKY HERO -->
+<div id="hero">
+  <canvas id="c-bg"></canvas>
+  <canvas id="c-chart"></canvas>
+  <div class="grain"></div>
+  <div class="tint" id="tint"></div>
+  <div class="floats" id="floats"></div>
+
+  <div class="ui" id="ui">
+    <div class="title">
+      <h1 id="h1-title"></h1>
+      <p>Trade probability. Not emotion.</p>
+      <div class="sys-status">
+        <div class="sys-dot"></div>
+        <span id="sys-label">SYSTEM READY</span>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card bybit" id="card-bybit"
+           onmouseenter="setHover('bybit')" onmouseleave="setHover(null)"
+           onmousedown="pressCard(this)" onmouseup="releaseCard(this,'bybit')">
+        <div class="tag"><div class="tag-dot"></div>LIVE</div>
+        <div class="card-name">Bybit</div>
+        <div class="card-sub">Futures · Algorithmic</div>
+        <div class="card-desc">Scalping + Grid con orquestación automática</div>
+        <div class="card-line"></div>
+        <div class="card-cta">ABRIR <span>→</span></div>
+      </div>
+      <div class="card poly" id="card-poly"
+           onmouseenter="setHover('poly')" onmouseleave="setHover(null)"
+           onmousedown="pressCard(this)" onmouseup="releaseCard(this,'poly')">
+        <div class="tag"><div class="tag-dot"></div>PAPER</div>
+        <div class="card-name">Polymarket</div>
+        <div class="card-sub">Prediction · Markov</div>
+        <div class="card-desc">Cadenas de Markov + State persistence filter</div>
+        <div class="card-line"></div>
+        <div class="card-cta">ABRIR <span>→</span></div>
+      </div>
+    </div>
+    <div class="footer-hero">v2.0 · paper mode · Córdoba, AR</div>
+  </div>
+
+  <div class="flood" id="flood"></div>
+  <div class="flash" id="flash"></div>
+  <div class="done-screen" id="done">
+    <h2 id="done-title">Bybit Bot</h2>
+    <button class="back-btn" onclick="resetDemo()">← VOLVER</button>
+  </div>
+</div>
+
+<div id="scroll-track"></div>
+
+<!-- SECTIONS — rendered on dark-green world -->
+<div id="sections">
+  <div class="section" id="sec1">
+    <div class="sec-eyebrow">Sistema</div>
+    <div class="sec-title">Estado del modelo</div>
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="sc-label">Estado actual</div>
+        <div class="sc-val" id="val-state">S0</div>
+        <div class="sc-sub">Strong Bull</div>
+      </div>
+      <div class="state-card">
+        <div class="sc-label">Persistencia τ</div>
+        <div class="sc-val" id="val-tau">0.00</div>
+        <div class="sc-sub">Umbral mínimo</div>
+      </div>
+      <div class="state-card">
+        <div class="sc-label">Gap ε</div>
+        <div class="sc-val" id="val-eps">0.000</div>
+        <div class="sc-sub">Arbitrage edge</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec2">
+    <div class="sec-eyebrow">Performance</div>
+    <div class="sec-title">30 días · paper mode</div>
+    <div class="perf-grid">
+      <div class="perf-card">
+        <div class="pc-label">PnL simulado</div>
+        <div class="pc-val green" id="val-pnl">$0</div>
+        <div class="pc-bar-wrap"><div class="pc-bar" id="bar-pnl"></div></div>
+      </div>
+      <div class="perf-card">
+        <div class="pc-label">Win rate</div>
+        <div class="pc-val white" id="val-wr">0%</div>
+        <div class="pc-bar-wrap"><div class="pc-bar" id="bar-wr"></div></div>
+      </div>
+      <div class="perf-card">
+        <div class="pc-label">Trades</div>
+        <div class="pc-val white" id="val-trades">0</div>
+        <div class="pc-bar-wrap"><div class="pc-bar" id="bar-trades" style="background:rgba(255,255,255,0.3)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec3">
+    <div class="sec-eyebrow">Lógica</div>
+    <div class="sec-title">Cómo decide el bot</div>
+    <div class="strategy-body" id="strat-body">
+      <div class="strat-line">El mercado se clasifica en <em>4 estados</em> según el retorno porcentual de cada vela.</div>
+      <div class="strat-line">Se estima una <em>matriz de transición</em> con las últimas 40 velas usando suavizado de Laplace.</div>
+      <div class="strat-line">El bot entra solo si se cumplen <strong>dos condiciones simultáneas</strong>:</div>
+      <div class="strat-line">→ La <em>persistencia diagonal</em> del próximo estado supera τ <em>(0.17)</em></div>
+      <div class="strat-line">→ El gap entre <em>p_hat</em> y el precio del mercado supera ε <em>(0.03)</em></div>
+      <div class="strat-line">Sin análisis técnico. Sin noticias. Solo <em>probabilidades de transición.</em></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec4">
+    <div class="cta-wrap">
+      <div class="cta-sub">Todo listo</div>
+      <button class="cta-btn" onclick="scrollToTop()">
+        Entrar al sistema <span class="cta-arrow">→</span>
+      </button>
+      <div class="cta-note">Sin dinero real · Paper trading activo</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CANVAS ────────────────────────────────────────────────────────────────────
+const cbg=document.getElementById('c-bg'),ctxbg=cbg.getContext('2d')
+const cc=document.getElementById('c-chart'),ctx=cc.getContext('2d')
+let W,H
+function resize(){W=cbg.width=cc.width=window.innerWidth;H=cbg.height=cc.height=window.innerHeight}
+window.addEventListener('resize',resize);resize()
+
+// ── TITLE ─────────────────────────────────────────────────────────────────────
+;['Neural','Trade','OS'].forEach((w,i)=>{
+  const d=document.createElement('span');d.className='word'
+  const s=document.createElement('span');s.textContent=w
+  s.style.transitionDelay=`${0.05+i*0.12}s`
+  d.appendChild(s);document.getElementById('h1-title').appendChild(d)
+})
+
+// ── REALISTIC PRICES ──────────────────────────────────────────────────────────
+function genPrices(n=420){
+  const p=[0.08];let regime='trend',rt=0,trendDir=1
+  for(let i=1;i<n;i++){
+    if(++rt>15+Math.random()*40){
+      const r=Math.random()
+      if(r<0.4){regime='trend';trendDir=Math.random()<0.6?1:-1}
+      else if(r<0.72){regime='consolidation'}
+      else{regime='spike'}
+      rt=0
+    }
+    const prev=p[i-1]
+    let move=0
+    if(regime==='trend'){
+      move=trendDir*(0.004+Math.random()*0.007)+(Math.random()-0.5)*0.01
+    } else if(regime==='consolidation'){
+      move=(Math.random()-0.5)*0.006+(0.5-prev)*0.02
+    } else {
+      move=(Math.random()-0.5)*0.055
+      regime='consolidation';rt=0
+    }
+    const rev=(0.48-prev)*0.008
+    p.push(Math.max(0.06,Math.min(0.92,prev+move+rev)))
+  }
+  return p
+}
+const PRICES=genPrices();const TOTAL=PRICES.length
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let progress=0,dotX=0,dotY=0,dotTX=0,dotTY=0
+let zoom=false,zx=0,zy=0,zs=1
+let hoverMode=null,paralaxOY=0,paralaxTY=0,speedMul=1
+let scrollP=0
+// chartFill: 0=black (default), 1=green is filling everything
+let chartFillAlpha=0
+
+function getX(i){return W*(0.01+(i/(TOTAL-1))*0.97)}
+function getY(v){return H*(0.94-v*0.70)+paralaxOY*0.4}
+
+// ── SCROLL ────────────────────────────────────────────────────────────────────
+const track=document.getElementById('scroll-track')
+window.addEventListener('scroll',()=>{
+  const raw=(window.scrollY)/(track.offsetTop+track.offsetHeight-window.innerHeight)
+  scrollP=Math.max(0,Math.min(1,raw))
+
+  // cards fade as scroll 0→0.6
+  const cardOp=Math.max(0.42,1-scrollP*1.4)
+  document.getElementById('card-bybit').style.opacity=cardOp
+  document.getElementById('card-poly').style.opacity=cardOp
+
+  // title shift up
+  document.getElementById('ui').style.transform=`translateY(${-scrollP*28}px)`
+
+  // chart fill alpha — used in drawChart to expand green area
+  chartFillAlpha=scrollP
+
+  checkSections()
+},{passive:true})
+
+// ── SECTION TRIGGERS ──────────────────────────────────────────────────────────
+let countersRan=false,stratRan=false
+function checkSections(){
+  document.querySelectorAll('.section').forEach(sec=>{
+    const rect=sec.getBoundingClientRect()
+    if(rect.top<window.innerHeight*0.82)sec.classList.add('in')
+  })
+  if(document.getElementById('sec2').classList.contains('in')&&!countersRan){
+    countersRan=true;animateCounters()
+  }
+  if(document.getElementById('sec3').classList.contains('in')&&!stratRan){
+    stratRan=true
+    document.querySelectorAll('.strat-line').forEach((l,i)=>{
+      setTimeout(()=>l.classList.add('in'),i*130)
+    })
+  }
+}
+
+function animateCounters(){
+  animCount('val-pnl',128.40,1200,v=>'$'+v.toFixed(2),'bar-pnl',68)
+  animCount('val-wr',54.2,1000,v=>v.toFixed(1)+'%','bar-wr',54)
+  animCount('val-trades',847,1400,v=>Math.round(v).toString(),'bar-trades',70)
+  animCount('val-tau',0.17,800,v=>v.toFixed(2))
+  animCount('val-eps',0.031,900,v=>v.toFixed(3))
+}
+function animCount(id,target,dur,fmt,barId,barPct){
+  const el=document.getElementById(id);if(!el)return
+  const start=performance.now()
+  const tick=now=>{
+    const t=Math.min((now-start)/dur,1),e=1-(1-t)*(1-t)*(1-t)
+    el.textContent=fmt(target*e)
+    if(t<1)requestAnimationFrame(tick);else el.textContent=fmt(target)
+  }
+  requestAnimationFrame(tick)
+  if(barId){
+    const b=document.getElementById(barId);if(!b)return
+    setTimeout(()=>{b.style.width=barPct+'%'},80)
+  }
+}
+
+// ── FLOATS ────────────────────────────────────────────────────────────────────
+const floatC=document.getElementById('floats')
+const FD=['0.87','0.92','S0→S1','0.63','S2','0.79','0.91','S1→S3','0.44','0.88']
+let floatNums=[]
+function spawnFloat(){
+  if(floatNums.length>7||scrollP>0.2)return
+  const el=document.createElement('div');el.className='fnum'
+  el.textContent=FD[Math.floor(Math.random()*FD.length)]
+  const d=Math.floor(progress)
+  const cx=getX(d)+(Math.random()-0.5)*160
+  const cy=getY(PRICES[d]||0.5)+(Math.random()-0.5)*100
+  el.style.left=Math.max(20,Math.min(W-60,cx))+'px'
+  el.style.top=Math.max(20,Math.min(H-30,cy))+'px'
+  el.style.opacity='0';floatC.appendChild(el);floatNums.push(el)
+  setTimeout(()=>el.style.opacity='1',50)
+  setTimeout(()=>{
+    el.style.opacity='0'
+    setTimeout(()=>{try{floatC.removeChild(el)}catch(_){}
+      floatNums=floatNums.filter(x=>x!==el)},1200)
+  },2800+Math.random()*1800)
+}
+setInterval(()=>{if(progress>30)spawnFloat()},1400)
+
+window.addEventListener('mousemove',e=>{paralaxTY=(e.clientY/H-0.5)*22})
+
+// sys status
+const SYS=['SYSTEM READY','MODEL ACTIVE','MARKOV v2.1','PAPER MODE','TAU=0.17']
+let si=0
+setInterval(()=>{
+  const el=document.getElementById('sys-label');if(!el)return
+  el.style.opacity='0'
+  setTimeout(()=>{si=(si+1)%SYS.length;el.textContent=SYS[si];el.style.transition='opacity 0.6s';el.style.opacity='1'},400)
+},3800)
+
+// ── BG: transitions from dark to dark-green as scroll increases ───────────────
+function drawBg(){
+  ctxbg.clearRect(0,0,W,H)
+  // negro puro → verde muy oscuro según scroll
+  const g1=Math.round(2+scrollP*16)
+  const g2=Math.round(10+scrollP*22)
+  const bg=ctxbg.createLinearGradient(0,0,0,H)
+  bg.addColorStop(0,`rgb(1,${Math.round(g1*0.5)},2)`)
+  bg.addColorStop(1,`rgb(0,${g2},6)`)
+  ctxbg.fillStyle=bg
+  ctxbg.fillRect(0,0,W,H)
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+function drawChart(){
+  const drawn=Math.min(Math.floor(progress),TOTAL-1)
+  ctx.clearRect(0,0,W,H)
+  if(drawn<2)return
+
+  if(zoom&&zs>1){ctx.save();ctx.translate(zx,zy);ctx.scale(zs,zs);ctx.translate(-zx,-zy)}
+
+  const pts=[]
+  for(let i=0;i<=drawn;i++)pts.push({x:getX(i),y:getY(PRICES[i])})
+
+  const bp=()=>{
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y)
+    for(let i=1;i<pts.length;i++){
+      const mx=(pts[i-1].x+pts[i].x)/2,my=(pts[i-1].y+pts[i].y)/2
+      ctx.quadraticCurveTo(pts[i-1].x,pts[i-1].y,mx,my)
+    }
+  }
+
+  // soft halo
+  bp()
+  ctx.strokeStyle='rgba(0,232,135,0.04)';ctx.lineWidth=10
+  ctx.lineCap='round';ctx.shadowBlur=0;ctx.stroke()
+
+  // main line — slightly brighter as scroll increases
+  bp()
+  const lineAlpha=0.9+scrollP*0.1
+  ctx.strokeStyle=`rgba(0,232,135,${lineAlpha})`;ctx.lineWidth=1.8
+  ctx.shadowBlur=hoverMode==='bybit'?12:7
+  ctx.shadowColor='rgba(0,232,135,0.5)'
+  ctx.lineCap='round';ctx.stroke();ctx.shadowBlur=0
+
+  // area fill — this is the key: grows from subtle to solid as scroll increases
+  const last=pts[pts.length-1]
+  bp()
+  ctx.lineTo(last.x,H);ctx.lineTo(pts[0].x,H);ctx.closePath()
+
+  // at scroll=0: subtle gradient. at scroll=1: solid deep green filling whole area
+  const fillTop=0.05+chartFillAlpha*0.75   // top opacity 0.05 → 0.80
+  const fillBot=0.0+chartFillAlpha*0.65   // bottom 0 → 0.65
+  const fg=ctx.createLinearGradient(0,getY(0.92),0,H)
+  fg.addColorStop(0,`rgba(0,80,30,${fillTop})`)
+  fg.addColorStop(0.4,`rgba(0,55,20,${fillBot*0.9})`)
+  fg.addColorStop(1,`rgba(0,30,12,${fillBot})`)
+  ctx.fillStyle=fg;ctx.fill()
+
+  // dot — inertia increases (more stable) with scroll
+  dotTX=last.x;dotTY=last.y
+  const lag=0.08+scrollP*0.35
+  dotX+=(dotTX-dotX)*lag;dotY+=(dotTY-dotY)*lag
+
+  // sonar — fades slightly with scroll
+  const sonarOp=1-scrollP*0.5
+  const now=Date.now()
+  for(const[off,a] of [[0,0.22],[1000,0.12]]){
+    const t=((now+off)%2400)/2400,e=1-(1-t)*(1-t)
+    ctx.beginPath();ctx.arc(dotX,dotY,3+e*22,0,Math.PI*2)
+    ctx.strokeStyle=`rgba(0,232,135,${a*(1-e)*(1-e)*sonarOp})`
+    ctx.lineWidth=0.5;ctx.stroke()
+  }
+
+  const hh=ctx.createRadialGradient(dotX,dotY,0,dotX,dotY,12)
+  hh.addColorStop(0,'rgba(0,232,135,0.14)');hh.addColorStop(1,'rgba(0,232,135,0)')
+  ctx.beginPath();ctx.arc(dotX,dotY,12,0,Math.PI*2);ctx.fillStyle=hh;ctx.fill()
+  ctx.beginPath();ctx.arc(dotX,dotY,3.8,0,Math.PI*2)
+  ctx.fillStyle='#00E887';ctx.shadowBlur=9;ctx.shadowColor='rgba(0,232,135,0.55)';ctx.fill()
+  ctx.shadowBlur=0
+  ctx.beginPath();ctx.arc(dotX,dotY,1.6,0,Math.PI*2);ctx.fillStyle='#d0ffe8';ctx.fill()
+
+  if(zoom&&zs>1){ctx.restore();zs=Math.min(zs+0.07,7)}
+}
+
+// ── SECTIONS BG: dark green world ─────────────────────────────────────────────
+// applied directly to the sections element
+const sectEl=document.getElementById('sections')
+
+// ── LOOP ──────────────────────────────────────────────────────────────────────
+function loop(){
+  paralaxOY+=(paralaxTY-paralaxOY)*0.04
+  drawBg();drawChart()
+
+  // apply dark green bg to sections, matching where chart fill goes
+  const g=Math.round(12+scrollP*8)
+  sectEl.style.background=`rgb(1,${g},6)`
+
+  if(progress<TOTAL-1){
+    const sp=(1.2+(Math.abs(PRICES[Math.min(Math.floor(progress)+1,TOTAL-1)]-PRICES[Math.floor(progress)])>0.025?1.2:0)+Math.sin(progress/18)*0.3)*speedMul
+    progress=Math.min(progress+sp,TOTAL-1)
+  }
+  requestAnimationFrame(loop)
+}
+loop()
+
+// ── REVEAL ────────────────────────────────────────────────────────────────────
+setTimeout(()=>{
+  document.getElementById('ui').classList.add('visible')
+  setTimeout(()=>document.getElementById('card-bybit').classList.add('show'),320)
+  setTimeout(()=>document.getElementById('card-poly').classList.add('show'),530)
+},1900)
+
+// ── INTERACTIONS ──────────────────────────────────────────────────────────────
+function setHover(bot){
+  hoverMode=bot
+  const t=document.getElementById('tint')
+  if(bot==='bybit')t.style.background='radial-gradient(ellipse 85% 65% at 50% 55%, rgba(59,130,246,0.08) 0%, transparent 70%)'
+  else if(bot==='poly')t.style.background='radial-gradient(ellipse 85% 65% at 50% 55%, rgba(139,92,246,0.07) 0%, transparent 70%)'
+  else t.style.background='transparent'
+}
+function pressCard(el){el.classList.add('pressing')}
+function releaseCard(el,bot){
+  el.classList.remove('pressing');el.classList.add('click-flash')
+  setTimeout(()=>el.classList.remove('click-flash'),200)
+  setTimeout(()=>selectBot(bot),90)
+}
+function selectBot(bot){
+  speedMul=5
+  const fl=document.getElementById('flash');fl.classList.add('active')
+  setTimeout(()=>fl.classList.remove('active'),150)
+  setTimeout(()=>{
+    zoom=true;zx=dotX;zy=dotY;zs=1
+    const flood=document.getElementById('flood')
+    flood.style.background=bot==='bybit'?'#1d4ed8':'#6d28d9'
+    flood.style.setProperty('--s',`circle(0px at ${dotX}px ${dotY}px)`)
+    flood.style.setProperty('--e',`circle(250vmax at ${dotX}px ${dotY}px)`)
+    flood.classList.add('active')
+    document.getElementById('ui').style.opacity='0'
+    document.getElementById('done-title').textContent=bot==='bybit'?'Bybit Bot':'Polymarket Bot'
+    document.getElementById('done').style.background=bot==='bybit'?'#1d4ed8':'#6d28d9'
+    setTimeout(()=>document.getElementById('done').classList.add('visible'),920)
+  },80)
+}
+function resetDemo(){
+  zoom=false;zs=1;speedMul=1;progress=0;dotX=0;dotY=0;paralaxOY=0;paralaxTY=0
+  const flood=document.getElementById('flood')
+  flood.classList.remove('active');flood.style.opacity='0'
+  document.getElementById('done').classList.remove('visible')
+  document.getElementById('done').style.background='transparent'
+  document.getElementById('ui').style.opacity=''
+  document.getElementById('ui').classList.remove('visible')
+  window.scrollTo({top:0,behavior:'smooth'})
+  setTimeout(()=>{
+    document.getElementById('ui').classList.add('visible')
+    setTimeout(()=>document.getElementById('card-bybit').classList.add('show'),280)
+    setTimeout(()=>document.getElementById('card-poly').classList.add('show'),480)
+  },300)
+  setHover(null)
+}
+function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'})}
+</script>
+</body>
+</html>
