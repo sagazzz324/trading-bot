@@ -93,7 +93,9 @@ def _run_btc_scalp(st: PolyState):
     while st.running:
         try:
             st.cycle_count += 1
-            st.last_cycle   = datetime.now().strftime("%H:%M:%S")
+            from datetime import datetime, timezone, timedelta
+            TZ_AR = timezone(timedelta(hours=-3))
+            datetime.now(TZ_AR).strftime(...)
             scalper.run_once()
             st._stop_event.wait(timeout=20)
             st._stop_event.clear()
