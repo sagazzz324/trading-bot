@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 # ── PARÁMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.32   # persistencia mínima (alcanzable con ~40 velas)
-EPSILON     = 0.02   # gap mínimo p_hat vs q(w)
+TAU         = 0.18   # bajarlo al mínimo alcanzable con los datos actuales
+EPSILON     = 0.05   # subir el gap mínimo para compensar
 Q_MIN       = 0.40   # precio mínimo del outcome
 Q_MAX       = 0.65   # precio máximo del outcome
 
@@ -77,7 +77,12 @@ def should_enter(P: np.ndarray, current_state: int,
 
 # ── PRECIO BTC ────────────────────────────────────────────────────────────────
 
+_btc_cache = {"data": [], "ts": 0}
+
 def get_btc_candles(n: int = 40) -> list:
+    global _btc_cache
+    if time_module.time() - _btc_cache["ts"] < 60 and _btc_cache["data"]:
+        return _btc_cache["data"][-n:]
     try:
         r = requests.get(
             "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
@@ -86,36 +91,34 @@ def get_btc_candles(n: int = 40) -> list:
         )
         data = r.json()
         if not data or len(data) < 5:
-            return []
+            return _btc_cache["data"][-n:] if _btc_cache["data"] else []
         closes  = [c[4] for c in data]
         changes = [(closes[i] - closes[i-1]) / closes[i-1] * 100
                    for i in range(1, len(closes))]
+        _btc_cache = {"data": changes, "ts": time_module.time()}
         return changes[-n:]
     except Exception as e:
-        import traceback
-        logger.error(f"get_btc_candles:\n{traceback.format_exc()}")
-        return []
+        logger.error(f"get_btc_candles: {e}")
+        return _btc_cache["data"][-n:] if _btc_cache["data"] else []
 
+
+_price_cache = {"price": 0.0, "ts": 0}
 
 def get_btc_current_price() -> float:
+    global _price_cache
+    if time_module.time() - _price_cache["ts"] < 30 and _price_cache["price"] > 0:
+        return _price_cache["price"]
     try:
         r = requests.get(
             "https://api.coingecko.com/api/v3/simple/price",
             params={"ids": "bitcoin", "vs_currencies": "usd"},
             timeout=8
         )
-        return float(r.json()["bitcoin"]["usd"])
+        price = float(r.json()["bitcoin"]["usd"])
+        _price_cache = {"price": price, "ts": time_module.time()}
+        return price
     except:
-        try:
-            r2 = requests.get(
-                "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
-                params={"vs_currency": "usd", "days": "1"},
-                timeout=8
-            )
-            data = r2.json()
-            return float(data[-1][4]) if data else 0.0
-        except:
-            return 0.0
+        return _price_cache["price"] if _price_cache["price"] > 0 else 0.0
 
 
 # ── MERCADO POLYMARKET ────────────────────────────────────────────────────────
