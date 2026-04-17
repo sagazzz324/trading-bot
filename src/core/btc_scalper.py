@@ -1,6 +1,16 @@
 """
 btc_scalper.py — BTC Up/Down 5m · Polymarket
 Markov Chain + State Persistence + Arbitrage Gap
+
+Estados:
+  0: Strong Bull  (> +0.15%)
+  1: Weak Bull    (0% a +0.15%)
+  2: Weak Bear    (-0.15% a 0%)
+  3: Strong Bear  (< -0.15%)
+
+Condicion de entrada (ambas deben cumplirse):
+  1. p_hat - q(w) >= EPSILON   (edge vs mercado)
+  2. p_j*j* >= TAU             (persistencia del estado)
 """
 import requests
 import logging
@@ -13,13 +23,13 @@ logger = logging.getLogger(__name__)
 
 GAMMA_API = "https://gamma-api.polymarket.com"
 
-# ── PARÁMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.17   # baja un pelo más
-EPSILON     = 0.03   # baja el gap mínimo requerido
-Q_MIN       = 0.40   # precio mínimo del outcome
-Q_MAX       = 0.65   # precio máximo del outcome
+# ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
+TAU         = 0.17
+EPSILON     = 0.03
+Q_MIN       = 0.40
+Q_MAX       = 0.65
 
-# ── PARÁMETROS DE RIESGO ──────────────────────────────────────────────────────
+# ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
 MAX_POSITION_PCT   = 0.05
 MIN_POSITION       = 2.0
@@ -54,11 +64,6 @@ def estimate_transition_matrix(states: list) -> np.ndarray:
 def should_enter(P: np.ndarray, current_state: int,
                  market_price: float, direction: str,
                  tau: float = TAU, eps: float = EPSILON) -> dict:
-    """
-    p_hat = suma de probabilidades de estados en la dirección correcta.
-    Up   → estados 0 (strong bull) + 1 (weak bull)
-    Down → estados 2 (weak bear)   + 3 (strong bear)
-    """
     if direction == "up":
         p_hat = float(P[current_state][0] + P[current_state][1])
     else:
@@ -78,9 +83,10 @@ def should_enter(P: np.ndarray, current_state: int,
     }
 
 
-# ── PRECIO BTC ────────────────────────────────────────────────────────────────
+# ── CACHE COINGECKO ───────────────────────────────────────────────────────────
+_btc_cache   = {"data": [], "ts": 0}
+_price_cache = {"price": 0.0, "ts": 0}
 
-_btc_cache = {"data": [], "ts": 0}
 
 def get_btc_candles(n: int = 40) -> list:
     global _btc_cache
@@ -101,11 +107,10 @@ def get_btc_candles(n: int = 40) -> list:
         _btc_cache = {"data": changes, "ts": time_module.time()}
         return changes[-n:]
     except Exception as e:
-        logger.error(f"get_btc_candles: {e}")
+        import traceback
+        logger.error(f"get_btc_candles:\n{traceback.format_exc()}")
         return _btc_cache["data"][-n:] if _btc_cache["data"] else []
 
-
-_price_cache = {"price": 0.0, "ts": 0}
 
 def get_btc_current_price() -> float:
     global _price_cache
@@ -201,10 +206,11 @@ def get_market_liquidity(market_id) -> dict | None:
         return None
 
 
-def get_outcome_current_price(market_id, direction) -> float | None:
+def get_outcome_current_price(market_id: str, direction: str) -> float | None:
     try:
         r = requests.get(f"{GAMMA_API}/markets/{market_id}", timeout=5)
-        if r.status_code != 200: return None
+        if r.status_code != 200:
+            return None
         m        = r.json()
         outcomes = m.get("outcomes", "[]")
         prices   = m.get("outcomePrices", "[]")
@@ -212,8 +218,8 @@ def get_outcome_current_price(market_id, direction) -> float | None:
         if isinstance(prices,   str): prices   = json.loads(prices)
         for i, o in enumerate(outcomes):
             o_lower = o.lower()
-            if (direction=="up"   and any(w in o_lower for w in ["up","higher","above"])) or \
-               (direction=="down" and any(w in o_lower for w in ["down","lower","below"])):
+            if (direction == "up"   and any(w in o_lower for w in ["up","higher","above"])) or \
+               (direction == "down" and any(w in o_lower for w in ["down","lower","below"])):
                 return float(prices[i]) if i < len(prices) else None
         return None
     except:
@@ -242,14 +248,24 @@ class BTCScalper:
             pos     = trade["position_size"]
             elapsed = time_module.time() - meta["entered_at"]
             current = get_outcome_current_price(meta["market_id"], meta["direction"])
-            self.log(f"🔍 #{trade_id} precio={current} entrada={meta['entry_price']} dir={meta['direction']}", "#41D6FC")
+
+            self.log(
+                f"🔍 #{trade_id} dir={meta['direction']} precio={current} "
+                f"entrada={meta['entry_price']} elapsed={elapsed:.0f}s",
+                "#41D6FC"
+            )
 
             if elapsed >= MAX_TRADE_DURATION:
-                pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2) if current else 0
+                if current and current != meta["entry_price"]:
+                    pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2)
+                else:
+                    pnl = round(-pos * 0.03, 2)
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
                 self._open.pop(trade_id, None)
-                self.log(f"⏱️ TIEMPO #{trade_id} · {'+'if pnl>=0 else ''}${pnl:.2f} ({elapsed:.0f}s)",
-                         "#F5A623" if pnl >= 0 else "#FF5050")
+                self.log(
+                    f"⏱️ TIEMPO #{trade_id} · {'+'if pnl>=0 else ''}${pnl:.2f} ({elapsed:.0f}s)",
+                    "#F5A623" if pnl >= 0 else "#FF5050"
+                )
                 continue
 
             if current is None:
@@ -263,6 +279,7 @@ class BTCScalper:
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
                 self._open.pop(trade_id, None)
                 self.log(f"✅ TP #{trade_id} · +${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#00E887")
+
             elif change <= -SL_PCT:
                 pnl = round(pos * change, 2)
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
@@ -311,11 +328,7 @@ class BTCScalper:
         states        = [classify_state(c) for c in changes]
         P             = estimate_transition_matrix(states)
         current_state = states[-1]
-
-        btc_price = get_btc_current_price()
-        if btc_price == 0:
-            # fallback: estimar desde último cambio
-            btc_price = 0
+        btc_price     = get_btc_current_price()
 
         self.log(
             f"BTC ${btc_price:,.0f} · estado={current_state} · "
@@ -326,7 +339,6 @@ class BTCScalper:
 
         prices = get_market_outcome_prices(market)
 
-        # Probar Up
         if Q_MIN <= prices["up_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["up_price"], "up")
             if dec["enter"]:
@@ -334,7 +346,6 @@ class BTCScalper:
                                      prices["up_price"], dec, bankroll, cap_disp, cap_uso)
             self.log(f"⏸️ Up — {dec['reason']}", "#F5A623")
 
-        # Probar Down
         if Q_MIN <= prices["down_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["down_price"], "down")
             if dec["enter"]:
@@ -342,22 +353,24 @@ class BTCScalper:
                                      prices["down_price"], dec, bankroll, cap_disp, cap_uso)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
-# Auto-tuning cada 50 trades
+        # Auto-tuning cada 50 trades
         global _tune_counter, TAU, EPSILON
         _tune_counter += 1
         if _tune_counter % _TUNE_EVERY == 0:
-            from src.core.btc_optimizer import analyze_and_tune
-            result = analyze_and_tune(min_trades=50)
-            if result:
-                TAU     = result["tau"]
-                EPSILON = result["epsilon"]
-                self.log(
-                    f"🧠 Auto-tune · WR={result['win_rate']*100:.1f}% · "
-                    f"TAU={TAU} · EPS={EPSILON} · n={result['trades']}",
-                    "#A78BFA"
-                )
+            try:
+                from src.core.btc_optimizer import analyze_and_tune
+                result = analyze_and_tune(min_trades=50)
+                if result:
+                    TAU     = result["tau"]
+                    EPSILON = result["epsilon"]
+                    self.log(
+                        f"🧠 Auto-tune · WR={result['win_rate']*100:.1f}% · "
+                        f"TAU={TAU} · EPS={EPSILON} · n={result['trades']}",
+                        "#A78BFA"
+                    )
+            except Exception as e:
+                logger.error(f"auto-tune error: {e}")
 
-        
         return False
 
     def _execute(self, market_id, question, direction, market_price,
