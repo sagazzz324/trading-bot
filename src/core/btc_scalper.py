@@ -16,8 +16,8 @@ GAMMA_API = "https://gamma-api.polymarket.com"
 # ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
 TAU         = 0.17
 EPSILON     = 0.03
-Q_MIN       = 0.40
-Q_MAX       = 0.65
+Q_MIN       = 0.35
+Q_MAX       = 0.72
 
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
