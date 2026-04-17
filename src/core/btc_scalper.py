@@ -315,10 +315,14 @@ class BTCScalper:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
 
+        now = int(time_module.time())
+        interval = 300
+        slugs_intentados = [f"btc-updown-5m-{((now // interval) + i) * interval}" for i in range(0, 4)]
+        self.log(f"🔎 buscando: {slugs_intentados[0]}", "#41D6FC")
         market = find_active_btc_5m_market()
         if not market:
             self.log("❌ Sin mercado BTC 5m", "#FF5050")
-            return False
+        return False
 
         market_id = market.get("conditionId") or market.get("id", "")
         self.log(f"🏪 id={market.get('id')} conditionId={market.get('conditionId')}", "#41D6FC")
