@@ -31,6 +31,9 @@ SL_PCT             = 0.08
 
 STATE_THRESHOLDS = [0.15, 0.0, -0.15]
 
+_tune_counter = 0
+_TUNE_EVERY   = 50
+
 
 def classify_state(change_pct: float) -> int:
     if change_pct > STATE_THRESHOLDS[0]:  return 0
@@ -338,6 +341,22 @@ class BTCScalper:
                                      prices["down_price"], dec, bankroll, cap_disp, cap_uso)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
+# Auto-tuning cada 50 trades
+        global _tune_counter, TAU, EPSILON
+        _tune_counter += 1
+        if _tune_counter % _TUNE_EVERY == 0:
+            from src.core.btc_optimizer import analyze_and_tune
+            result = analyze_and_tune(min_trades=50)
+            if result:
+                TAU     = result["tau"]
+                EPSILON = result["epsilon"]
+                self.log(
+                    f"🧠 Auto-tune · WR={result['win_rate']*100:.1f}% · "
+                    f"TAU={TAU} · EPS={EPSILON} · n={result['trades']}",
+                    "#A78BFA"
+                )
+
+        
         return False
 
     def _execute(self, market_id, question, direction, market_price,
