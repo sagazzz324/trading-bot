@@ -378,13 +378,15 @@ class BTCScalper:
         states        = [classify_state(c) for c in changes]
         P             = estimate_transition_matrix(states)
         current_state = states[-1]
-        btc_price     = get_btc_current_price()
+        
 
+        prices = get_market_outcome_prices(market)
         self.log(
-            f"BTC ${btc_price:,.0f} · estado={current_state} · "
-            f"p_up={P[current_state][0]+P[current_state][1]:.2f} "
-            f"p_down={P[current_state][2]+P[current_state][3]:.2f}",
-            "#ffffff60"
+        f"Poly Up={prices['up_price']:.3f} Down={prices['down_price']:.3f} · "
+        f"estado={current_state} · "
+        f"p_up={P[current_state][0]+P[current_state][1]:.2f} "
+        f"p_down={P[current_state][2]+P[current_state][3]:.2f}",
+        "#ffffff60"
         )
 
         prices = get_market_outcome_prices(market)
