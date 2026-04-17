@@ -136,7 +136,7 @@ def find_active_btc_5m_market():
         now = int(time_module.time())
         interval = 300
         slugs = [f"btc-updown-5m-{((now // interval) + i) * interval}"
-                 for i in range(0, 4)]
+         for i in range(-2, 4)]
         for slug in slugs:
             r = requests.get(f"{GAMMA_API}/events",
                              params={"slug": slug}, timeout=10)
