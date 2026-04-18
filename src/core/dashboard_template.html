@@ -816,14 +816,14 @@ function initSocket(){
   }catch(e){loadData()}
 }
 function applyBybit(d){
-  if(d.bankroll!=null){setEl('bybit-balance','$'+d.bankroll.toFixed(2));setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2))}
+  if(d.bankroll!=null){odoSet('bybit-balance','$'+d.bankroll.toFixed(2));setEl('sb-bybit-bal','$'+d.bankroll.toFixed(2))}
   var pnl=d.total_pnl||0
-  setEl('bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2))
+  odoSet('bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2))
   document.getElementById('bybit-pnl').className='stat-num '+(pnl>=0?'g':'r')
   setEl('bybit-pnl-pct',(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%')
   setEl('sb-bybit-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2))
   document.getElementById('sb-bybit-pnl').className='ssm-val '+(pnl>=0?'g':'r')
-  if(d.win_rate!=null)setEl('bybit-wr',d.win_rate+'%')
+  if(d.win_rate!=null)odoSet('bybit-wr',d.win_rate+'%')
   if(d.total_trades!=null)setEl('bybit-trades',d.total_trades+' trades')
   setEl('bybit-pos',Array.isArray(d.open_positions)?d.open_positions.length:0)
   if(d.recent_trades)renderBybitTrades(d.recent_trades)
@@ -856,17 +856,17 @@ function applyPoly(d){
   var bal=d.bankroll||0
   setEl('sb-poly-bal','$'+bal.toFixed(2))
   if(d.btc_price&&parseFloat(d.btc_price)>0){setEl('poly-btc-price','$'+Math.round(parseFloat(d.btc_price)).toLocaleString('en-US'))}
-  setEl(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
+  odoSet(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
   var pnl=d.total_pnl||0
   var pnlStr=(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2)
   var pnlPct=(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%'
   var pnlId=isBtc?'poly-pnl':'poly-pnl-g'
-  setEl(pnlId,pnlStr)
+  odoSet(pnlId,pnlStr)
   if(document.getElementById(pnlId))document.getElementById(pnlId).className='stat-num '+(pnl>=0?'g':'r')
   setEl(isBtc?'poly-pnl-pct':'poly-pnl-pct-g',pnlPct)
   setEl('sb-poly-pnl',pnlStr)
   document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r')
-  if(d.win_rate!=null)setEl(isBtc?'poly-wr':'poly-wr-g',d.win_rate+'%')
+  if(d.win_rate!=null)odoSet(isBtc?'poly-wr':'poly-wr-g',d.win_rate+'%')
   if(d.total_trades!=null)setEl(isBtc?'poly-trades':'poly-trades-g',d.total_trades+' trades')
   setEl(isBtc?'poly-pos':'poly-pos-g',Array.isArray(d.open_positions)?d.open_positions.length:0)
   if(d.recent_trades)renderPolyTrades(d.recent_trades,isBtc)
