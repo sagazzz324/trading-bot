@@ -7,7 +7,7 @@ import logging
 import time as time_module
 import json
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,15 @@ MAX_POSITION_PCT   = 0.05
 MIN_POSITION       = 2.0
 MAX_SPREAD         = 0.06
 MIN_LIQUIDITY      = 300
-MAX_TRADE_DURATION = 180
+MAX_TRADE_DURATION = 90        # reducido de 180s a 90s
 TP_PCT             = 0.05
 SL_PCT             = 0.08
+
+# ── PARAMETROS DE SEGURIDAD ───────────────────────────────────────────────────
+SL_COOLDOWN_SEC    = 90        # esperar 90s después de un SL antes de re-entrar
+SL_STREAK_LIMIT    = 3         # pausar si hay N SL seguidos
+SL_STREAK_PAUSE    = 300       # pausa de 5 minutos tras racha de SL
+DAILY_LOSS_LIMIT   = -50.0     # pérdida máxima diaria en $
 
 STATE_THRESHOLDS = [0.15, 0.0, -0.15]
 
@@ -131,16 +137,10 @@ def get_btc_current_price() -> float:
 # ── MERCADO POLYMARKET ────────────────────────────────────────────────────────
 
 def find_active_btc_5m_market(log_fn=None):
-    """
-    Busca el mercado BTC Up/Down 5m activo.
-    Estrategia 1: por slug exacto (rango amplio -3 a +4 intervalos)
-    Estrategia 2: fallback buscando por keyword
-    """
     log = log_fn or (lambda m, c="#ffffff40": None)
     now = int(time_module.time())
     interval = 300
 
-    # Estrategia 1: slugs por timestamp
     slugs_tried = []
     for i in range(-3, 5):
         ts = ((now // interval) + i) * interval
@@ -159,7 +159,6 @@ def find_active_btc_5m_market(log_fn=None):
         except Exception:
             continue
 
-    # Estrategia 2: buscar entre todos los eventos activos por keyword
     try:
         r = requests.get(
             f"{GAMMA_API}/events",
@@ -191,7 +190,6 @@ def _is_valid_btc_updown(market) -> bool:
     has_dir = any(w in q for w in ["up","down","higher","lower"]) or "updown" in slug
     if not has_btc or not has_dir: return False
     if any(w in q for w in sports): return False
-    # filtrar mercados resueltos
     try:
         prices = json.loads(market.get("outcomePrices","[]")) if isinstance(market.get("outcomePrices"), str) else (market.get("outcomePrices") or [])
         if prices and any(float(p) in (0.0, 1.0) for p in prices):
@@ -228,11 +226,6 @@ def get_market_outcome_prices(market) -> dict:
 
 
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
-    """
-    Obtiene un mercado por conditionId usando el endpoint correcto.
-    El endpoint /markets/{id} espera el id interno, no el conditionId.
-    Hay que usar /markets?condition_ids=...
-    """
     try:
         r = requests.get(
             f"{GAMMA_API}/markets",
@@ -262,10 +255,10 @@ def get_market_liquidity(market_id: str) -> dict | None:
         liquidity = float(m.get("liquidityNum", 0) or 0)
         spread    = best_ask - best_bid if best_ask > best_bid else 1.0
         return {
-            "spread":   round(spread, 4),
+            "spread":    round(spread, 4),
             "liquidity": round(liquidity, 2),
-            "best_bid": best_bid,
-            "best_ask": best_ask,
+            "best_bid":  best_bid,
+            "best_ask":  best_ask,
         }
     except Exception as e:
         logger.error(f"get_market_liquidity: {e}")
@@ -292,6 +285,12 @@ def get_outcome_current_price(market_id: str, direction: str) -> float | None:
         return None
 
 
+def _get_argentina_day() -> str:
+    """Retorna la fecha actual en Argentina (UTC-3) como string YYYY-MM-DD."""
+    ar = datetime.now(timezone(timedelta(hours=-3)))
+    return ar.strftime("%Y-%m-%d")
+
+
 # ── SCALPER ───────────────────────────────────────────────────────────────────
 
 class BTCScalper:
@@ -300,6 +299,83 @@ class BTCScalper:
         self.log    = log_fn or print
         self.cycle  = 0
         self._open: dict = {}
+
+        # ── Seguridad ──────────────────────────────────────────────────────
+        self._last_sl_time   = 0.0      # timestamp del último SL
+        self._sl_streak      = 0        # SL consecutivos
+        self._streak_pause_until = 0.0  # hasta cuándo pausar por racha
+        self._daily_pnl      = 0.0      # PnL acumulado del día
+        self._daily_day      = ""       # fecha del día actual (para resetear)
+
+    def _reset_daily_if_needed(self):
+        today = _get_argentina_day()
+        if self._daily_day != today:
+            self._daily_day  = today
+            self._daily_pnl  = 0.0
+            self._sl_streak  = 0
+            self.log(f"📅 Nuevo día · daily PnL reseteado", "#ffffff40")
+
+    def _register_sl(self, pnl: float):
+        """Llamar cuando cierra por SL para actualizar contadores."""
+        self._last_sl_time = time_module.time()
+        self._sl_streak   += 1
+        self._daily_pnl   += pnl
+        if self._sl_streak >= SL_STREAK_LIMIT:
+            self._streak_pause_until = time_module.time() + SL_STREAK_PAUSE
+            self.log(
+                f"⛔ Racha de {self._sl_streak} SL seguidos · pausando {SL_STREAK_PAUSE//60} min",
+                "#FF5050"
+            )
+
+    def _register_tp(self, pnl: float):
+        """Llamar cuando cierra por TP para resetear streak."""
+        self._sl_streak  = 0
+        self._daily_pnl += pnl
+
+    def _can_enter(self) -> tuple[bool, str]:
+        """Verifica todas las condiciones de seguridad antes de entrar."""
+        now = time_module.time()
+
+        # Pausa por racha de SL
+        if now < self._streak_pause_until:
+            remaining = int(self._streak_pause_until - now)
+            return False, f"⏸️ Pausa post-racha · {remaining}s restantes"
+
+        # Cooldown post-SL
+        since_sl = now - self._last_sl_time
+        if since_sl < SL_COOLDOWN_SEC:
+            remaining = int(SL_COOLDOWN_SEC - since_sl)
+            return False, f"⏸️ Cooldown post-SL · {remaining}s restantes"
+
+        # Límite pérdida diaria
+        if self._daily_pnl <= DAILY_LOSS_LIMIT:
+            return False, f"⛔ Daily loss ${self._daily_pnl:.2f} · límite alcanzado"
+
+        return True, ""
+
+    def _calc_position_size(self, gap: float, bankroll: float,
+                             cap_disp: float, cap_uso: float,
+                             current_state: int) -> float:
+        """
+        Sizing dinámico basado en el gap y el estado actual.
+        - gap pequeño (0.03-0.08):  3% del bankroll
+        - gap medio   (0.08-0.15):  4% del bankroll
+        - gap grande  (0.15+):      5% del bankroll (máximo)
+        - Estado 0 (Strong Bull) con dirección UP: bonus +0.5%
+        """
+        if gap < 0.08:
+            pct = 0.03
+        elif gap < 0.15:
+            pct = 0.04
+        else:
+            pct = MAX_POSITION_PCT  # 5%
+
+        position = round(min(
+            bankroll * pct,
+            cap_disp - cap_uso,
+            50.0
+        ), 2)
+        return position
 
     def _check_exits(self):
         state  = self.trader.load_state()
@@ -322,6 +398,10 @@ class BTCScalper:
                     pnl = round(-pos * 0.03, 2)
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
                 self._open.pop(trade_id, None)
+                if pnl < 0:
+                    self._register_sl(pnl)
+                else:
+                    self._register_tp(pnl)
                 self.log(
                     f"⏱️ TIEMPO #{trade_id} · {'+'if pnl>=0 else ''}${pnl:.2f} ({elapsed:.0f}s)",
                     "#F5A623" if pnl >= 0 else "#FF5050"
@@ -338,17 +418,30 @@ class BTCScalper:
                 pnl = round(pos * change, 2)
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
                 self._open.pop(trade_id, None)
+                self._register_tp(pnl)
                 self.log(f"✅ TP #{trade_id} · +${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#00E887")
 
             elif change <= -SL_PCT:
                 pnl = round(pos * change, 2)
                 self.trader.resolve_trade_with_pnl(trade_id, pnl)
                 self._open.pop(trade_id, None)
+                self._register_sl(pnl)
                 self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#FF5050")
 
     def run_once(self):
         self.cycle += 1
+        self._reset_daily_if_needed()
+
+        # Actualizar precio BTC para el dashboard
+        get_btc_current_price()
+
         self._check_exits()
+
+        # Verificar condiciones de seguridad antes de buscar entrada
+        can_enter, reason = self._can_enter()
+        if not can_enter:
+            self.log(reason, "#F5A623")
+            return False
 
         state    = self.trader.load_state()
         active   = state["active_trades"]
@@ -387,32 +480,31 @@ class BTCScalper:
         states        = [classify_state(c) for c in changes]
         P             = estimate_transition_matrix(states)
         current_state = states[-1]
-        
 
         prices = get_market_outcome_prices(market)
         self.log(
-        f"Poly Up={prices['up_price']:.3f} Down={prices['down_price']:.3f} · "
-        f"estado={current_state} · "
-        f"p_up={P[current_state][0]+P[current_state][1]:.2f} "
-        f"p_down={P[current_state][2]+P[current_state][3]:.2f}",
-        "#ffffff60"
+            f"Poly Up={prices['up_price']:.3f} Down={prices['down_price']:.3f} · "
+            f"estado={current_state} · "
+            f"p_up={P[current_state][0]+P[current_state][1]:.2f} "
+            f"p_down={P[current_state][2]+P[current_state][3]:.2f}",
+            "#ffffff60"
         )
-
-        prices = get_market_outcome_prices(market)
         self.log(f"💰 up={prices['up_price']:.3f} down={prices['down_price']:.3f}", "#41D6FC")
 
         if Q_MIN <= prices["up_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["up_price"], "up")
             if dec["enter"]:
                 return self._execute(market_id, question, "up",
-                                     prices["up_price"], dec, bankroll, cap_disp, cap_uso)
+                                     prices["up_price"], dec, bankroll,
+                                     cap_disp, cap_uso, current_state)
             self.log(f"⏸️ Up — {dec['reason']}", "#F5A623")
 
         if Q_MIN <= prices["down_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["down_price"], "down")
             if dec["enter"]:
                 return self._execute(market_id, question, "down",
-                                     prices["down_price"], dec, bankroll, cap_disp, cap_uso)
+                                     prices["down_price"], dec, bankroll,
+                                     cap_disp, cap_uso, current_state)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
         # Auto-tuning cada 50 trades
@@ -436,9 +528,12 @@ class BTCScalper:
         return False
 
     def _execute(self, market_id, question, direction, market_price,
-                 decision, bankroll, cap_disp, cap_uso):
-        position = round(min(bankroll * MAX_POSITION_PCT,
-                             cap_disp - cap_uso, 50.0), 2)
+                 decision, bankroll, cap_disp, cap_uso, current_state):
+
+        position = self._calc_position_size(
+            decision["gap"], bankroll, cap_disp, cap_uso, current_state
+        )
+
         if position < MIN_POSITION:
             self.log(f"💰 Posición ${position:.2f} muy pequeña", "#FF5050")
             return False
@@ -459,11 +554,13 @@ class BTCScalper:
                 "entry_price": market_price,
                 "entered_at":  time_module.time(),
             }
+            gap_label = "🔥" if decision["gap"] >= 0.15 else "✅"
             self.log(
-                f"✅ TRADE #{trade['id']} · "
+                f"{gap_label} TRADE #{trade['id']} · "
                 f"{'📈 UP' if direction=='up' else '📉 DOWN'} · "
                 f"${position:.2f} · p_hat={decision['p_hat']:.3f} · "
-                f"persist={decision['persist']:.3f} · gap={decision['gap']:.4f}",
+                f"persist={decision['persist']:.3f} · gap={decision['gap']:.4f} · "
+                f"daily=${self._daily_pnl:+.2f}",
                 "#00E887"
             )
             return True
