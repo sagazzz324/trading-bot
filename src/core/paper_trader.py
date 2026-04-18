@@ -73,9 +73,6 @@ class PaperTrader:
         }
 
         self.bankroll -= position_size
-        # NOTE: ambas listas apuntan al MISMO objeto dict aquí,
-        # pero después de un _load_state() son objetos distintos.
-        # Por eso resolve_trade* siempre sincroniza las dos listas.
         self.active_trades.append(trade)
         self.trades.append(trade)
         self._save_state()
@@ -84,11 +81,6 @@ class PaperTrader:
         return trade
 
     def _sync_trade_in_history(self, trade_id: int, updates: dict):
-        """
-        Aplica `updates` al trade con trade_id en self.trades.
-        Necesario porque después de _load_state() self.trades y
-        self.active_trades son objetos distintos en memoria.
-        """
         for t in self.trades:
             if t["id"] == trade_id:
                 t.update(updates)
@@ -105,6 +97,7 @@ class PaperTrader:
 
         position    = trade["position_size"]
         market_prob = trade["market_prob"]
+        entered_at  = trade.get("timestamp", "")
 
         if outcome:
             payout = position / market_prob
@@ -119,13 +112,17 @@ class PaperTrader:
             "pnl":    round(pnl, 2)
         }
 
-        # Actualizar en active_trades
         trade.update(updates)
-        # Sincronizar en historial (distinto objeto tras deserialización JSON)
         self._sync_trade_in_history(trade_id, updates)
-
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         self._save_state()
+
+        duration = self._calc_duration(entered_at)
+        try:
+            from src.core.equity_tracker import record_trade
+            record_trade(trade_id, round(pnl, 2), self.bankroll, duration)
+        except Exception as e:
+            logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 
         logger.info(f"Trade #{trade_id} resuelto: {'WIN' if outcome else 'LOSS'} PnL ${pnl:.2f}")
 
@@ -136,47 +133,64 @@ class PaperTrader:
             logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado en active_trades")
             return
 
+        entered_at = trade.get("timestamp", "")
+
         updates = {
             "status": "resolved",
             "result": "win" if pnl >= 0 else "loss",
             "pnl":    round(pnl, 2)
         }
 
-        # Actualizar en active_trades
         trade.update(updates)
-        # Sincronizar en historial (distinto objeto tras deserialización JSON)
         self._sync_trade_in_history(trade_id, updates)
-
         self.bankroll += trade["position_size"] + pnl
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         self._save_state()
 
+        duration = self._calc_duration(entered_at)
+        try:
+            from src.core.equity_tracker import record_trade
+            record_trade(trade_id, round(pnl, 2), self.bankroll, duration)
+        except Exception as e:
+            logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
+
         logger.info(f"Trade #{trade_id} cerrado: {'WIN' if pnl >= 0 else 'LOSS'} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
 
+    def _calc_duration(self, timestamp_str: str) -> float:
+        """Calcula duración en segundos desde el timestamp de apertura."""
+        try:
+            from datetime import timezone
+            opened = datetime.fromisoformat(timestamp_str)
+            if opened.tzinfo is None:
+                opened = opened.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            return (now - opened).total_seconds()
+        except Exception:
+            return 0.0
+
     def force_close_stale_trades(self, pnl_per_trade=0.0):
-        """
-        Limpia posiciones activas colgadas marcándolas como resolved.
-        Útil para el reset después del fix.
-        pnl_per_trade: PnL a asignar a cada trade (0 = break even, negativo = loss)
-        """
+        """Limpia posiciones activas colgadas."""
         stale = list(self.active_trades)
         if not stale:
             logger.info("No hay trades activos para limpiar")
             return 0
-
         for trade in stale:
             self.resolve_trade_with_pnl(trade["id"], pnl_per_trade)
-
         logger.info(f"force_close_stale_trades: {len(stale)} trades cerrados")
         return len(stale)
 
     def reset(self, bankroll=1000):
-        """Reset completo — bankroll fresco, historial limpio."""
+        """Reset completo."""
         self.bankroll         = bankroll
         self.initial_bankroll = bankroll
         self.trades           = []
         self.active_trades    = []
         self._save_state()
+        try:
+            from src.core.equity_tracker import reset as eq_reset
+            eq_reset(bankroll)
+        except Exception as e:
+            logger.error(f"equity_tracker reset error: {e}")
         logger.info(f"PaperTrader reseteado — bankroll ${bankroll}")
 
     def get_stats(self):
