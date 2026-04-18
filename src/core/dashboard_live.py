@@ -148,6 +148,20 @@ def poly_reset():
 
 # ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 
+@app.route("/api/equity")
+def api_equity():
+    try:
+        from src.core.equity_tracker import get_summary
+        return jsonify(get_summary())
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)})
+ 
+@app.route("/api/equity/curve")
+def api_equity_curve():
+    data = _load_json(Path("logs/equity.json"))
+    return jsonify(data.get("equity_curve", []))
+
 @socketio.on("connect")
 def on_connect():
     emit("update", get_data())
