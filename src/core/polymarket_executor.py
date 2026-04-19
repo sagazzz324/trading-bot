@@ -57,7 +57,9 @@ def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | N
         return resp
     except Exception as e:
         logger.error(f"place_market_order: {e}\n{traceback.format_exc()}")
+        print(f"❌ ERROR ORDEN REAL: {e}")
         return None
+    
 
 
 def get_open_positions() -> list:
