@@ -16,8 +16,8 @@ GAMMA_API = "https://gamma-api.polymarket.com"
 # ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
 TAU         = 0.17
 EPSILON     = 0.03
-Q_MIN       = 0.35   # se actualiza dinámicamente por el auto-tuner
-Q_MAX       = 0.72   # se actualiza dinámicamente por el auto-tuner
+Q_MIN       = 0.35
+Q_MAX       = 0.72
 
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
@@ -309,13 +309,12 @@ class BTCScalper:
         # ── Régimen de mercado ─────────────────────────────────────────────
         self._regime         = "unknown"
         self._regime_checked = 0.0
-        self._REGIME_TTL     = 300   # re-detectar cada 5 minutos
+        self._REGIME_TTL     = 300
 
         # Cargar parámetros del régimen al arrancar
         self._load_regime_params()
 
     def _load_regime_params(self):
-        """Carga los mejores parámetros para el régimen actual."""
         global TAU, EPSILON, Q_MIN, Q_MAX
         try:
             from src.core.btc_optimizer import get_best_params_for_regime
@@ -437,6 +436,9 @@ class BTCScalper:
                 self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#FF5050")
 
     def run_once(self):
+        # ── Declarar globals al inicio para evitar SyntaxError ────────────
+        global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
+
         self.cycle += 1
         self._reset_daily_if_needed()
         get_btc_current_price()
@@ -512,7 +514,6 @@ class BTCScalper:
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
         # ── Auto-tuning cada 50 trades ────────────────────────────────────
-        global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
         _tune_counter += 1
         if _tune_counter % _TUNE_EVERY == 0:
             try:
