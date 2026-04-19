@@ -537,6 +537,14 @@ class BTCScalper:
         if position < MIN_POSITION:
             self.log(f"💰 Posición ${position:.2f} muy pequeña", "#FF5050")
             return False
+        
+    def _execute(self, market_id, question, direction, market_price,
+             decision, bankroll, cap_disp, cap_uso, current_state):
+    
+        from config.settings import PAPER_TRADING
+        self.log(f"🔧 MODO: {'PAPER' if PAPER_TRADING else 'REAL'}", "#A78BFA")
+    
+        position = self._calc_position_size(...)
 
         trade = self.trader.place_trade(
             market_id=market_id,
