@@ -78,6 +78,7 @@ class PaperTrader:
 
         # ── REAL TRADING ──────────────────────────────────────────────────────
         if not PAPER_TRADING:
+            print(f"🔴 Ejecutando orden REAL: ${position_size:.2f} en {market_id[:20]}")
             try:
                 from src.core.polymarket_executor import place_market_order, get_balance
                 real_balance = get_balance()
