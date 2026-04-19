@@ -4,6 +4,8 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from config.settings import PAPER_TRADING
+from config.settings import PAPER_TRADING
+print(f"🔧 PAPER_TRADING = {PAPER_TRADING}")
 
 logger = logging.getLogger(__name__)
 
