@@ -544,7 +544,9 @@ class BTCScalper:
         from config.settings import PAPER_TRADING
         self.log(f"🔧 MODO: {'PAPER' if PAPER_TRADING else 'REAL'}", "#A78BFA")
     
-        position = self._calc_position_size(...)
+        position = self._calc_position_size(
+    decision["gap"], bankroll, cap_disp, cap_uso, current_state
+)
 
         trade = self.trader.place_trade(
             market_id=market_id,
