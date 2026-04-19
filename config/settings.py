@@ -17,13 +17,6 @@ MIN_EV = float(os.getenv("MIN_EV", 0.05))
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 POLYMARKET_API_KEY = os.getenv("POLYMARKET_API_KEY")
 POLYMARKET_SIGNER_ADDRESS = os.getenv("POLYMARKET_SIGNER_ADDRESS")
-
-# Seguridad
-if not PAPER_TRADING:
-    raise EnvironmentError(
-        "PAPER_TRADING está desactivado. "
-        "Activalo explícitamente para operar en real."
-    )
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
 BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
 BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "true").lower() == "true"

@@ -139,11 +139,16 @@ def tradingview_webhook():
 
 @app.route("/api/poly/reset", methods=["POST"])
 def poly_reset():
-    data = {"bankroll": 1000, "initial_bankroll": 1000, "trades": [], "active_trades": []}
+    amount = float((request.json or {}).get("amount", 94))
+    data = {"bankroll": amount, "initial_bankroll": amount, "trades": [], "active_trades": []}
     POLY_LOG.parent.mkdir(exist_ok=True)
     with open(POLY_LOG, "w") as f:
         json.dump(data, f)
-    return jsonify({"ok": True})
+    # resetear equity tracker también
+    eq_file = Path("logs/equity.json")
+    if eq_file.exists():
+        eq_file.unlink()
+    return jsonify({"ok": True, "bankroll": amount})
 
 
 # ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
