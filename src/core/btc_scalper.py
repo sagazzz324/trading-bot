@@ -16,8 +16,8 @@ GAMMA_API = "https://gamma-api.polymarket.com"
 # ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
 TAU         = 0.17
 EPSILON     = 0.03
-Q_MIN       = 0.35
-Q_MAX       = 0.72
+Q_MIN       = 0.35   # se actualiza dinámicamente por el auto-tuner
+Q_MAX       = 0.72   # se actualiza dinámicamente por el auto-tuner
 
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
@@ -25,15 +25,15 @@ MAX_POSITION_PCT   = 0.05
 MIN_POSITION       = 2.0
 MAX_SPREAD         = 0.06
 MIN_LIQUIDITY      = 300
-MAX_TRADE_DURATION = 90        # reducido de 180s a 90s
+MAX_TRADE_DURATION = 90
 TP_PCT             = 0.05
 SL_PCT             = 0.08
 
 # ── PARAMETROS DE SEGURIDAD ───────────────────────────────────────────────────
-SL_COOLDOWN_SEC    = 90        # esperar 90s después de un SL antes de re-entrar
-SL_STREAK_LIMIT    = 3         # pausar si hay N SL seguidos
-SL_STREAK_PAUSE    = 300       # pausa de 5 minutos tras racha de SL
-DAILY_LOSS_LIMIT   = -50.0     # pérdida máxima diaria en $
+SL_COOLDOWN_SEC    = 90
+SL_STREAK_LIMIT    = 3
+SL_STREAK_PAUSE    = 300
+DAILY_LOSS_LIMIT   = -50.0
 
 STATE_THRESHOLDS = [0.15, 0.0, -0.15]
 
@@ -286,7 +286,6 @@ def get_outcome_current_price(market_id: str, direction: str) -> float | None:
 
 
 def _get_argentina_day() -> str:
-    """Retorna la fecha actual en Argentina (UTC-3) como string YYYY-MM-DD."""
     ar = datetime.now(timezone(timedelta(hours=-3)))
     return ar.strftime("%Y-%m-%d")
 
@@ -301,11 +300,37 @@ class BTCScalper:
         self._open: dict = {}
 
         # ── Seguridad ──────────────────────────────────────────────────────
-        self._last_sl_time   = 0.0      # timestamp del último SL
-        self._sl_streak      = 0        # SL consecutivos
-        self._streak_pause_until = 0.0  # hasta cuándo pausar por racha
-        self._daily_pnl      = 0.0      # PnL acumulado del día
-        self._daily_day      = ""       # fecha del día actual (para resetear)
+        self._last_sl_time       = 0.0
+        self._sl_streak          = 0
+        self._streak_pause_until = 0.0
+        self._daily_pnl          = 0.0
+        self._daily_day          = ""
+
+        # ── Régimen de mercado ─────────────────────────────────────────────
+        self._regime         = "unknown"
+        self._regime_checked = 0.0
+        self._REGIME_TTL     = 300   # re-detectar cada 5 minutos
+
+        # Cargar parámetros del régimen al arrancar
+        self._load_regime_params()
+
+    def _load_regime_params(self):
+        """Carga los mejores parámetros para el régimen actual."""
+        global TAU, EPSILON, Q_MIN, Q_MAX
+        try:
+            from src.core.btc_optimizer import get_best_params_for_regime
+            params = get_best_params_for_regime(self._regime)
+            TAU     = params["tau"]
+            EPSILON = params["epsilon"]
+            Q_MIN   = params["q_min"]
+            Q_MAX   = params["q_max"]
+            self.log(
+                f"📊 Régimen '{self._regime}' · "
+                f"TAU={TAU} EPS={EPSILON} Q=[{Q_MIN},{Q_MAX}]",
+                "#A78BFA"
+            )
+        except Exception as e:
+            logger.error(f"_load_regime_params: {e}")
 
     def _reset_daily_if_needed(self):
         today = _get_argentina_day()
@@ -316,7 +341,6 @@ class BTCScalper:
             self.log(f"📅 Nuevo día · daily PnL reseteado", "#ffffff40")
 
     def _register_sl(self, pnl: float):
-        """Llamar cuando cierra por SL para actualizar contadores."""
         self._last_sl_time = time_module.time()
         self._sl_streak   += 1
         self._daily_pnl   += pnl
@@ -328,47 +352,31 @@ class BTCScalper:
             )
 
     def _register_tp(self, pnl: float):
-        """Llamar cuando cierra por TP para resetear streak."""
         self._sl_streak  = 0
         self._daily_pnl += pnl
 
     def _can_enter(self) -> tuple[bool, str]:
-        """Verifica todas las condiciones de seguridad antes de entrar."""
         now = time_module.time()
-
-        # Pausa por racha de SL
         if now < self._streak_pause_until:
             remaining = int(self._streak_pause_until - now)
             return False, f"⏸️ Pausa post-racha · {remaining}s restantes"
-
-        # Cooldown post-SL
         since_sl = now - self._last_sl_time
         if since_sl < SL_COOLDOWN_SEC:
             remaining = int(SL_COOLDOWN_SEC - since_sl)
             return False, f"⏸️ Cooldown post-SL · {remaining}s restantes"
-
-        # Límite pérdida diaria
         if self._daily_pnl <= DAILY_LOSS_LIMIT:
             return False, f"⛔ Daily loss ${self._daily_pnl:.2f} · límite alcanzado"
-
         return True, ""
 
     def _calc_position_size(self, gap: float, bankroll: float,
                              cap_disp: float, cap_uso: float,
                              current_state: int) -> float:
-        """
-        Sizing dinámico basado en el gap y el estado actual.
-        - gap pequeño (0.03-0.08):  3% del bankroll
-        - gap medio   (0.08-0.15):  4% del bankroll
-        - gap grande  (0.15+):      5% del bankroll (máximo)
-        - Estado 0 (Strong Bull) con dirección UP: bonus +0.5%
-        """
         if gap < 0.08:
             pct = 0.03
         elif gap < 0.15:
             pct = 0.04
         else:
-            pct = MAX_POSITION_PCT  # 5%
+            pct = MAX_POSITION_PCT
 
         position = round(min(
             bankroll * pct,
@@ -431,13 +439,9 @@ class BTCScalper:
     def run_once(self):
         self.cycle += 1
         self._reset_daily_if_needed()
-
-        # Actualizar precio BTC para el dashboard
         get_btc_current_price()
-
         self._check_exits()
 
-        # Verificar condiciones de seguridad antes de buscar entrada
         can_enter, reason = self._can_enter()
         if not can_enter:
             self.log(reason, "#F5A623")
@@ -507,23 +511,48 @@ class BTCScalper:
                                      cap_disp, cap_uso, current_state)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
-        # Auto-tuning cada 50 trades
-        global _tune_counter, TAU, EPSILON
+        # ── Auto-tuning cada 50 trades ────────────────────────────────────
+        global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
         _tune_counter += 1
         if _tune_counter % _TUNE_EVERY == 0:
             try:
                 from src.core.btc_optimizer import analyze_and_tune
                 result = analyze_and_tune(min_trades=50)
                 if result:
-                    TAU     = result["tau"]
-                    EPSILON = result["epsilon"]
+                    TAU          = result["tau"]
+                    EPSILON      = result["epsilon"]
+                    Q_MIN        = result["q_min"]
+                    Q_MAX        = result["q_max"]
+                    self._regime = result["regime"]
                     self.log(
                         f"🧠 Auto-tune · WR={result['win_rate']*100:.1f}% · "
-                        f"TAU={TAU} · EPS={EPSILON} · n={result['trades']}",
+                        f"régimen='{result['regime']}' · "
+                        f"TAU={TAU} EPS={EPSILON} Q=[{Q_MIN:.2f},{Q_MAX:.2f}] · "
+                        f"n={result['trades']}",
                         "#A78BFA"
                     )
             except Exception as e:
                 logger.error(f"auto-tune: {e}")
+
+        # ── Re-detectar régimen cada 5 minutos ────────────────────────────
+        now_ts = time_module.time()
+        if now_ts - self._regime_checked > self._REGIME_TTL:
+            self._regime_checked = now_ts
+            try:
+                from src.core.btc_optimizer import _detect_regime, get_best_params_for_regime
+                from pathlib import Path
+                poly_log = Path("logs/paper_trades.json")
+                if poly_log.exists():
+                    with open(poly_log) as f:
+                        d = json.load(f)
+                    resolved = [t for t in d.get("trades", []) if t.get("status") == "resolved"]
+                    if len(resolved) >= 10:
+                        new_regime = _detect_regime(resolved)
+                        if new_regime != self._regime:
+                            self._regime = new_regime
+                            self._load_regime_params()
+            except Exception as e:
+                logger.error(f"regime check: {e}")
 
         return False
 
@@ -537,16 +566,6 @@ class BTCScalper:
         if position < MIN_POSITION:
             self.log(f"💰 Posición ${position:.2f} muy pequeña", "#FF5050")
             return False
-        
-    def _execute(self, market_id, question, direction, market_price,
-             decision, bankroll, cap_disp, cap_uso, current_state):
-    
-        from config.settings import PAPER_TRADING
-        self.log(f"🔧 MODO: {'PAPER' if PAPER_TRADING else 'REAL'}", "#A78BFA")
-    
-        position = self._calc_position_size(
-    decision["gap"], bankroll, cap_disp, cap_uso, current_state
-)
 
         trade = self.trader.place_trade(
             market_id=market_id,
