@@ -3,6 +3,7 @@ import logging
 import traceback
 from datetime import datetime
 from pathlib import Path
+from config.settings import PAPER_TRADING
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +70,42 @@ class PaperTrader:
             "position_size": position_size,
             "status":        "active",
             "result":        None,
-            "pnl":           None
+            "pnl":           None,
+            "real":          not PAPER_TRADING,
+            "order_id":      None,
+            "token_id":      None,
         }
+
+        # ── REAL TRADING ──────────────────────────────────────────────────────
+        if not PAPER_TRADING:
+            try:
+                from src.core.polymarket_executor import place_market_order, get_balance
+                real_balance = get_balance()
+                if real_balance < position_size:
+                    logger.warning(f"Balance real insuficiente: ${real_balance:.2f} < ${position_size:.2f}")
+                    return None
+                resp = place_market_order(
+                    token_id=market_id,
+                    side="BUY",
+                    amount_usdc=position_size
+                )
+                if not resp:
+                    logger.error("Orden real fallida — no se ejecutó")
+                    return None
+                trade["order_id"] = resp.get("orderID") or resp.get("id", "")
+                trade["token_id"] = market_id
+                logger.info(f"Orden real ejecutada: {resp}")
+            except Exception as e:
+                logger.error(f"Error ejecutando orden real: {e}\n{traceback.format_exc()}")
+                return None
 
         self.bankroll -= position_size
         self.active_trades.append(trade)
         self.trades.append(trade)
         self._save_state()
 
-        logger.info(f"Trade #{trade['id']} colocado: ${position_size:.2f} en '{question[:50]}'")
+        mode = "🔴 REAL" if not PAPER_TRADING else "📄 PAPER"
+        logger.info(f"{mode} Trade #{trade['id']}: ${position_size:.2f} en '{question[:50]}'")
         return trade
 
     def _sync_trade_in_history(self, trade_id: int, updates: dict):
@@ -85,14 +113,14 @@ class PaperTrader:
             if t["id"] == trade_id:
                 t.update(updates)
                 return True
-        logger.error(f"_sync_trade_in_history: Trade #{trade_id} no encontrado en historial")
+        logger.error(f"_sync_trade_in_history: Trade #{trade_id} no encontrado")
         return False
 
     def resolve_trade(self, trade_id, outcome):
         """Resuelve un trade por resultado binario (True=win, False=loss)."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
-            logger.error(f"resolve_trade: Trade #{trade_id} no encontrado en active_trades")
+            logger.error(f"resolve_trade: Trade #{trade_id} no encontrado")
             return
 
         position    = trade["position_size"]
@@ -127,10 +155,10 @@ class PaperTrader:
         logger.info(f"Trade #{trade_id} resuelto: {'WIN' if outcome else 'LOSS'} PnL ${pnl:.2f}")
 
     def resolve_trade_with_pnl(self, trade_id, pnl):
-        """Cierra un trade con PnL calculado externamente (salida anticipada)."""
+        """Cierra un trade con PnL calculado externamente."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
-            logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado en active_trades")
+            logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado")
             return
 
         entered_at = trade.get("timestamp", "")
@@ -157,7 +185,6 @@ class PaperTrader:
         logger.info(f"Trade #{trade_id} cerrado: {'WIN' if pnl >= 0 else 'LOSS'} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
 
     def _calc_duration(self, timestamp_str: str) -> float:
-        """Calcula duración en segundos desde el timestamp de apertura."""
         try:
             from datetime import timezone
             opened = datetime.fromisoformat(timestamp_str)
@@ -169,18 +196,14 @@ class PaperTrader:
             return 0.0
 
     def force_close_stale_trades(self, pnl_per_trade=0.0):
-        """Limpia posiciones activas colgadas."""
         stale = list(self.active_trades)
         if not stale:
-            logger.info("No hay trades activos para limpiar")
             return 0
         for trade in stale:
             self.resolve_trade_with_pnl(trade["id"], pnl_per_trade)
-        logger.info(f"force_close_stale_trades: {len(stale)} trades cerrados")
         return len(stale)
 
     def reset(self, bankroll=1000):
-        """Reset completo."""
         self.bankroll         = bankroll
         self.initial_bankroll = bankroll
         self.trades           = []
@@ -208,5 +231,6 @@ class PaperTrader:
             "win_rate":        f"{win_rate:.1%}",
             "total_pnl":       f"${total_pnl:.2f}",
             "bankroll_actual": f"${self.bankroll:.2f}",
-            "drawdown":        f"{drawdown:.1%}"
+            "drawdown":        f"{drawdown:.1%}",
+            "mode":            "REAL" if not PAPER_TRADING else "PAPER"
         }
