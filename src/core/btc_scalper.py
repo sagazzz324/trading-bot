@@ -225,6 +225,42 @@ def get_market_outcome_prices(market) -> dict:
         return {"up_price":0.5,"down_price":0.5,"up_outcome":"Up","down_outcome":"Down"}
 
 
+def _get_clob_token_id(market: dict, direction: str) -> str:
+    """
+    Extrae el clobTokenId correcto para el outcome UP o DOWN.
+    Polymarket CLOB usa estos IDs para ejecutar órdenes, no el conditionId.
+    UP = índice 0, DOWN = índice 1 en clobTokenIds.
+    """
+    try:
+        clob_tokens = market.get("clobTokenIds", "[]")
+        if isinstance(clob_tokens, str):
+            clob_tokens = json.loads(clob_tokens)
+
+        if not clob_tokens:
+            # Fallback: usar conditionId
+            return market.get("conditionId") or market.get("id", "")
+
+        # Detectar índice del outcome UP/DOWN
+        outcomes = market.get("outcomes", "[]")
+        if isinstance(outcomes, str):
+            outcomes = json.loads(outcomes)
+
+        for i, outcome in enumerate(outcomes):
+            o = outcome.lower()
+            if direction == "up" and any(w in o for w in ["up", "higher", "above"]):
+                return clob_tokens[i] if i < len(clob_tokens) else clob_tokens[0]
+            if direction == "down" and any(w in o for w in ["down", "lower", "below"]):
+                return clob_tokens[i] if i < len(clob_tokens) else clob_tokens[1]
+
+        # Fallback por índice
+        idx = 0 if direction == "up" else 1
+        return clob_tokens[idx] if idx < len(clob_tokens) else clob_tokens[0]
+
+    except Exception as e:
+        logger.error(f"_get_clob_token_id: {e}")
+        return market.get("conditionId") or market.get("id", "")
+
+
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
     try:
         r = requests.get(
@@ -311,7 +347,6 @@ class BTCScalper:
         self._regime_checked = 0.0
         self._REGIME_TTL     = 300
 
-        # Cargar parámetros del régimen al arrancar
         self._load_regime_params()
 
     def _load_regime_params(self):
@@ -436,7 +471,6 @@ class BTCScalper:
                 self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#FF5050")
 
     def run_once(self):
-        # ── Declarar globals al inicio para evitar SyntaxError ────────────
         global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
 
         self.cycle += 1
@@ -500,7 +534,7 @@ class BTCScalper:
         if Q_MIN <= prices["up_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["up_price"], "up")
             if dec["enter"]:
-                return self._execute(market_id, question, "up",
+                return self._execute(market, market_id, question, "up",
                                      prices["up_price"], dec, bankroll,
                                      cap_disp, cap_uso, current_state)
             self.log(f"⏸️ Up — {dec['reason']}", "#F5A623")
@@ -508,7 +542,7 @@ class BTCScalper:
         if Q_MIN <= prices["down_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["down_price"], "down")
             if dec["enter"]:
-                return self._execute(market_id, question, "down",
+                return self._execute(market, market_id, question, "down",
                                      prices["down_price"], dec, bankroll,
                                      cap_disp, cap_uso, current_state)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
@@ -557,7 +591,7 @@ class BTCScalper:
 
         return False
 
-    def _execute(self, market_id, question, direction, market_price,
+    def _execute(self, market, market_id, question, direction, market_price,
                  decision, bankroll, cap_disp, cap_uso, current_state):
 
         position = self._calc_position_size(
@@ -568,8 +602,12 @@ class BTCScalper:
             self.log(f"💰 Posición ${position:.2f} muy pequeña", "#FF5050")
             return False
 
+        # Obtener el token_id correcto para CLOB (asset_id del outcome UP o DOWN)
+        clob_token_id = _get_clob_token_id(market, direction)
+        self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction}", "#ffffff30")
+
         trade = self.trader.place_trade(
-            market_id=market_id,
+            market_id=clob_token_id,   # usamos el clob token para el executor real
             question=question,
             true_prob=decision["p_hat"],
             market_prob=market_price,
@@ -579,7 +617,7 @@ class BTCScalper:
 
         if trade:
             self._open[trade["id"]] = {
-                "market_id":   market_id,
+                "market_id":   market_id,   # guardamos el conditionId para monitorear precio
                 "direction":   direction,
                 "entry_price": market_price,
                 "entered_at":  time_module.time(),

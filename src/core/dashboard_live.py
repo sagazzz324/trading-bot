@@ -144,14 +144,11 @@ def poly_reset():
     POLY_LOG.parent.mkdir(exist_ok=True)
     with open(POLY_LOG, "w") as f:
         json.dump(data, f)
-    # resetear equity tracker también
     eq_file = Path("logs/equity.json")
     if eq_file.exists():
         eq_file.unlink()
     return jsonify({"ok": True, "bankroll": amount})
 
-
-# ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 
 @app.route("/api/equity")
 def api_equity():
@@ -161,33 +158,59 @@ def api_equity():
     except Exception as e:
         logger.error(traceback.format_exc())
         return jsonify({"error": str(e)})
- 
+
+
 @app.route("/api/equity/curve")
 def api_equity_curve():
     data = _load_json(Path("logs/equity.json"))
     return jsonify(data.get("equity_curve", []))
+
+
+@app.route("/api/equity/reset", methods=["POST"])
+def api_equity_reset():
+    eq_file = Path("logs/equity.json")
+    if eq_file.exists():
+        eq_file.unlink()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/regimes")
+def api_regimes():
+    data = _load_json(Path("logs/regimes.json"))
+    return jsonify(data)
+
 
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
         from src.core.polymarket_executor import get_client
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
-        
+        from src.core.btc_scalper import find_active_btc_5m_market, get_market_outcome_prices, _get_clob_token_id
+
         client = get_client()
-        token_id = "10573704752591535651462031805725056300561251820094597326643531904905733104178"
-        
+        market = find_active_btc_5m_market()
+        if not market:
+            return jsonify({"ok": False, "error": "Sin mercado activo"})
+
+        prices   = get_market_outcome_prices(market)
+        token_id = _get_clob_token_id(market, "up")
+
         order_args = MarketOrderArgs(token_id=token_id, amount=1.0, side="BUY")
         signed_order = client.create_market_order(order_args)
         resp = client.post_order(signed_order, OrderType.FOK)
-        
+
         return jsonify({
-            "ok": True,
-            "signed_order": str(signed_order),
-            "resp": str(resp)
+            "ok":       True,
+            "market":   market.get("question", ""),
+            "token_id": token_id,
+            "prices":   prices,
+            "resp":     str(resp)
         })
     except Exception as e:
-        import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
+
+
+# ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 
 @socketio.on("connect")
 def on_connect():
@@ -239,6 +262,7 @@ def on_start_bot(data=None):
 def on_stop_bot():
     stop_bybit()
     emit("update", get_data())
+
 
 # ── PUSH LOOP ─────────────────────────────────────────────────────────────────
 
