@@ -31,10 +31,10 @@ def get_client() -> ClobClient:
 def get_balance() -> float:
     """Retorna el balance de USDC disponible en Polymarket."""
     try:
+        from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
         client = get_client()
-        allowance = client.get_balance_allowance(
-            params={"asset_type": "COLLATERAL"}
-        )
+        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+        allowance = client.get_balance_allowance(params=params)
         return float(allowance) if allowance else 0.0
     except Exception as e:
         logger.error(f"get_balance: {e}\n{traceback.format_exc()}")
