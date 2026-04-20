@@ -171,10 +171,15 @@ def api_equity_curve():
 def test_polymarket():
     try:
         from src.core.polymarket_executor import get_client
+        import os
         client = get_client()
-        # Ver todos los métodos disponibles
-        methods = [m for m in dir(client) if not m.startswith('_') and 'balance' in m.lower()]
-        return jsonify({"ok": True, "balance_methods": methods})
+        wallet = os.getenv("POLYMARKET_SIGNER_ADDRESS")
+        # Probar obtener info de la cuenta
+        result = {
+            "wallet": wallet,
+            "allowance": str(client.get_balance_allowance(params={"asset_type": "COLLATERAL"})),
+        }
+        return jsonify({"ok": True, "result": result})
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
