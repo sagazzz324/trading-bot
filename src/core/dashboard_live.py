@@ -183,32 +183,16 @@ def api_regimes():
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
-        from src.core.polymarket_executor import get_client
-        from py_clob_client.clob_types import MarketOrderArgs, OrderType
-        from src.core.btc_scalper import find_active_btc_5m_market, get_market_outcome_prices, _get_clob_token_id
-
-        client = get_client()
+        from src.core.polymarket_executor import place_market_order
+        from src.core.btc_scalper import find_active_btc_5m_market, _get_clob_token_id
         market = find_active_btc_5m_market()
         if not market:
             return jsonify({"ok": False, "error": "Sin mercado activo"})
-
-        prices   = get_market_outcome_prices(market)
         token_id = _get_clob_token_id(market, "up")
-
-        order_args = MarketOrderArgs(token_id=token_id, amount=1.0, side="BUY")
-        signed_order = client.create_market_order(order_args)
-        resp = client.post_order(signed_order, OrderType.FOK)
-
-        return jsonify({
-            "ok":       True,
-            "market":   market.get("question", ""),
-            "token_id": token_id,
-            "prices":   prices,
-            "resp":     str(resp)
-        })
+        resp = place_market_order(token_id=token_id, side="BUY", amount_usdc=1.0)
+        return jsonify({"ok": True, "resp": str(resp), "token_id": token_id})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
-
 
 # ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 

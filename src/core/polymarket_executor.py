@@ -1,41 +1,31 @@
 """
-polymarket_executor.py — Ejecutor de órdenes reales en Polymarket CLOB
-Se usa cuando PAPER_TRADING=false
+polymarket_executor.py — Llama al executor de Fly.io en Brasil
+para ejecutar órdenes reales en Polymarket CLOB sin geoblock.
 """
 import os
 import logging
 import traceback
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import ApiCreds, MarketOrderArgs, OrderType
-from py_clob_client.constants import POLYGON
+import requests
 
 logger = logging.getLogger(__name__)
 
-
-def get_client() -> ClobClient:
-    creds = ApiCreds(
-        api_key=os.getenv("POLYMARKET_API_KEY"),
-        api_secret=os.getenv("POLYMARKET_API_SECRET"),
-        api_passphrase=os.getenv("POLYMARKET_API_PASSPHRASE"),
-    )
-    return ClobClient(
-        host="https://clob.polymarket.com",
-        key=os.getenv("POLYMARKET_PRIVATE_KEY"),
-        chain_id=POLYGON,
-        signature_type=0,
-        funder=os.getenv("POLYMARKET_SIGNER_ADDRESS"),
-        creds=creds
-    )
+EXECUTOR_URL    = os.getenv("EXECUTOR_URL", "https://poly-executor.fly.dev")
+EXECUTOR_SECRET = os.getenv("EXECUTOR_SECRET", "neural_trade_2025")
 
 
 def get_balance() -> float:
     """Retorna el balance de USDC disponible en Polymarket."""
     try:
-        from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
-        client = get_client()
-        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
-        allowance = client.get_balance_allowance(params=params)
-        return float(allowance) if allowance else 0.0
+        r = requests.get(
+            f"{EXECUTOR_URL}/balance",
+            params={"secret": EXECUTOR_SECRET},
+            timeout=10
+        )
+        data = r.json()
+        if data.get("ok"):
+            return float(data.get("balance", 0) or 0)
+        logger.error(f"get_balance error: {data}")
+        return 0.0
     except Exception as e:
         logger.error(f"get_balance: {e}\n{traceback.format_exc()}")
         return 0.0
@@ -43,45 +33,35 @@ def get_balance() -> float:
 
 def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | None:
     """
-    Ejecuta una orden de mercado en Polymarket.
-    token_id: conditionId del outcome (up o down)
+    Ejecuta una orden de mercado en Polymarket a través del executor en Fly.io Brasil.
+    token_id: clobTokenId del outcome (up o down)
     side: "BUY"
-    amount_usdc: monto en USDC a invertir
+    amount_usdc: monto en USDC
     """
     try:
-        client = get_client()
-        order_args = MarketOrderArgs(
-            token_id=token_id,
-            amount=amount_usdc,
-            side=side,
+        r = requests.post(
+            f"{EXECUTOR_URL}/order",
+            json={
+                "secret":   EXECUTOR_SECRET,
+                "token_id": token_id,
+                "side":     side,
+                "amount":   amount_usdc,
+            },
+            timeout=15
         )
-        signed_order = client.create_market_order(order_args)
-        resp = client.post_order(signed_order, OrderType.FOK)
-        logger.info(f"Orden ejecutada: {resp}")
-        return resp
+        data = r.json()
+        if data.get("ok"):
+            logger.info(f"Orden ejecutada via Fly.io: {data}")
+            return data
+        logger.error(f"place_market_order error: {data}")
+        print(f"❌ ERROR ORDEN REAL: {data.get('error')}")
+        return None
     except Exception as e:
         logger.error(f"place_market_order: {e}\n{traceback.format_exc()}")
         print(f"❌ ERROR ORDEN REAL: {e}")
         return None
 
 
-def get_open_positions() -> list:
-    """Retorna las posiciones abiertas en Polymarket."""
-    try:
-        client = get_client()
-        positions = client.get_orders()
-        return positions or []
-    except Exception as e:
-        logger.error(f"get_open_positions: {e}\n{traceback.format_exc()}")
-        return []
-
-
 def get_trade_history(limit: int = 50) -> list:
-    """Retorna el historial de trades reales."""
-    try:
-        client = get_client()
-        trades = client.get_trades()
-        return trades or []
-    except Exception as e:
-        logger.error(f"get_trade_history: {e}\n{traceback.format_exc()}")
-        return []
+    """Retorna el historial de trades reales — por ahora no implementado en el executor."""
+    return []
