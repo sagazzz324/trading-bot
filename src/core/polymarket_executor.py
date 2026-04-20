@@ -6,8 +6,9 @@ import os
 import logging
 import traceback
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import MarketOrderArgs, OrderType
+from py_clob_client.clob_types import MarketOrderArgs, OrderType, ApiCreds
 from py_clob_client.constants import POLYGON
+
 
 logger = logging.getLogger(__name__)
 
