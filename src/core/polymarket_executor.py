@@ -31,7 +31,8 @@ def get_balance() -> float:
     """Retorna el balance de USDC disponible en Polymarket."""
     try:
         client = get_client()
-        balance = client.get_balance()
+        # Obtener balance del contrato de Polymarket
+        balance = client.get_collateral_balance()
         return float(balance)
     except Exception as e:
         logger.error(f"get_balance: {e}\n{traceback.format_exc()}")
