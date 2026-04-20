@@ -28,14 +28,23 @@ def get_client() -> ClobClient:
 
 
 def get_balance() -> float:
-    """Retorna el balance de USDC disponible en Polymarket."""
+    """Retorna el balance de USDC en la wallet en Polygon."""
     try:
-        client = get_client()
-        # El balance se lee como allowance del contrato
-        allowance = client.get_balance_allowance(
-            params={"asset_type": "COLLATERAL"}
+        from web3 import Web3
+        # USDC en Polygon
+        USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+        RPC = "https://polygon-rpc.com"
+        w3 = Web3(Web3.HTTPProvider(RPC))
+        abi = [{"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(USDC_ADDRESS),
+            abi=abi
         )
-        return float(allowance) if allowance else 0.0
+        wallet = os.getenv("POLYMARKET_SIGNER_ADDRESS")
+        balance = contract.functions.balanceOf(
+            Web3.to_checksum_address(wallet)
+        ).call()
+        return round(balance / 1e6, 2)  # USDC tiene 6 decimales
     except Exception as e:
         logger.error(f"get_balance: {e}\n{traceback.format_exc()}")
         return 0.0
