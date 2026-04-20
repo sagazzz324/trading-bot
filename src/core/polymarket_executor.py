@@ -6,46 +6,36 @@ import os
 import logging
 import traceback
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import MarketOrderArgs, OrderType, ApiCreds
+from py_clob_client.clob_types import ApiCreds, MarketOrderArgs, OrderType
 from py_clob_client.constants import POLYGON
-
 
 logger = logging.getLogger(__name__)
 
 
 def get_client() -> ClobClient:
+    creds = ApiCreds(
+        api_key=os.getenv("POLYMARKET_API_KEY"),
+        api_secret=os.getenv("POLYMARKET_API_SECRET"),
+        api_passphrase=os.getenv("POLYMARKET_API_PASSPHRASE"),
+    )
     return ClobClient(
         host="https://clob.polymarket.com",
         key=os.getenv("POLYMARKET_PRIVATE_KEY"),
         chain_id=POLYGON,
         signature_type=0,
         funder=os.getenv("POLYMARKET_SIGNER_ADDRESS"),
-        creds={
-            "apiKey":      os.getenv("POLYMARKET_API_KEY"),
-            "secret":      os.getenv("POLYMARKET_API_SECRET"),
-            "passphrase":  os.getenv("POLYMARKET_API_PASSPHRASE"),
-        }
+        creds=creds
     )
 
 
 def get_balance() -> float:
-    """Retorna el balance de USDC en la wallet en Polygon."""
+    """Retorna el balance de USDC disponible en Polymarket."""
     try:
-        from web3 import Web3
-        # USDC en Polygon
-        USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-        RPC = "https://polygon-rpc.com"
-        w3 = Web3(Web3.HTTPProvider(RPC))
-        abi = [{"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]
-        contract = w3.eth.contract(
-            address=Web3.to_checksum_address(USDC_ADDRESS),
-            abi=abi
+        client = get_client()
+        allowance = client.get_balance_allowance(
+            params={"asset_type": "COLLATERAL"}
         )
-        wallet = os.getenv("POLYMARKET_SIGNER_ADDRESS")
-        balance = contract.functions.balanceOf(
-            Web3.to_checksum_address(wallet)
-        ).call()
-        return round(balance / 1e6, 2)  # USDC tiene 6 decimales
+        return float(allowance) if allowance else 0.0
     except Exception as e:
         logger.error(f"get_balance: {e}\n{traceback.format_exc()}")
         return 0.0
@@ -72,7 +62,6 @@ def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | N
         logger.error(f"place_market_order: {e}\n{traceback.format_exc()}")
         print(f"❌ ERROR ORDEN REAL: {e}")
         return None
-    
 
 
 def get_open_positions() -> list:
