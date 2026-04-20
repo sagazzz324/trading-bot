@@ -42,16 +42,21 @@ def get_balance() -> float:
 
 
 def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | None:
+    """
+    Ejecuta una orden de mercado en Polymarket.
+    token_id: conditionId del outcome (up o down)
+    side: "BUY"
+    amount_usdc: monto en USDC a invertir
+    """
     try:
         client = get_client()
         order_args = MarketOrderArgs(
             token_id=token_id,
             amount=amount_usdc,
+            side=side,
         )
         signed_order = client.create_market_order(order_args)
-        print(f"🔧 Signed order: {signed_order}")
         resp = client.post_order(signed_order, OrderType.FOK)
-        print(f"🔧 Post order resp: {resp}")
         logger.info(f"Orden ejecutada: {resp}")
         return resp
     except Exception as e:
@@ -64,7 +69,7 @@ def get_open_positions() -> list:
     """Retorna las posiciones abiertas en Polymarket."""
     try:
         client = get_client()
-        positions = client.get_positions()
+        positions = client.get_orders()
         return positions or []
     except Exception as e:
         logger.error(f"get_open_positions: {e}\n{traceback.format_exc()}")
@@ -75,7 +80,7 @@ def get_trade_history(limit: int = 50) -> list:
     """Retorna el historial de trades reales."""
     try:
         client = get_client()
-        trades = client.get_trades(limit=limit)
+        trades = client.get_trades()
         return trades or []
     except Exception as e:
         logger.error(f"get_trade_history: {e}\n{traceback.format_exc()}")

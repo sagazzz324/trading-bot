@@ -176,7 +176,7 @@ def test_polymarket():
         client = get_client()
         token_id = "10573704752591535651462031805725056300561251820094597326643531904905733104178"
         
-        order_args = MarketOrderArgs(token_id=token_id, amount=1.0)
+        order_args = MarketOrderArgs(token_id=token_id, amount=1.0, side="BUY")
         signed_order = client.create_market_order(order_args)
         resp = client.post_order(signed_order, OrderType.FOK)
         
