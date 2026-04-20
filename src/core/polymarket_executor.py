@@ -42,12 +42,6 @@ def get_balance() -> float:
 
 
 def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | None:
-    """
-    Ejecuta una orden de mercado en Polymarket.
-    token_id: conditionId del outcome (up o down)
-    side: "BUY"
-    amount_usdc: monto en USDC a invertir
-    """
     try:
         client = get_client()
         order_args = MarketOrderArgs(
@@ -55,7 +49,9 @@ def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | N
             amount=amount_usdc,
         )
         signed_order = client.create_market_order(order_args)
+        print(f"🔧 Signed order: {signed_order}")
         resp = client.post_order(signed_order, OrderType.FOK)
+        print(f"🔧 Post order resp: {resp}")
         logger.info(f"Orden ejecutada: {resp}")
         return resp
     except Exception as e:
