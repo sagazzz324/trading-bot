@@ -171,11 +171,9 @@ def api_equity_curve():
 def test_polymarket():
     try:
         from src.core.polymarket_executor import get_client
-        from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
         client = get_client()
-        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
-        result = client.get_balance_allowance(params=params)
-        return jsonify({"ok": True, "result": str(result)})
+        positions = client.get_positions()
+        return jsonify({"ok": True, "positions": str(positions)})
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
