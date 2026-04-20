@@ -170,11 +170,21 @@ def api_equity_curve():
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
-        from src.core.polymarket_executor import place_market_order
-        # Test con $1 en el último token conocido
+        from src.core.polymarket_executor import get_client
+        from py_clob_client.clob_types import MarketOrderArgs, OrderType
+        
+        client = get_client()
         token_id = "10573704752591535651462031805725056300561251820094597326643531904905733104178"
-        resp = place_market_order(token_id=token_id, side="BUY", amount_usdc=1.0)
-        return jsonify({"ok": True, "resp": str(resp)})
+        
+        order_args = MarketOrderArgs(token_id=token_id, amount=1.0)
+        signed_order = client.create_market_order(order_args)
+        resp = client.post_order(signed_order, OrderType.FOK)
+        
+        return jsonify({
+            "ok": True,
+            "signed_order": str(signed_order),
+            "resp": str(resp)
+        })
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})

@@ -41,27 +41,23 @@ def get_balance() -> float:
         return 0.0
 
 
-@app.route("/api/test/polymarket")
-def test_polymarket():
+def place_market_order(token_id: str, side: str, amount_usdc: float) -> dict | None:
     try:
-        from src.core.polymarket_executor import get_client
-        from py_clob_client.clob_types import MarketOrderArgs, OrderType
-        
         client = get_client()
-        token_id = "10573704752591535651462031805725056300561251820094597326643531904905733104178"
-        
-        order_args = MarketOrderArgs(token_id=token_id, amount=1.0)
+        order_args = MarketOrderArgs(
+            token_id=token_id,
+            amount=amount_usdc,
+        )
         signed_order = client.create_market_order(order_args)
+        print(f"🔧 Signed order: {signed_order}")
         resp = client.post_order(signed_order, OrderType.FOK)
-        
-        return jsonify({
-            "ok": True,
-            "signed_order": str(signed_order),
-            "resp": str(resp)
-        })
+        print(f"🔧 Post order resp: {resp}")
+        logger.info(f"Orden ejecutada: {resp}")
+        return resp
     except Exception as e:
-        import traceback
-        return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
+        logger.error(f"place_market_order: {e}\n{traceback.format_exc()}")
+        print(f"❌ ERROR ORDEN REAL: {e}")
+        return None
 
 
 def get_open_positions() -> list:
