@@ -30,7 +30,7 @@ TP_PCT             = 0.05
 SL_PCT             = 0.08
 
 # ── PARAMETROS DE SEGURIDAD ───────────────────────────────────────────────────
-SL_COOLDOWN_SEC    = 90
+SL_COOLDOWN_SEC    = 30
 SL_STREAK_LIMIT    = 3
 SL_STREAK_PAUSE    = 300
 DAILY_LOSS_LIMIT   = -50.0
