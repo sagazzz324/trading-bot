@@ -172,8 +172,9 @@ def test_polymarket():
     try:
         from src.core.polymarket_executor import get_client
         client = get_client()
-        methods = [m for m in dir(client) if not m.startswith('_')]
-        return jsonify({"ok": True, "methods": methods})
+        trades = client.get_trades()
+        orders = client.get_orders()
+        return jsonify({"ok": True, "trades": str(trades), "orders": str(orders)})
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
