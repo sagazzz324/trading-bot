@@ -170,19 +170,11 @@ def api_equity_curve():
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
-        from src.core.polymarket_executor import get_client, place_market_order
-        client = get_client()
-        # Test de conectividad
-        ok = client.get_ok()
-        # Intentar una orden pequeña de prueba con un token real
-        # Usamos el último trade para obtener un asset_id válido
-        trades = client.get_trades()
-        last_token = trades[0]['asset_id'] if trades else None
-        return jsonify({
-            "ok": True, 
-            "server_ok": str(ok),
-            "last_token": last_token,
-        })
+        from src.core.polymarket_executor import place_market_order
+        # Test con $1 en el último token conocido
+        token_id = "10573704752591535651462031805725056300561251820094597326643531904905733104178"
+        resp = place_market_order(token_id=token_id, side="BUY", amount_usdc=1.0)
+        return jsonify({"ok": True, "resp": str(resp)})
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
