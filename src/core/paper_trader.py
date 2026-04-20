@@ -80,13 +80,8 @@ class PaperTrader:
 
         # ── REAL TRADING ──────────────────────────────────────────────────────
         if not PAPER_TRADING:
-            print(f"🔴 Ejecutando orden REAL: ${position_size:.2f} en {market_id[:20]}")
             try:
-                from src.core.polymarket_executor import place_market_order, get_balance
-                real_balance = get_balance()
-                if real_balance < position_size:
-                    logger.warning(f"Balance real insuficiente: ${real_balance:.2f} < ${position_size:.2f}")
-                    return None
+                from src.core.polymarket_executor import place_market_order
                 resp = place_market_order(
                     token_id=market_id,
                     side="BUY",
@@ -100,6 +95,7 @@ class PaperTrader:
                 logger.info(f"Orden real ejecutada: {resp}")
             except Exception as e:
                 logger.error(f"Error ejecutando orden real: {e}\n{traceback.format_exc()}")
+                print(f"❌ ERROR ORDEN REAL: {e}")
                 return None
 
         self.bankroll -= position_size
