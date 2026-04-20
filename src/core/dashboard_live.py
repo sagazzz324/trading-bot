@@ -167,6 +167,16 @@ def api_equity_curve():
     data = _load_json(Path("logs/equity.json"))
     return jsonify(data.get("equity_curve", []))
 
+@app.route("/api/test/polymarket")
+def test_polymarket():
+    try:
+        from src.core.polymarket_executor import get_balance
+        balance = get_balance()
+        return jsonify({"ok": True, "balance": balance})
+    except Exception as e:
+        import traceback
+        return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
+
 @socketio.on("connect")
 def on_connect():
     emit("update", get_data())
@@ -217,7 +227,6 @@ def on_start_bot(data=None):
 def on_stop_bot():
     stop_bybit()
     emit("update", get_data())
-
 
 # ── PUSH LOOP ─────────────────────────────────────────────────────────────────
 
