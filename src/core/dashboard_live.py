@@ -170,12 +170,15 @@ def api_equity_curve():
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
-        import py_clob_client.clob_types as ct
-        types = [x for x in dir(ct) if not x.startswith('_')]
-        return jsonify({"ok": True, "types": types})
+        from src.core.polymarket_executor import get_client
+        from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
+        client = get_client()
+        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+        result = client.get_balance_allowance(params=params)
+        return jsonify({"ok": True, "result": str(result)})
     except Exception as e:
         import traceback
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
 
 @socketio.on("connect")
 def on_connect():
