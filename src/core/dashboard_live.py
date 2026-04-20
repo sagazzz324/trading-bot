@@ -170,9 +170,11 @@ def api_equity_curve():
 @app.route("/api/test/polymarket")
 def test_polymarket():
     try:
-        from src.core.polymarket_executor import get_balance
-        balance = get_balance()
-        return jsonify({"ok": True, "balance": balance})
+        from src.core.polymarket_executor import get_client
+        client = get_client()
+        # Ver todos los métodos disponibles
+        methods = [m for m in dir(client) if not m.startswith('_') and 'balance' in m.lower()]
+        return jsonify({"ok": True, "balance_methods": methods})
     except Exception as e:
         import traceback
         return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
