@@ -63,6 +63,16 @@ def get_data() -> dict:
     estimated_bankroll = poly_data.get("bankroll", bankroll)
 
     import time as _t
+    try:
+        from src.core.polymarket_executor import get_balance as get_poly_balance
+        live_balance = float(get_poly_balance())
+        if live_balance > 0:
+            bankroll = live_balance
+            poly_data["wallet_balance"] = live_balance
+            poly_data["balance_source"] = "executor_live"
+    except Exception:
+        pass
+
     poly = {
         "bankroll":        round(bankroll, 2),
         "initial_balance": init_bank,
