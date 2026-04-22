@@ -54,8 +54,9 @@ def get_data() -> dict:
     resolved  = [t for t in trades if t.get("status") == "resolved"]
     wins      = [t for t in resolved if t.get("result") == "win"]
     total_pnl = sum(t.get("pnl", 0) for t in resolved)
-    bankroll  = poly_data.get("bankroll", 1000)
+    bankroll  = poly_data.get("wallet_balance", poly_data.get("bankroll", 1000))
     init_bank = poly_data.get("initial_bankroll", 1000)
+    estimated_bankroll = poly_data.get("bankroll", bankroll)
 
     import time as _t
     poly = {
@@ -66,6 +67,9 @@ def get_data() -> dict:
         "total_trades":    len(resolved),
         "open_positions":  poly_data.get("active_trades", []),
         "recent_trades":   trades[-10:][::-1],
+        "estimated_bankroll": round(estimated_bankroll, 2),
+        "balance_source":   poly_data.get("balance_source", "paper"),
+        "last_balance_sync": poly_data.get("last_balance_sync"),
         "running":         poly_state.running,
         "logs":            poly_state.logs[:30],
         "last_cycle":      poly_state.last_cycle,

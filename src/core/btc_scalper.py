@@ -288,6 +288,15 @@ def _get_best_ask(market: dict, direction: str) -> float:
         return 0.51
 
 
+def _get_exit_price(current_price: float | None, fallback_price: float) -> float:
+    base = current_price if current_price is not None else fallback_price
+    try:
+        price = max(0.01, min(0.99, float(base) - 0.01))
+        return round(price, 2)
+    except Exception:
+        return max(0.01, min(0.99, round(fallback_price, 2)))
+
+
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
     try:
         r = requests.get(
@@ -463,7 +472,11 @@ class BTCScalper:
                     pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2)
                 else:
                     pnl = round(-pos * 0.03, 2)
-                self.trader.resolve_trade_with_pnl(trade_id, pnl)
+                exit_price = _get_exit_price(current, meta["entry_price"] * 0.97)
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
+                if not closed:
+                    self.log(f"❌ No se pudo cerrar trade #{trade_id} en mercado real", "#FF5050")
+                    continue
                 self._open.pop(trade_id, None)
                 if pnl < 0:
                     self._register_sl(pnl)
@@ -483,17 +496,25 @@ class BTCScalper:
 
             if change >= TP_PCT:
                 pnl = round(pos * change, 2)
-                self.trader.resolve_trade_with_pnl(trade_id, pnl)
+                exit_price = _get_exit_price(current, entry)
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
+                if not closed:
+                    self.log(f"❌ TP sin fill para trade #{trade_id}", "#FF5050")
+                    continue
                 self._open.pop(trade_id, None)
                 self._register_tp(pnl)
-                self.log(f"✅ TP #{trade_id} · +${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#00E887")
+                self.log(f"✅ TP #{trade_id} · +${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s @ {exit_price:.2f}", "#00E887")
 
             elif change <= -SL_PCT:
                 pnl = round(pos * change, 2)
-                self.trader.resolve_trade_with_pnl(trade_id, pnl)
+                exit_price = _get_exit_price(current, entry)
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
+                if not closed:
+                    self.log(f"❌ SL sin fill para trade #{trade_id}", "#FF5050")
+                    continue
                 self._open.pop(trade_id, None)
                 self._register_sl(pnl)
-                self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s", "#FF5050")
+                self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s @ {exit_price:.2f}", "#FF5050")
 
     def run_once(self):
         global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX

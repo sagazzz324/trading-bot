@@ -1,6 +1,7 @@
 import json
 import logging
 import traceback
+import time
 from datetime import datetime
 from pathlib import Path
 from config.settings import PAPER_TRADING
@@ -15,9 +16,14 @@ class PaperTrader:
         self.initial_bankroll  = bankroll
         self.trades            = []
         self.active_trades     = []
+        self.wallet_balance    = bankroll
+        self.balance_source    = "paper"
+        self.last_balance_sync = None
         self.log_file          = Path("logs/paper_trades.json")
+        self._balance_sync_ts  = 0.0
         self.log_file.parent.mkdir(exist_ok=True)
         self._load_state()
+        self._sync_real_balance(force=True)
 
     def _load_state(self):
         if self.log_file.exists():
@@ -28,16 +34,51 @@ class PaperTrader:
                     self.initial_bankroll = data.get("initial_bankroll", self.initial_bankroll)
                     self.trades           = data.get("trades",           [])
                     self.active_trades    = data.get("active_trades",    [])
+                    self.wallet_balance   = data.get("wallet_balance",   self.bankroll)
+                    self.balance_source   = data.get("balance_source",   self.balance_source)
+                    self.last_balance_sync = data.get("last_balance_sync", self.last_balance_sync)
             except Exception as e:
                 logger.error(f"Error cargando estado: {e}\n{traceback.format_exc()}")
 
+    def _sync_real_balance(self, force: bool = False) -> float:
+        if PAPER_TRADING:
+            self.wallet_balance = self.bankroll
+            self.balance_source = "paper"
+            return self.bankroll
+
+        now = time.time()
+        if not force and now - self._balance_sync_ts < 10:
+            return self.wallet_balance
+
+        try:
+            from src.core.polymarket_executor import get_balance
+
+            balance = float(get_balance())
+            if balance > 0:
+                self.wallet_balance = balance
+                self.bankroll = balance
+                self.balance_source = "executor"
+                self.last_balance_sync = datetime.now().isoformat()
+                self._balance_sync_ts = now
+
+                if not self.trades and not self.active_trades:
+                    self.initial_bankroll = balance
+        except Exception as e:
+            logger.error(f"_sync_real_balance: {e}\n{traceback.format_exc()}")
+
+        return self.wallet_balance
+
     def load_state(self):
         self._load_state()
+        self._sync_real_balance()
         return {
             "bankroll":         self.bankroll,
             "initial_bankroll": self.initial_bankroll,
             "trades":           self.trades,
-            "active_trades":    self.active_trades
+            "active_trades":    self.active_trades,
+            "wallet_balance":   self.wallet_balance,
+            "balance_source":   self.balance_source,
+            "last_balance_sync": self.last_balance_sync,
         }
 
     def _save_state(self):
@@ -46,13 +87,44 @@ class PaperTrader:
                 json.dump({
                     "bankroll":         self.bankroll,
                     "initial_bankroll": self.initial_bankroll,
+                    "wallet_balance":   self.wallet_balance,
+                    "balance_source":   self.balance_source,
+                    "last_balance_sync": self.last_balance_sync,
                     "trades":           self.trades,
                     "active_trades":    self.active_trades
                 }, f, indent=2)
         except Exception as e:
             logger.error(f"Error guardando estado: {e}\n{traceback.format_exc()}")
 
+    def _place_real_exit(self, trade: dict, exit_price: float | None = None) -> dict | None:
+        try:
+            from src.core.polymarket_executor import place_market_order
+
+            token_id = trade.get("token_id") or trade.get("market_id")
+            size = float(trade.get("position_size", 0) or 0)
+            price = exit_price if exit_price is not None else trade.get("entry_price") or trade.get("market_prob") or 0.5
+
+            if not token_id or size <= 0:
+                logger.error(f"_place_real_exit inválido: token_id={token_id} size={size}")
+                return None
+
+            print(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f}")
+            resp = place_market_order(
+                token_id=token_id,
+                side="SELL",
+                amount_usdc=size,
+                price=price,
+            )
+            print(f"📦 Respuesta exit executor: {resp}")
+            return resp
+        except Exception as e:
+            logger.error(f"_place_real_exit: {e}\n{traceback.format_exc()}")
+            print(f"❌ ERROR EXIT REAL: {e}")
+            return None
+
     def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size, price=0.51):
+        if not PAPER_TRADING:
+            self._sync_real_balance(force=True)
         if position_size <= 0:
             logger.warning("Tamaño de posición inválido")
             return None
@@ -75,6 +147,10 @@ class PaperTrader:
             "real":          not PAPER_TRADING,
             "order_id":      None,
             "token_id":      None,
+            "entry_price":   round(price, 4),
+            "entry_value":   round(position_size * price, 4),
+            "close_order_id": None,
+            "exit_price":    None,
         }
 
         # ── REAL TRADING ──────────────────────────────────────────────────────
@@ -102,7 +178,11 @@ class PaperTrader:
                 print(f"❌ ERROR ORDEN REAL: {e}")
                 return None
 
-        self.bankroll -= position_size
+        if PAPER_TRADING:
+            self.bankroll -= position_size
+            self.wallet_balance = self.bankroll
+        else:
+            self._sync_real_balance(force=True)
         self.active_trades.append(trade)
         self.trades.append(trade)
         self._save_state()
@@ -119,32 +199,46 @@ class PaperTrader:
         logger.error(f"_sync_trade_in_history: Trade #{trade_id} no encontrado")
         return False
 
-    def resolve_trade(self, trade_id, outcome):
+    def resolve_trade(self, trade_id, outcome, exit_price: float | None = None):
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
             logger.error(f"resolve_trade: Trade #{trade_id} no encontrado")
-            return
+            return False
 
         position    = trade["position_size"]
         market_prob = trade["market_prob"]
         entered_at  = trade.get("timestamp", "")
 
+        exit_resp = None
+        if not PAPER_TRADING and exit_price is not None:
+            exit_resp = self._place_real_exit(trade, exit_price=exit_price)
+            if not exit_resp:
+                logger.error(f"resolve_trade: no se pudo cerrar trade #{trade_id} en real")
+                return False
+
         if outcome:
             payout = position / market_prob
             pnl    = payout - position
-            self.bankroll += payout
         else:
             pnl = -position
+
+        if PAPER_TRADING and outcome:
+            self.bankroll += payout
 
         updates = {
             "status": "resolved",
             "result": "win" if outcome else "loss",
-            "pnl":    round(pnl, 2)
+            "pnl":    round(pnl, 2),
+            "settlement": "paper" if PAPER_TRADING else ("live_sell" if exit_resp else "estimated_only"),
+            "exit_price": round(exit_price, 4) if exit_price is not None else trade.get("exit_price"),
+            "close_order_id": (exit_resp or {}).get("orderID") or (exit_resp or {}).get("id") or trade.get("close_order_id"),
         }
 
         trade.update(updates)
         self._sync_trade_in_history(trade_id, updates)
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
+        if not PAPER_TRADING:
+            self._sync_real_balance(force=True)
         self._save_state()
 
         duration = self._calc_duration(entered_at)
@@ -155,25 +249,38 @@ class PaperTrader:
             logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 
         logger.info(f"Trade #{trade_id} resuelto: {'WIN' if outcome else 'LOSS'} PnL ${pnl:.2f}")
+        return True
 
-    def resolve_trade_with_pnl(self, trade_id, pnl):
+    def resolve_trade_with_pnl(self, trade_id, pnl, exit_price: float | None = None):
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
             logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado")
-            return
+            return False
 
         entered_at = trade.get("timestamp", "")
+        exit_resp = None
+        if not PAPER_TRADING:
+            exit_resp = self._place_real_exit(trade, exit_price=exit_price)
+            if not exit_resp:
+                logger.error(f"resolve_trade_with_pnl: no se pudo cerrar trade #{trade_id} en real")
+                return False
 
         updates = {
             "status": "resolved",
             "result": "win" if pnl >= 0 else "loss",
-            "pnl":    round(pnl, 2)
+            "pnl":    round(pnl, 2),
+            "settlement": "paper" if PAPER_TRADING else "live_sell",
+            "exit_price": round(exit_price, 4) if exit_price is not None else trade.get("exit_price"),
+            "close_order_id": (exit_resp or {}).get("orderID") or (exit_resp or {}).get("id") or trade.get("close_order_id"),
         }
 
         trade.update(updates)
         self._sync_trade_in_history(trade_id, updates)
-        self.bankroll += trade["position_size"] + pnl
+        if PAPER_TRADING:
+            self.bankroll += trade["position_size"] + pnl
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
+        if not PAPER_TRADING:
+            self._sync_real_balance(force=True)
         self._save_state()
 
         duration = self._calc_duration(entered_at)
@@ -184,6 +291,7 @@ class PaperTrader:
             logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 
         logger.info(f"Trade #{trade_id} cerrado: {'WIN' if pnl >= 0 else 'LOSS'} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
+        return True
 
     def _calc_duration(self, timestamp_str: str) -> float:
         try:
@@ -207,6 +315,9 @@ class PaperTrader:
     def reset(self, bankroll=1000):
         self.bankroll         = bankroll
         self.initial_bankroll = bankroll
+        self.wallet_balance   = bankroll
+        self.balance_source   = "paper" if PAPER_TRADING else self.balance_source
+        self.last_balance_sync = None
         self.trades           = []
         self.active_trades    = []
         self._save_state()
@@ -231,7 +342,7 @@ class PaperTrader:
             "total_trades":    len(resolved),
             "win_rate":        f"{win_rate:.1%}",
             "total_pnl":       f"${total_pnl:.2f}",
-            "bankroll_actual": f"${self.bankroll:.2f}",
+            "bankroll_actual": f"${self.wallet_balance if not PAPER_TRADING else self.bankroll:.2f}",
             "drawdown":        f"{drawdown:.1%}",
             "mode":            "REAL" if not PAPER_TRADING else "PAPER"
         }
