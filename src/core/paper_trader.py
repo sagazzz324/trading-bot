@@ -279,7 +279,7 @@ class PaperTrader:
                 self._emit(f"📦 Respuesta executor: {resp}", "#ffffff60")
                 if not self._is_successful_order_response(resp):
                     logger.error("Orden real fallida — no se ejecutó")
-                    self._emit("❌ Orden real fallida — resp vacío", "#FF5050")
+                    self._emit(f"❌ Orden real fallida — {resp}", "#FF5050")
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
                 trade["share_size"] = self._extract_share_size(resp, position_size, price)
