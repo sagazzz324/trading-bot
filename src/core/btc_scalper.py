@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 # ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.17
+TAU         = 0.10
 EPSILON     = 0.03
 Q_MIN       = 0.35
 Q_MAX       = 0.72
