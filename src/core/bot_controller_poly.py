@@ -34,6 +34,23 @@ class PolyState:
 poly_state = PolyState()
 
 
+def _close_open_poly_positions(st: PolyState):
+    try:
+        from src.core.paper_trader import PaperTrader
+
+        trader = PaperTrader(log_fn=st.add_log)
+        active = trader.load_state().get("active_trades", [])
+        if not active:
+            return
+
+        st.add_log(f"Cerrando {len(active)} trade(s) abiertos antes de detener", "#F5A623")
+        closed = trader.force_close_stale_trades(pnl_per_trade=0.0)
+        st.add_log(f"Cierre al detener: {closed} trade(s) procesados", "#41d6fc")
+    except Exception as e:
+        st.add_log(f"❌ Error cerrando trades al detener: {str(e)[:80]}", "#FF5050")
+        logger.error(f"_close_open_poly_positions:\n{traceback.format_exc()}")
+
+
 def _run_general(st: PolyState):
     from src.core.bot import TradingBot
     from src.core.resolver import auto_resolve_trades
@@ -125,6 +142,12 @@ def start_poly(mode="btc_scalp") -> bool:
 def stop_poly() -> bool:
     poly_state.running = False
     poly_state._stop_event.set()
+    try:
+        if poly_state.thread and poly_state.thread.is_alive():
+            poly_state.thread.join(timeout=5)
+    except Exception:
+        logger.error(f"stop_poly join:\n{traceback.format_exc()}")
+    _close_open_poly_positions(poly_state)
     return True
 
 
