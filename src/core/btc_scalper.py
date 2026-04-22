@@ -142,7 +142,7 @@ def find_active_btc_5m_market(log_fn=None):
     interval = 300
 
     slugs_tried = []
-    for i in range(-1, 4):
+    for i in [0, 1, 2, 3, -1]:
         ts = ((now // interval) + i) * interval
         slug = f"btc-updown-5m-{ts}"
         slugs_tried.append(slug)
@@ -153,7 +153,7 @@ def find_active_btc_5m_market(log_fn=None):
                 events = r.json()
                 if events and events[0].get("markets"):
                     m = events[0]["markets"][0]
-                    if _is_valid_btc_updown(m):
+                    if _is_valid_btc_updown(m) and _market_has_live_orderbook(m):
                         logger.info(f"Mercado encontrado: {slug}")
                         return m
         except Exception:
@@ -171,7 +171,7 @@ def find_active_btc_5m_market(log_fn=None):
                 slug = (event.get("slug") or "").lower()
                 if "btc-updown-5m-" in slug:
                     markets = event.get("markets", [])
-                    if markets and _is_valid_btc_updown(markets[0]):
+                    if markets and _is_valid_btc_updown(markets[0]) and _market_has_live_orderbook(markets[0]):
                         logger.info(f"Mercado encontrado por keyword: {slug}")
                         return markets[0]
     except Exception as e:
@@ -202,6 +202,33 @@ def _is_valid_btc_updown(market) -> bool:
     except:
         pass
     return True
+
+
+def _token_has_orderbook(token_id: str) -> bool:
+    if not token_id:
+        return False
+    try:
+        r = requests.get(
+            "https://clob.polymarket.com/book",
+            params={"token_id": token_id},
+            timeout=4
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def _market_has_live_orderbook(market: dict) -> bool:
+    try:
+        tokens = market.get("clobTokenIds", "[]")
+        if isinstance(tokens, str):
+            tokens = json.loads(tokens)
+        if not tokens:
+            return False
+        return any(_token_has_orderbook(str(token_id)) for token_id in tokens)
+    except Exception as e:
+        logger.error(f"_market_has_live_orderbook: {e}")
+        return False
 
 
 def get_market_outcome_prices(market) -> dict:
