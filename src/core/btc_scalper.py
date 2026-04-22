@@ -518,15 +518,20 @@ class BTCScalper:
         global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
 
         self.cycle += 1
+        self.log(f"🧭 Ciclo BTCScalp #{self.cycle} · start", "#ffffff30")
         self._reset_daily_if_needed()
+        self.log("🧭 Paso 1/6 · precio BTC", "#ffffff30")
         get_btc_current_price()
+        self.log("🧭 Paso 2/6 · revisar salidas", "#ffffff30")
         self._check_exits()
 
+        self.log("🧭 Paso 3/6 · control de entrada", "#ffffff30")
         can_enter, reason = self._can_enter()
         if not can_enter:
             self.log(reason, "#F5A623")
             return False
 
+        self.log("🧭 Paso 4/6 · cargar estado/balance", "#ffffff30")
         state    = self.trader.load_state()
         active   = state["active_trades"]
         bankroll = state["bankroll"]
@@ -537,6 +542,7 @@ class BTCScalper:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
 
+        self.log("🧭 Paso 5/6 · buscar mercado BTC 5m", "#ffffff30")
         market = find_active_btc_5m_market(log_fn=self.log)
         if not market:
             return False
@@ -557,6 +563,7 @@ class BTCScalper:
                 self.log(f"⏸️ Liquidez ${liquidity['liquidity']:.0f} baja", "#F5A623")
                 return False
 
+        self.log("🧭 Paso 6/6 · modelo y decisión", "#ffffff30")
         changes = get_btc_candles(40)
         if len(changes) < 8:
             self.log("❌ Sin datos BTC suficientes", "#FF5050")
