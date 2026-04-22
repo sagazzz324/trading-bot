@@ -49,7 +49,11 @@ def get_data() -> dict:
     }
 
     # ── Polymarket (from JSON file) ───────────────────────────────────────────
-    poly_data = _load_json(POLY_LOG)
+    try:
+        from src.core.paper_trader import PaperTrader
+        poly_data = PaperTrader().load_state()
+    except Exception:
+        poly_data = _load_json(POLY_LOG)
     trades    = poly_data.get("trades", [])
     resolved  = [t for t in trades if t.get("status") == "resolved"]
     wins      = [t for t in resolved if t.get("result") == "win"]
