@@ -190,6 +190,9 @@ def _is_valid_btc_updown(market) -> bool:
     has_dir = any(w in q for w in ["up","down","higher","lower"]) or "updown" in slug
     if not has_btc or not has_dir: return False
     if any(w in q for w in sports): return False
+    # ── NUEVO: verificar que el mercado esté abierto y aceptando órdenes ──
+    if market.get("closed"): return False
+    if not market.get("acceptingOrders", True): return False
     try:
         prices = json.loads(market.get("outcomePrices","[]")) if isinstance(market.get("outcomePrices"), str) else (market.get("outcomePrices") or [])
         if prices and any(float(p) in (0.0, 1.0) for p in prices):
