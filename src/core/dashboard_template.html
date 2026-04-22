@@ -973,7 +973,16 @@ function renderPolyTrades(list,isBtc){
   el.innerHTML=polyTrades.slice(0,12).map(function(t,i){
     var win=t.result==='win', flat=t.result==='flat'
     var ph=t.pnl!=null?'<span class="t-pnl '+(t.pnl>=0?'p':'l')+'">'+(t.pnl>=0?'+':'')+'$'+Math.abs(t.pnl).toFixed(2)+'</span>':'<span class="t-pnl o">activo</span>'
-    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(flat?'':(win?'buy':'sell'))+'">'+(flat?'FLAT':(win?'WIN':'LOSS'))+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+((t.timestamp||'').slice(0,10)||'—')+'</div></div><div>'+ph+'</div></div>'
+    var entryReal=t.entry_price_real!=null?Number(t.entry_price_real):null
+    var exitReal=t.exit_price_real!=null?Number(t.exit_price_real):null
+    var slip=t.entry_slippage!=null?Number(t.entry_slippage):null
+    var meta=((t.timestamp||'').slice(0,10)||'—')
+    if(entryReal!=null){
+      meta+=' · in '+entryReal.toFixed(3)
+      if(slip!=null)meta+=' · slip '+(slip>=0?'+':'')+slip.toFixed(3)
+    }
+    if(exitReal!=null)meta+=' · out '+exitReal.toFixed(3)
+    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(flat?'':(win?'buy':'sell'))+'">'+(flat?'FLAT':(win?'WIN':'LOSS'))+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+meta+'</div></div><div>'+ph+'</div></div>'
   }).join('')
 }
 function renderLog(bodyId,tsId,entries){

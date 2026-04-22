@@ -139,6 +139,16 @@ class PaperTrader:
 
         return fallback
 
+    def _avg_price(self, usdc_value: float, shares: float) -> float | None:
+        try:
+            usdc = float(usdc_value)
+            qty = float(shares)
+            if usdc > 0 and qty > 0:
+                return round(usdc / qty, 6)
+        except Exception:
+            pass
+        return None
+
     def _extract_usdc_value(self, resp: dict | None, side: str, fallback: float = 0.0) -> float:
         if not isinstance(resp, dict):
             return round(float(fallback or 0.0), 6)
@@ -309,12 +319,18 @@ class PaperTrader:
             "condition_id":  condition_id,
             "direction":     direction,
             "entry_price":   round(price, 4),
+            "entry_price_hint": round(price, 4),
+            "entry_price_real": None,
+            "entry_slippage": None,
             "entry_value":   round(position_size * price, 4),
             "filled_entry_usdc": round(position_size, 6),
             "filled_exit_usdc": None,
             "share_size":    self._estimate_share_size(position_size, price),
             "close_order_id": None,
             "exit_price":    None,
+            "exit_price_hint": None,
+            "exit_price_real": None,
+            "exit_slippage": None,
         }
 
         # ── REAL TRADING ──────────────────────────────────────────────────────
@@ -342,8 +358,11 @@ class PaperTrader:
                     (resp.get("order_info") or {}).get("asset_id")
                     or market_id
                 )
-                if trade["share_size"] > 0 and trade["filled_entry_usdc"] > 0:
-                    trade["entry_price"] = round(trade["filled_entry_usdc"] / trade["share_size"], 4)
+                entry_price_real = self._avg_price(trade["filled_entry_usdc"], trade["share_size"])
+                if entry_price_real is not None:
+                    trade["entry_price_real"] = round(entry_price_real, 4)
+                    trade["entry_slippage"] = round(entry_price_real - float(trade["entry_price_hint"]), 4)
+                    trade["entry_price"] = round(entry_price_real, 4)
                     trade["entry_value"] = round(trade["filled_entry_usdc"], 6)
                 logger.info(f"Orden real ejecutada: orderID={trade['order_id']} shares={trade['share_size']}")
                 self._emit(f"✅ Orden real OK: orderID={trade['order_id']} shares={trade['share_size']}", "#00E887")
@@ -401,14 +420,25 @@ class PaperTrader:
         elif not PAPER_TRADING:
             pnl = self._realized_pnl_from_exit(trade, exit_resp, pnl)
 
+        filled_exit_usdc = self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc")
+        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0) if exit_resp else 0.0
+        exit_price_real = self._avg_price(filled_exit_usdc or 0.0, filled_exit_shares or 0.0)
+
         updates = {
             "status": "resolved",
             "result": "win" if outcome else "loss",
             "pnl":    round(pnl, 2),
             "settlement": "paper" if PAPER_TRADING else ("live_sell" if exit_resp else "estimated_only"),
             "exit_price": round(exit_price, 4) if exit_price is not None else trade.get("exit_price"),
+            "exit_price_hint": round(exit_price, 4) if exit_price is not None else trade.get("exit_price_hint"),
+            "exit_price_real": round(exit_price_real, 4) if exit_price_real is not None else trade.get("exit_price_real"),
+            "exit_slippage": (
+                round(exit_price_real - float(exit_price), 4)
+                if exit_price is not None and exit_price_real is not None
+                else trade.get("exit_slippage")
+            ),
             "close_order_id": (exit_resp or {}).get("orderID") or (exit_resp or {}).get("id") or trade.get("close_order_id"),
-            "filled_exit_usdc": self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc"),
+            "filled_exit_usdc": filled_exit_usdc,
         }
 
         trade.update(updates)
@@ -445,14 +475,25 @@ class PaperTrader:
                 return False
             pnl = self._realized_pnl_from_exit(trade, exit_resp, pnl)
 
+        filled_exit_usdc = self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc")
+        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0) if exit_resp else 0.0
+        exit_price_real = self._avg_price(filled_exit_usdc or 0.0, filled_exit_shares or 0.0)
+
         updates = {
             "status": "resolved",
             "result": self._classify_result(pnl),
             "pnl":    round(pnl, 2),
             "settlement": "paper" if PAPER_TRADING else "live_sell",
             "exit_price": round(exit_price, 4) if exit_price is not None else trade.get("exit_price"),
+            "exit_price_hint": round(exit_price, 4) if exit_price is not None else trade.get("exit_price_hint"),
+            "exit_price_real": round(exit_price_real, 4) if exit_price_real is not None else trade.get("exit_price_real"),
+            "exit_slippage": (
+                round(exit_price_real - float(exit_price), 4)
+                if exit_price is not None and exit_price_real is not None
+                else trade.get("exit_slippage")
+            ),
             "close_order_id": (exit_resp or {}).get("orderID") or (exit_resp or {}).get("id") or trade.get("close_order_id"),
-            "filled_exit_usdc": self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc"),
+            "filled_exit_usdc": filled_exit_usdc,
         }
 
         trade.update(updates)
