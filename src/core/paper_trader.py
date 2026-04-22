@@ -122,7 +122,8 @@ class PaperTrader:
             print(f"❌ ERROR EXIT REAL: {e}")
             return None
 
-    def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size, price=0.51):
+    def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size,
+                    price=0.51, condition_id: str | None = None, direction: str | None = None):
         if not PAPER_TRADING:
             self._sync_real_balance(force=True)
         if position_size <= 0:
@@ -147,6 +148,8 @@ class PaperTrader:
             "real":          not PAPER_TRADING,
             "order_id":      None,
             "token_id":      None,
+            "condition_id":  condition_id,
+            "direction":     direction,
             "entry_price":   round(price, 4),
             "entry_value":   round(position_size * price, 4),
             "close_order_id": None,

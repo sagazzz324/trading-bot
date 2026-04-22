@@ -264,25 +264,13 @@ def _get_clob_token_id(market: dict, direction: str) -> str:
 
 def _get_best_ask(market: dict, direction: str) -> float:
     """
-    Obtiene el bestAsk real del mercado para la dirección dada.
-    Fallback a outcomePrices si no hay bestAsk.
+    Usa el precio del outcome correcto en vez del bestAsk global del mercado.
+    Para cruzar el libro, paga un tick por encima del precio visible.
     """
     try:
-        best_ask = float(market.get("bestAsk") or 0)
-        best_bid = float(market.get("bestBid") or 0)
-
-        # bestAsk/bestBid es del mercado completo, necesitamos el correcto según dirección
         prices = get_market_outcome_prices(market)
-        if direction == "up":
-            # Para UP, el precio de compra es el outcomePrices[0] + pequeño spread
-            base = prices["up_price"]
-        else:
-            base = prices["down_price"]
-
-        # Usar bestAsk si es razonable, sino usar outcomePrices
-        if 0.01 <= best_ask <= 0.99:
-            return best_ask
-        return round(base + 0.01, 2)  # añadir 1 tick de spread
+        base = prices["up_price"] if direction == "up" else prices["down_price"]
+        return round(max(0.01, min(0.99, base + 0.01)), 2)
     except Exception as e:
         logger.error(f"_get_best_ask: {e}")
         return 0.51
@@ -291,10 +279,20 @@ def _get_best_ask(market: dict, direction: str) -> float:
 def _get_exit_price(current_price: float | None, fallback_price: float) -> float:
     base = current_price if current_price is not None else fallback_price
     try:
-        price = max(0.01, min(0.99, float(base) - 0.01))
+        # Para salir más agresivo que la entrada, rebajamos 3 ticks.
+        price = max(0.01, min(0.99, float(base) - 0.03))
         return round(price, 2)
     except Exception:
         return max(0.01, min(0.99, round(fallback_price, 2)))
+
+
+def _has_active_market_position(active_trades: list, condition_id: str, question: str) -> bool:
+    for trade in active_trades:
+        if trade.get("condition_id") == condition_id:
+            return True
+        if trade.get("question") == question:
+            return True
+    return False
 
 
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
@@ -546,8 +544,8 @@ class BTCScalper:
         market_id = market.get("conditionId") or market.get("id", "")
         question  = market.get("question", "")
 
-        # Usar conditionId para comparar (no clob token)
-        if any(t["market_id"] == market_id for t in active):
+        # No abrir otra posición sobre el mismo mercado si una previa sigue abierta.
+        if _has_active_market_position(active, market_id, question):
             return False
 
         liquidity = get_market_liquidity(market_id)
@@ -666,6 +664,8 @@ class BTCScalper:
             ev=decision["gap"],
             position_size=position,
             price=entry_price,          # ← precio real para el executor
+            condition_id=market_id,
+            direction=direction,
         )
 
         if trade:
