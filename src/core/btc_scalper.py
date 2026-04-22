@@ -22,7 +22,7 @@ Q_MAX       = 0.72
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
 MAX_POSITION_PCT   = 0.05
-MIN_POSITION       = 2.0
+MIN_POSITION       = 5.0       # mínimo $5 para Polymarket
 MAX_SPREAD         = 0.06
 MIN_LIQUIDITY      = 300
 MAX_TRADE_DURATION = 90
@@ -142,7 +142,7 @@ def find_active_btc_5m_market(log_fn=None):
     interval = 300
 
     slugs_tried = []
-    for i in range(-3, 5):
+    for i in range(-1, 4):
         ts = ((now // interval) + i) * interval
         slug = f"btc-updown-5m-{ts}"
         slugs_tried.append(slug)
@@ -154,7 +154,7 @@ def find_active_btc_5m_market(log_fn=None):
                 if events and events[0].get("markets"):
                     m = events[0]["markets"][0]
                     if _is_valid_btc_updown(m):
-                        logger.info(f"Mercado encontrado por slug: {slug}")
+                        logger.info(f"Mercado encontrado: {slug}")
                         return m
         except Exception:
             continue
@@ -177,7 +177,7 @@ def find_active_btc_5m_market(log_fn=None):
     except Exception as e:
         logger.error(f"find_active_btc_5m_market fallback: {e}")
 
-    log(f"❌ Sin mercado. Primer slug intentado: {slugs_tried[3]}", "#FF5050")
+    log(f"❌ Sin mercado activo", "#FF5050")
     return None
 
 
@@ -190,9 +190,11 @@ def _is_valid_btc_updown(market) -> bool:
     has_dir = any(w in q for w in ["up","down","higher","lower"]) or "updown" in slug
     if not has_btc or not has_dir: return False
     if any(w in q for w in sports): return False
-    # ── NUEVO: verificar que el mercado esté abierto y aceptando órdenes ──
+
+    # ── Verificar que el mercado esté abierto y aceptando órdenes ──
     if market.get("closed"): return False
     if not market.get("acceptingOrders", True): return False
+
     try:
         prices = json.loads(market.get("outcomePrices","[]")) if isinstance(market.get("outcomePrices"), str) else (market.get("outcomePrices") or [])
         if prices and any(float(p) in (0.0, 1.0) for p in prices):
@@ -231,7 +233,6 @@ def get_market_outcome_prices(market) -> dict:
 def _get_clob_token_id(market: dict, direction: str) -> str:
     """
     Extrae el clobTokenId correcto para el outcome UP o DOWN.
-    Polymarket CLOB usa estos IDs para ejecutar órdenes, no el conditionId.
     UP = índice 0, DOWN = índice 1 en clobTokenIds.
     """
     try:
@@ -240,10 +241,8 @@ def _get_clob_token_id(market: dict, direction: str) -> str:
             clob_tokens = json.loads(clob_tokens)
 
         if not clob_tokens:
-            # Fallback: usar conditionId
             return market.get("conditionId") or market.get("id", "")
 
-        # Detectar índice del outcome UP/DOWN
         outcomes = market.get("outcomes", "[]")
         if isinstance(outcomes, str):
             outcomes = json.loads(outcomes)
@@ -255,13 +254,38 @@ def _get_clob_token_id(market: dict, direction: str) -> str:
             if direction == "down" and any(w in o for w in ["down", "lower", "below"]):
                 return clob_tokens[i] if i < len(clob_tokens) else clob_tokens[1]
 
-        # Fallback por índice
         idx = 0 if direction == "up" else 1
         return clob_tokens[idx] if idx < len(clob_tokens) else clob_tokens[0]
 
     except Exception as e:
         logger.error(f"_get_clob_token_id: {e}")
         return market.get("conditionId") or market.get("id", "")
+
+
+def _get_best_ask(market: dict, direction: str) -> float:
+    """
+    Obtiene el bestAsk real del mercado para la dirección dada.
+    Fallback a outcomePrices si no hay bestAsk.
+    """
+    try:
+        best_ask = float(market.get("bestAsk") or 0)
+        best_bid = float(market.get("bestBid") or 0)
+
+        # bestAsk/bestBid es del mercado completo, necesitamos el correcto según dirección
+        prices = get_market_outcome_prices(market)
+        if direction == "up":
+            # Para UP, el precio de compra es el outcomePrices[0] + pequeño spread
+            base = prices["up_price"]
+        else:
+            base = prices["down_price"]
+
+        # Usar bestAsk si es razonable, sino usar outcomePrices
+        if 0.01 <= best_ask <= 0.99:
+            return best_ask
+        return round(base + 0.01, 2)  # añadir 1 tick de spread
+    except Exception as e:
+        logger.error(f"_get_best_ask: {e}")
+        return 0.51
 
 
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
@@ -338,14 +362,12 @@ class BTCScalper:
         self.cycle  = 0
         self._open: dict = {}
 
-        # ── Seguridad ──────────────────────────────────────────────────────
         self._last_sl_time       = 0.0
         self._sl_streak          = 0
         self._streak_pause_until = 0.0
         self._daily_pnl          = 0.0
         self._daily_day          = ""
 
-        # ── Régimen de mercado ─────────────────────────────────────────────
         self._regime         = "unknown"
         self._regime_checked = 0.0
         self._REGIME_TTL     = 300
@@ -503,6 +525,7 @@ class BTCScalper:
         market_id = market.get("conditionId") or market.get("id", "")
         question  = market.get("question", "")
 
+        # Usar conditionId para comparar (no clob token)
         if any(t["market_id"] == market_id for t in active):
             return False
 
@@ -602,34 +625,38 @@ class BTCScalper:
         )
 
         if position < MIN_POSITION:
-            self.log(f"💰 Posición ${position:.2f} muy pequeña", "#FF5050")
+            self.log(f"💰 Posición ${position:.2f} muy pequeña (mín ${MIN_POSITION})", "#FF5050")
             return False
 
-        # Obtener el token_id correcto para CLOB (asset_id del outcome UP o DOWN)
+        # Obtener token_id y precio real del mercado
         clob_token_id = _get_clob_token_id(market, direction)
-        self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction}", "#ffffff30")
+        entry_price   = _get_best_ask(market, direction)
+
+        self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction} ask={entry_price:.3f}", "#ffffff30")
 
         trade = self.trader.place_trade(
-            market_id=clob_token_id,   # usamos el clob token para el executor real
+            market_id=clob_token_id,
             question=question,
             true_prob=decision["p_hat"],
             market_prob=market_price,
             ev=decision["gap"],
-            position_size=position
+            position_size=position,
+            price=entry_price,          # ← precio real para el executor
         )
 
         if trade:
             self._open[trade["id"]] = {
-                "market_id":   market_id,   # guardamos el conditionId para monitorear precio
+                "market_id":   market_id,   # conditionId para monitorear precio
                 "direction":   direction,
-                "entry_price": market_price,
+                "entry_price": entry_price,
                 "entered_at":  time_module.time(),
             }
             gap_label = "🔥" if decision["gap"] >= 0.15 else "✅"
             self.log(
                 f"{gap_label} TRADE #{trade['id']} · "
                 f"{'📈 UP' if direction=='up' else '📉 DOWN'} · "
-                f"${position:.2f} · p_hat={decision['p_hat']:.3f} · "
+                f"${position:.2f} @ {entry_price:.3f} · "
+                f"p_hat={decision['p_hat']:.3f} · "
                 f"persist={decision['persist']:.3f} · gap={decision['gap']:.4f} · "
                 f"daily=${self._daily_pnl:+.2f}",
                 "#00E887"

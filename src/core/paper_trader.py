@@ -53,7 +53,7 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error guardando estado: {e}\n{traceback.format_exc()}")
 
-    def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size):
+    def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size, price=0.51):
         if position_size <= 0:
             logger.warning("Tamaño de posición inválido")
             return None
@@ -81,12 +81,12 @@ class PaperTrader:
         # ── REAL TRADING ──────────────────────────────────────────────────────
         if not PAPER_TRADING:
             try:
-                from src.core.polymarket_executor import place_market_order
                 resp = place_market_order(
-                    token_id=market_id,
-                    side="BUY",
-                    amount_usdc=position_size
-                )
+                token_id=market_id,
+                side="BUY",
+                amount_usdc=position_size,
+                price=price
+            )
                 if not resp:
                     logger.error("Orden real fallida — no se ejecutó")
                     return None
