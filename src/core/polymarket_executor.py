@@ -61,6 +61,26 @@ def get_token_balance(token_id: str) -> float:
         return 0.0
 
 
+def redeem_position(condition_id: str) -> dict | None:
+    """Redeems resolved positions for a condition."""
+    try:
+        r = requests.post(
+            f"{EXECUTOR_URL}/redeem",
+            json={
+                "secret": EXECUTOR_SECRET,
+                "condition_id": condition_id,
+            },
+            timeout=60,
+        )
+        data = r.json()
+        if not data.get("ok"):
+            logger.error(f"redeem_position error: {data}")
+        return data
+    except Exception as e:
+        logger.error(f"redeem_position: {e}\n{traceback.format_exc()}")
+        return {"ok": False, "error": str(e)}
+
+
 def place_market_order(
     token_id: str,
     side: str,

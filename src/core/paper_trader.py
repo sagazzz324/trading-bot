@@ -187,15 +187,31 @@ class PaperTrader:
 
     def _place_real_exit(self, trade: dict, exit_price: float | None = None) -> dict | None:
         try:
-            from src.core.polymarket_executor import place_market_order
+            from src.core.polymarket_executor import place_market_order, redeem_position
 
             token_id = trade.get("token_id") or trade.get("market_id")
             live_size = self._get_live_share_balance(token_id) if token_id else 0.0
+            live_position = None
             if live_size <= 0:
                 live_position = self._find_live_position(trade)
                 if live_position:
                     token_id = str(live_position.get("asset") or token_id)
                     live_size = float(live_position.get("size", 0) or 0)
+
+            if live_position is None:
+                live_position = self._find_live_position(trade)
+
+            if live_position and live_position.get("redeemable"):
+                condition_id = trade.get("condition_id")
+                self._emit(
+                    f"🪙 Redeem executor: condition={str(condition_id)[:20]}... "
+                    f"outcome={live_position.get('outcome')} value={float(live_position.get('currentValue', 0) or 0):.4f}",
+                    "#41d6fc"
+                )
+                resp = redeem_position(condition_id)
+                self._emit(f"📦 Respuesta redeem executor: {resp}", "#ffffff60")
+                return resp
+
             size = live_size
             if size <= 0:
                 size = float(trade.get("share_size", 0) or 0)
