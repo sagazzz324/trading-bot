@@ -96,6 +96,37 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error guardando estado: {e}\n{traceback.format_exc()}")
 
+    def _estimate_share_size(self, position_size: float, price: float) -> float:
+        if price <= 0:
+            return 0.0
+        # Dejamos margen para fees/redondeos y evitar SELL rechazadas por exceso de size.
+        return round((position_size / price) * 0.90, 6)
+
+    def _extract_share_size(self, resp: dict | None, position_size: float, price: float) -> float:
+        fallback = self._estimate_share_size(position_size, price)
+        if not isinstance(resp, dict):
+            return fallback
+
+        for key in ("size_matched", "matched_size", "filled_size", "filledSize"):
+            value = resp.get(key)
+            try:
+                if value is not None and float(value) > 0:
+                    return round(float(value), 6)
+            except Exception:
+                pass
+
+        nested = resp.get("resp")
+        if isinstance(nested, dict):
+            for key in ("size_matched", "matched_size", "filled_size", "filledSize"):
+                value = nested.get(key)
+                try:
+                    if value is not None and float(value) > 0:
+                        return round(float(value), 6)
+                except Exception:
+                    pass
+
+        return fallback
+
     def _place_real_exit(self, trade: dict, exit_price: float | None = None) -> dict | None:
         try:
             from src.core.polymarket_executor import place_market_order
@@ -119,6 +150,7 @@ class PaperTrader:
                 side="SELL",
                 amount_usdc=size,
                 price=price,
+                order_type="FAK",
             )
             print(f"📦 Respuesta exit executor: {resp}")
             return resp
@@ -157,7 +189,7 @@ class PaperTrader:
             "direction":     direction,
             "entry_price":   round(price, 4),
             "entry_value":   round(position_size * price, 4),
-            "share_size":    round(position_size / price, 6) if price > 0 else 0.0,
+            "share_size":    self._estimate_share_size(position_size, price),
             "close_order_id": None,
             "exit_price":    None,
         }
@@ -179,9 +211,10 @@ class PaperTrader:
                     print("❌ Orden real fallida — resp vacío")
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
+                trade["share_size"] = self._extract_share_size(resp, position_size, price)
                 trade["token_id"] = market_id
-                logger.info(f"Orden real ejecutada: orderID={trade['order_id']}")
-                print(f"✅ Orden real OK: orderID={trade['order_id']}")
+                logger.info(f"Orden real ejecutada: orderID={trade['order_id']} shares={trade['share_size']}")
+                print(f"✅ Orden real OK: orderID={trade['order_id']} shares={trade['share_size']}")
             except Exception as e:
                 logger.error(f"Error ejecutando orden real: {e}\n{traceback.format_exc()}")
                 print(f"❌ ERROR ORDEN REAL: {e}")
