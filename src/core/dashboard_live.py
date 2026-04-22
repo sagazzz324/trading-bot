@@ -63,6 +63,7 @@ def get_data() -> dict:
     init_bank = poly_data.get("initial_bankroll", 1000)
     estimated_bankroll = poly_data.get("bankroll", bankroll)
     pending_capital = sum(float(t.get("position_size", 0) or 0) for t in active_trades)
+    estimated_total = bankroll + pending_capital
 
     import time as _t
     try:
@@ -86,6 +87,7 @@ def get_data() -> dict:
         "estimated_bankroll": round(estimated_bankroll, 2),
         "pending_capital": round(pending_capital, 2),
         "pending_positions": len(active_trades),
+        "estimated_total": round(estimated_total, 2),
         "balance_source":   poly_data.get("balance_source", "paper"),
         "last_balance_sync": poly_data.get("last_balance_sync"),
         "running":         poly_state.running,

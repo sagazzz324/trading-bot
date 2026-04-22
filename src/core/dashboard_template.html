@@ -885,8 +885,9 @@ function applyPoly(d){
   odoSet(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
   var pendingCapital=d.pending_capital||0
   var pendingPositions=d.pending_positions||0
+  var estimatedTotal=d.estimated_total||bal
   var balanceHint=pendingPositions>0
-    ? 'libre $'+bal.toFixed(2)+' · pendiente $'+pendingCapital.toFixed(2)+' en '+pendingPositions+' pos.'
+    ? 'libre $'+bal.toFixed(2)+' · pendiente $'+pendingCapital.toFixed(2)+' · total est. $'+estimatedTotal.toFixed(2)
     : 'capital libre'
   setEl(isBtc?'poly-balance-hint':'poly-balance-hint-g',balanceHint)
   var pnl=d.total_pnl||0
@@ -972,7 +973,7 @@ function renderPolyTrades(list,isBtc){
   if(!polyTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return}
   el.innerHTML=polyTrades.slice(0,12).map(function(t,i){
     var win=t.result==='win', flat=t.result==='flat'
-    var ph=t.pnl!=null?'<span class="t-pnl '+(t.pnl>=0?'p':'l')+'">'+(t.pnl>=0?'+':'')+'$'+Math.abs(t.pnl).toFixed(2)+'</span>':'<span class="t-pnl o">activo</span>'
+    var ph=t.pnl!=null?'<span class="t-pnl '+(t.pnl>=0?'p':'l')+'">'+(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl).toFixed(2)+'</span>':'<span class="t-pnl o">activo</span>'
     var entryReal=t.entry_price_real!=null?Number(t.entry_price_real):null
     var exitReal=t.exit_price_real!=null?Number(t.exit_price_real):null
     var slip=t.entry_slippage!=null?Number(t.entry_slippage):null
