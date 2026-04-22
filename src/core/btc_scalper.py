@@ -218,6 +218,30 @@ def _token_has_orderbook(token_id: str) -> bool:
         return False
 
 
+def _get_token_book(token_id: str) -> dict | None:
+    if not token_id:
+        return None
+    try:
+        r = requests.get(
+            "https://clob.polymarket.com/book",
+            params={"token_id": token_id},
+            timeout=4
+        )
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except Exception:
+        return None
+
+
+def _token_has_executable_asks(token_id: str) -> bool:
+    book = _get_token_book(token_id)
+    if not isinstance(book, dict):
+        return False
+    asks = book.get("asks") or []
+    return len(asks) > 0
+
+
 def _market_has_live_orderbook(market: dict) -> bool:
     try:
         tokens = market.get("clobTokenIds", "[]")
@@ -687,6 +711,10 @@ class BTCScalper:
         # Obtener token_id y precio real del mercado
         clob_token_id = _get_clob_token_id(market, direction)
         entry_price   = _get_best_ask(market, direction)
+
+        if not _token_has_executable_asks(clob_token_id):
+            self.log(f"⏸️ Sin asks reales para {direction.upper()} en CLOB", "#F5A623")
+            return False
 
         self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction} ask={entry_price:.3f}", "#ffffff30")
 
