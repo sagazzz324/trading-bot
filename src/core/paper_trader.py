@@ -268,12 +268,13 @@ class PaperTrader:
         if not PAPER_TRADING:
             try:
                 from src.core.polymarket_executor import place_market_order
-                self._emit(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price={price:.3f}", "#41d6fc")
+                exec_price = 0.0
+                self._emit(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price=auto (hint={price:.3f})", "#41d6fc")
                 resp = place_market_order(
                     token_id=market_id,
                     side="BUY",
                     amount_usdc=position_size,
-                    price=price,
+                    price=exec_price,
                     order_type="FAK",
                 )
                 self._emit(f"📦 Respuesta executor: {resp}", "#ffffff60")
