@@ -1,10 +1,21 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv("config/.env")
+
+def _is_truthy(value: str | None, default: bool = True) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# En Railway usamos solo variables del entorno remoto.
+# El .env local queda reservado para desarrollo local.
+if not os.getenv("RAILWAY_ENVIRONMENT"):
+    load_dotenv("config/.env")
+
 
 # Modo de operación
-PAPER_TRADING = os.getenv("PAPER_TRADING", "true").lower() == "true"
+PAPER_TRADING = _is_truthy(os.getenv("PAPER_TRADING"), default=True)
 
 # Capital
 BANKROLL = float(os.getenv("BANKROLL", 1000))
@@ -19,7 +30,7 @@ POLYMARKET_API_KEY = os.getenv("POLYMARKET_API_KEY")
 POLYMARKET_SIGNER_ADDRESS = os.getenv("POLYMARKET_SIGNER_ADDRESS")
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
 BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
-BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
+BINANCE_TESTNET = _is_truthy(os.getenv("BINANCE_TESTNET"), default=True)
 BYBIT_API_KEY    = os.getenv("BYBIT_API_KEY")
 BYBIT_SECRET_KEY = os.getenv("BYBIT_SECRET_KEY")
-BYBIT_TESTNET    = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
+BYBIT_TESTNET    = _is_truthy(os.getenv("BYBIT_TESTNET"), default=True)
