@@ -977,12 +977,15 @@ function renderPolyTrades(list,isBtc){
     var entryReal=t.entry_price_real!=null?Number(t.entry_price_real):null
     var exitReal=t.exit_price_real!=null?Number(t.exit_price_real):null
     var slip=t.entry_slippage!=null?Number(t.entry_slippage):null
+    var balBefore=t.wallet_balance_before_entry!=null?Number(t.wallet_balance_before_entry):null
+    var balAfter=t.wallet_balance_after_exit!=null?Number(t.wallet_balance_after_exit):null
     var meta=((t.timestamp||'').slice(0,10)||'—')
     if(entryReal!=null){
       meta+=' · in '+entryReal.toFixed(3)
       if(slip!=null)meta+=' · slip '+(slip>=0?'+':'')+slip.toFixed(3)
     }
     if(exitReal!=null)meta+=' · out '+exitReal.toFixed(3)
+    if(balBefore!=null&&balAfter!=null)meta+=' · bal '+balBefore.toFixed(2)+'→'+balAfter.toFixed(2)
     return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(flat?'':(win?'buy':'sell'))+'">'+(flat?'FLAT':(win?'WIN':'LOSS'))+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+meta+'</div></div><div>'+ph+'</div></div>'
   }).join('')
 }

@@ -171,6 +171,14 @@ class PaperTrader:
             return round(exit_usdc - entry_usdc, 6)
         return round(fallback_pnl, 6)
 
+    def _capture_live_balance(self, force: bool = False) -> float | None:
+        if PAPER_TRADING:
+            return round(float(self.bankroll), 6)
+        try:
+            return round(float(self._sync_real_balance(force=force)), 6)
+        except Exception:
+            return None
+
     def _is_successful_order_response(self, resp: dict | None) -> bool:
         if not isinstance(resp, dict):
             return False
@@ -293,6 +301,7 @@ class PaperTrader:
                     price=0.51, condition_id: str | None = None, direction: str | None = None):
         if not PAPER_TRADING:
             self._sync_real_balance(force=True)
+        balance_before_entry = self._capture_live_balance(force=False)
         if position_size <= 0:
             logger.warning("Tamaño de posición inválido")
             return None
@@ -325,6 +334,10 @@ class PaperTrader:
             "entry_value":   round(position_size * price, 4),
             "filled_entry_usdc": round(position_size, 6),
             "filled_exit_usdc": None,
+            "wallet_balance_before_entry": None,
+            "wallet_balance_after_entry": None,
+            "wallet_balance_before_exit": None,
+            "wallet_balance_after_exit": None,
             "share_size":    self._estimate_share_size(position_size, price),
             "close_order_id": None,
             "exit_price":    None,
@@ -376,6 +389,8 @@ class PaperTrader:
             self.wallet_balance = self.bankroll
         else:
             self._sync_real_balance(force=True)
+        trade["wallet_balance_before_entry"] = balance_before_entry
+        trade["wallet_balance_after_entry"] = self._capture_live_balance(force=False)
         self.active_trades.append(trade)
         self.trades.append(trade)
         self._save_state()
@@ -403,6 +418,7 @@ class PaperTrader:
         entered_at  = trade.get("timestamp", "")
 
         exit_resp = None
+        trade["wallet_balance_before_exit"] = self._capture_live_balance(force=True)
         if not PAPER_TRADING and exit_price is not None:
             exit_resp = self._place_real_exit(trade, exit_price=exit_price)
             if not self._is_successful_order_response(exit_resp):
@@ -446,6 +462,11 @@ class PaperTrader:
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         if not PAPER_TRADING:
             self._sync_real_balance(force=True)
+        trade["wallet_balance_after_exit"] = self._capture_live_balance(force=False)
+        self._sync_trade_in_history(trade_id, {
+            "wallet_balance_before_exit": trade.get("wallet_balance_before_exit"),
+            "wallet_balance_after_exit": trade.get("wallet_balance_after_exit"),
+        })
         self._save_state()
 
         duration = self._calc_duration(entered_at)
@@ -466,6 +487,7 @@ class PaperTrader:
 
         entered_at = trade.get("timestamp", "")
         exit_resp = None
+        trade["wallet_balance_before_exit"] = self._capture_live_balance(force=True)
         if not PAPER_TRADING:
             exit_resp = self._place_real_exit(trade, exit_price=exit_price)
             if not self._is_successful_order_response(exit_resp):
@@ -503,6 +525,11 @@ class PaperTrader:
         self.active_trades = [t for t in self.active_trades if t["id"] != trade_id]
         if not PAPER_TRADING:
             self._sync_real_balance(force=True)
+        trade["wallet_balance_after_exit"] = self._capture_live_balance(force=False)
+        self._sync_trade_in_history(trade_id, {
+            "wallet_balance_before_exit": trade.get("wallet_balance_before_exit"),
+            "wallet_balance_after_exit": trade.get("wallet_balance_after_exit"),
+        })
         self._save_state()
 
         duration = self._calc_duration(entered_at)
