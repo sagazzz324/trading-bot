@@ -971,9 +971,9 @@ function renderPolyTrades(list,isBtc){
   var el=document.getElementById(listId);if(!el)return
   if(!polyTrades.length){el.innerHTML='<div class="empty-msg">Sin operaciones todavía</div>';return}
   el.innerHTML=polyTrades.slice(0,12).map(function(t,i){
-    var win=t.result==='win'
+    var win=t.result==='win', flat=t.result==='flat'
     var ph=t.pnl!=null?'<span class="t-pnl '+(t.pnl>=0?'p':'l')+'">'+(t.pnl>=0?'+':'')+'$'+Math.abs(t.pnl).toFixed(2)+'</span>':'<span class="t-pnl o">activo</span>'
-    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(win?'buy':'sell')+'">'+(win?'WIN':'LOSS')+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+((t.timestamp||'').slice(0,10)||'—')+'</div></div><div>'+ph+'</div></div>'
+    return '<div class="trade-row" style="animation-delay:'+i*.03+'s"><div class="tbadge '+(flat?'':(win?'buy':'sell'))+'">'+(flat?'FLAT':(win?'WIN':'LOSS'))+'</div><div style="flex:1"><div class="t-pair">'+((t.question||'—').slice(0,38))+'</div><div class="t-sub">'+((t.timestamp||'').slice(0,10)||'—')+'</div></div><div>'+ph+'</div></div>'
   }).join('')
 }
 function renderLog(bodyId,tsId,entries){
