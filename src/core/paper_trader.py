@@ -1,13 +1,17 @@
 import json
 import logging
+import os
 import traceback
 import time
+import requests
 from datetime import datetime
 from pathlib import Path
 from config.settings import PAPER_TRADING
 print(f"🔧 PAPER_TRADING = {PAPER_TRADING}")
 
 logger = logging.getLogger(__name__)
+POLY_POSITIONS_URL = os.getenv("POLY_POSITIONS_URL", "https://data-api.polymarket.com/positions")
+POLY_POSITION_USER = os.getenv("POLYMARKET_SIGNER_ADDRESS", "")
 
 
 class PaperTrader:
@@ -152,12 +156,46 @@ class PaperTrader:
             logger.error(f"_get_live_share_balance: {e}\n{traceback.format_exc()}")
         return 0.0
 
+    def _find_live_position(self, trade: dict) -> dict | None:
+        if not POLY_POSITION_USER:
+            return None
+        condition_id = trade.get("condition_id")
+        direction = (trade.get("direction") or "").lower()
+        if not condition_id or direction not in ("up", "down"):
+            return None
+        try:
+            r = requests.get(
+                POLY_POSITIONS_URL,
+                params={"user": POLY_POSITION_USER, "sizeThreshold": 0},
+                timeout=10,
+            )
+            rows = r.json()
+            expected_outcome = "Up" if direction == "up" else "Down"
+            matches = [
+                row for row in rows
+                if str(row.get("conditionId", "")).lower() == str(condition_id).lower()
+                and str(row.get("outcome", "")).lower() == expected_outcome.lower()
+                and float(row.get("size", 0) or 0) > 0
+            ]
+            if not matches:
+                return None
+            matches.sort(key=lambda row: float(row.get("size", 0) or 0), reverse=True)
+            return matches[0]
+        except Exception as e:
+            logger.error(f"_find_live_position: {e}\n{traceback.format_exc()}")
+            return None
+
     def _place_real_exit(self, trade: dict, exit_price: float | None = None) -> dict | None:
         try:
             from src.core.polymarket_executor import place_market_order
 
             token_id = trade.get("token_id") or trade.get("market_id")
             live_size = self._get_live_share_balance(token_id) if token_id else 0.0
+            if live_size <= 0:
+                live_position = self._find_live_position(trade)
+                if live_position:
+                    token_id = str(live_position.get("asset") or token_id)
+                    live_size = float(live_position.get("size", 0) or 0)
             size = live_size
             if size <= 0:
                 size = float(trade.get("share_size", 0) or 0)
@@ -174,7 +212,8 @@ class PaperTrader:
                 logger.error(f"_place_real_exit inválido: token_id={token_id} size={size}")
                 return None
 
-            self._emit(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f}", "#41d6fc")
+            trade["token_id"] = token_id
+            self._emit(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f} live_balance={live_size:.4f}", "#41d6fc")
             resp = place_market_order(
                 token_id=token_id,
                 side="SELL",
@@ -243,7 +282,10 @@ class PaperTrader:
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
                 trade["share_size"] = self._extract_share_size(resp, position_size, price)
-                trade["token_id"] = market_id
+                trade["token_id"] = (
+                    (resp.get("order_info") or {}).get("asset_id")
+                    or market_id
+                )
                 logger.info(f"Orden real ejecutada: orderID={trade['order_id']} shares={trade['share_size']}")
                 self._emit(f"✅ Orden real OK: orderID={trade['order_id']} shares={trade['share_size']}", "#00E887")
             except Exception as e:
