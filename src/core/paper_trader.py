@@ -152,6 +152,12 @@ class PaperTrader:
                 return False
         return True
 
+    def _is_no_match_response(self, resp: dict | None) -> bool:
+        if not isinstance(resp, dict):
+            return False
+        error = str(resp.get("error", "") or "").lower()
+        return "no match" in error
+
     def _get_live_share_balance(self, token_id: str) -> float:
         try:
             from src.core.polymarket_executor import get_token_balance
@@ -402,6 +408,8 @@ class PaperTrader:
         if not PAPER_TRADING:
             exit_resp = self._place_real_exit(trade, exit_price=exit_price)
             if not self._is_successful_order_response(exit_resp):
+                if self._is_no_match_response(exit_resp):
+                    self._emit(f"⏳ Trade #{trade_id} sigue abierto: exit sin match", "#F5A623")
                 logger.error(f"resolve_trade_with_pnl: no se pudo cerrar trade #{trade_id} en real")
                 return False
 
@@ -448,10 +456,12 @@ class PaperTrader:
     def force_close_stale_trades(self, pnl_per_trade=0.0):
         stale = list(self.active_trades)
         if not stale:
-            return 0
+            return {"attempted": 0, "closed": 0}
+        closed = 0
         for trade in stale:
-            self.resolve_trade_with_pnl(trade["id"], pnl_per_trade)
-        return len(stale)
+            if self.resolve_trade_with_pnl(trade["id"], pnl_per_trade):
+                closed += 1
+        return {"attempted": len(stale), "closed": closed}
 
     def reset(self, bankroll=1000):
         self.bankroll         = bankroll

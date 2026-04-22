@@ -30,6 +30,12 @@ class PolyState:
             if len(self.logs) > 120:
                 self.logs.pop()
 
+    def reset_runtime(self):
+        with self._lock:
+            self.logs = []
+            self.last_cycle = None
+            self.cycle_count = 0
+
 
 poly_state = PolyState()
 
@@ -44,8 +50,8 @@ def _close_open_poly_positions(st: PolyState):
             return
 
         st.add_log(f"Cerrando {len(active)} trade(s) abiertos antes de detener", "#F5A623")
-        closed = trader.force_close_stale_trades(pnl_per_trade=0.0)
-        st.add_log(f"Cierre al detener: {closed} trade(s) procesados", "#41d6fc")
+        result = trader.force_close_stale_trades(pnl_per_trade=0.0)
+        st.add_log(f"Cierre al detener: {result['closed']}/{result['attempted']} trade(s) cerrados", "#41d6fc")
     except Exception as e:
         st.add_log(f"❌ Error cerrando trades al detener: {str(e)[:80]}", "#FF5050")
         logger.error(f"_close_open_poly_positions:\n{traceback.format_exc()}")
@@ -128,6 +134,7 @@ def _run_btc_scalp(st: PolyState):
 def start_poly(mode="btc_scalp") -> bool:
     if poly_state.running:
         return False
+    poly_state.reset_runtime()
     poly_state.market_mode = mode
     poly_state.running = True
     poly_state._stop_event.clear()
