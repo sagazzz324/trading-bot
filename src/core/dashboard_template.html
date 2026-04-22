@@ -459,7 +459,7 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
             </div>
             <div style="display:flex;flex-direction:column;gap:14px">
               <div class="stats-grid" style="grid-template-columns:1fr 1fr">
-                <div class="stat-card"><div class="stat-lbl" style="display:flex;justify-content:space-between;align-items:center">Bankroll<span id="poly-btc-price" style="color:var(--green);font-weight:600;letter-spacing:0">—</span></div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint">capital simulado</div></div>
+                <div class="stat-card"><div class="stat-lbl" style="display:flex;justify-content:space-between;align-items:center">Bankroll<span id="poly-btc-price" style="color:var(--green);font-weight:600;letter-spacing:0">—</span></div><div class="stat-num b" id="poly-balance">$1000</div><div class="stat-hint" id="poly-balance-hint">capital libre</div></div>
                 <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl">$0.00</div><div class="stat-hint" id="poly-pnl-pct">0.0%</div></div>
                 <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr">—</div><div class="stat-hint" id="poly-trades">0 trades</div></div>
                 <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos" style="color:var(--t1)">0</div><div class="stat-hint">posiciones</div></div>
@@ -477,7 +477,7 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
         </div>
         <div id="poly-general-wrap" style="display:none">
           <div class="stats-grid">
-            <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance-g">$1000</div><div class="stat-hint">capital simulado</div></div>
+            <div class="stat-card"><div class="stat-lbl">Bankroll</div><div class="stat-num b" id="poly-balance-g">$1000</div><div class="stat-hint" id="poly-balance-hint-g">capital libre</div></div>
             <div class="stat-card"><div class="stat-lbl">PnL Total</div><div class="stat-num" id="poly-pnl-g">$0.00</div><div class="stat-hint" id="poly-pnl-pct-g">0.0%</div></div>
             <div class="stat-card"><div class="stat-lbl">Win Rate</div><div class="stat-num b" id="poly-wr-g">—</div><div class="stat-hint" id="poly-trades-g">0 trades</div></div>
             <div class="stat-card"><div class="stat-lbl">Activos</div><div class="stat-num" id="poly-pos-g" style="color:var(--t1)">0</div><div class="stat-hint">posiciones abiertas</div></div>
@@ -883,6 +883,12 @@ function applyPoly(d){
   setEl('sb-poly-bal','$'+bal.toFixed(2))
   if(d.btc_price&&parseFloat(d.btc_price)>0){setEl('poly-btc-price','$'+Math.round(parseFloat(d.btc_price)).toLocaleString('en-US'))}
   odoSet(isBtc?'poly-balance':'poly-balance-g','$'+bal.toFixed(2))
+  var pendingCapital=d.pending_capital||0
+  var pendingPositions=d.pending_positions||0
+  var balanceHint=pendingPositions>0
+    ? 'libre $'+bal.toFixed(2)+' · pendiente $'+pendingCapital.toFixed(2)+' en '+pendingPositions+' pos.'
+    : 'capital libre'
+  setEl(isBtc?'poly-balance-hint':'poly-balance-hint-g',balanceHint)
   var pnl=d.total_pnl||0
   var pnlStr=(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2)
   var pnlPct=(pnl>=0?'+':'')+((pnl/INIT_BAL)*100).toFixed(1)+'%'
