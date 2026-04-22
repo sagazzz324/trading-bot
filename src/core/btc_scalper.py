@@ -625,8 +625,11 @@ class BTCScalper:
         )
 
         if position < MIN_POSITION:
-            self.log(f"💰 Posición ${position:.2f} muy pequeña (mín ${MIN_POSITION})", "#FF5050")
-            return False
+            if cap_disp - cap_uso >= MIN_POSITION:
+                position = MIN_POSITION
+            else:
+                self.log(f"💰 Capital insuficiente para mínimo ${MIN_POSITION}", "#FF5050")
+                return False
 
         # Obtener token_id y precio real del mercado
         clob_token_id = _get_clob_token_id(market, direction)
