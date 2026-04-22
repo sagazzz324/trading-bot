@@ -112,38 +112,63 @@ class PaperTrader:
         if not isinstance(resp, dict):
             return fallback
 
-        for key in ("size_matched", "matched_size", "filled_size", "filledSize"):
-            value = resp.get(key)
-            try:
-                if value is not None and float(value) > 0:
-                    return round(float(value), 6)
-            except Exception:
-                pass
-
-        nested = resp.get("resp")
-        if isinstance(nested, dict):
+        for container in (resp, resp.get("order_info"), resp.get("resp")):
+            if not isinstance(container, dict):
+                continue
             for key in ("size_matched", "matched_size", "filled_size", "filledSize"):
-                value = nested.get(key)
+                value = container.get(key)
                 try:
                     if value is not None and float(value) > 0:
-                        return round(float(value), 6)
+                        raw = float(value)
+                        if raw > 100000:
+                            raw = raw / 1e6
+                        return round(raw, 6)
                 except Exception:
                     pass
 
         return fallback
+
+    def _is_successful_order_response(self, resp: dict | None) -> bool:
+        if not isinstance(resp, dict):
+            return False
+        if not resp.get("ok"):
+            return False
+        nested = resp.get("resp")
+        if isinstance(nested, dict):
+            if nested.get("success") is False:
+                return False
+            if nested.get("errorMsg"):
+                return False
+        return True
+
+    def _get_live_share_balance(self, token_id: str) -> float:
+        try:
+            from src.core.polymarket_executor import get_token_balance
+
+            live_balance = float(get_token_balance(token_id))
+            if live_balance > 0:
+                return round(live_balance, 6)
+        except Exception as e:
+            logger.error(f"_get_live_share_balance: {e}\n{traceback.format_exc()}")
+        return 0.0
 
     def _place_real_exit(self, trade: dict, exit_price: float | None = None) -> dict | None:
         try:
             from src.core.polymarket_executor import place_market_order
 
             token_id = trade.get("token_id") or trade.get("market_id")
-            size = float(trade.get("share_size", 0) or 0)
+            live_size = self._get_live_share_balance(token_id) if token_id else 0.0
+            size = live_size
+            if size <= 0:
+                size = float(trade.get("share_size", 0) or 0)
             if size <= 0:
                 entry_price = float(trade.get("entry_price", 0) or 0)
                 position_size = float(trade.get("position_size", 0) or 0)
                 if entry_price > 0:
                     size = round(position_size / entry_price, 6)
-            price = exit_price if exit_price is not None else trade.get("entry_price") or trade.get("market_prob") or 0.5
+            if size > 0:
+                size = round(size * 0.995, 6)
+            price = 0.0
 
             if not token_id or size <= 0:
                 logger.error(f"_place_real_exit inválido: token_id={token_id} size={size}")
@@ -212,7 +237,7 @@ class PaperTrader:
                     price=price
                 )
                 self._emit(f"📦 Respuesta executor: {resp}", "#ffffff60")
-                if not resp:
+                if not self._is_successful_order_response(resp):
                     logger.error("Orden real fallida — no se ejecutó")
                     self._emit("❌ Orden real fallida — resp vacío", "#FF5050")
                     return None
@@ -260,7 +285,7 @@ class PaperTrader:
         exit_resp = None
         if not PAPER_TRADING and exit_price is not None:
             exit_resp = self._place_real_exit(trade, exit_price=exit_price)
-            if not exit_resp:
+            if not self._is_successful_order_response(exit_resp):
                 logger.error(f"resolve_trade: no se pudo cerrar trade #{trade_id} en real")
                 return False
 
@@ -309,7 +334,7 @@ class PaperTrader:
         exit_resp = None
         if not PAPER_TRADING:
             exit_resp = self._place_real_exit(trade, exit_price=exit_price)
-            if not exit_resp:
+            if not self._is_successful_order_response(exit_resp):
                 logger.error(f"resolve_trade_with_pnl: no se pudo cerrar trade #{trade_id} en real")
                 return False
 
