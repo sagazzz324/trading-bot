@@ -45,13 +45,14 @@ def get_balance() -> float:
 
 
 def place_market_order(token_id: str, side: str, amount_usdc: float,
-                       price: float = 0.51) -> dict | None:
+                       price: float = 0.51, order_type: str = "FOK") -> dict | None:
     """
-    Ejecuta una orden límite en Polymarket a través del executor en Fly.io Brasil.
+    Ejecuta una orden inmediata en Polymarket a través del executor en Fly.io Brasil.
     token_id: clobTokenId del outcome (up o down)
-    side: "BUY"
-    amount_usdc: monto en USDC
-    price: precio del outcome (bestAsk del mercado)
+    side: "BUY" o "SELL"
+    amount_usdc: en BUY es monto en USDC; en SELL es cantidad de shares
+    price: precio límite de protección
+    order_type: FOK o FAK
     """
     try:
         # Redondear price al tick size de 0.01
@@ -65,13 +66,14 @@ def place_market_order(token_id: str, side: str, amount_usdc: float,
                 "side":     side,
                 "amount":   amount_usdc,
                 "price":    price_clean,
+                "order_type": order_type,
             },
             timeout=15
         )
         data = r.json()
         if data.get("ok"):
             logger.info(f"Orden ejecutada via Fly.io: token={token_id[:20]}... "
-                        f"amount={amount_usdc} price={price_clean} "
+                        f"side={side} amount={amount_usdc} price={price_clean} "
                         f"orderID={data.get('orderID')}")
             return data
         logger.error(f"place_market_order error: {data}")

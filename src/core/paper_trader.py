@@ -101,7 +101,12 @@ class PaperTrader:
             from src.core.polymarket_executor import place_market_order
 
             token_id = trade.get("token_id") or trade.get("market_id")
-            size = float(trade.get("position_size", 0) or 0)
+            size = float(trade.get("share_size", 0) or 0)
+            if size <= 0:
+                entry_price = float(trade.get("entry_price", 0) or 0)
+                position_size = float(trade.get("position_size", 0) or 0)
+                if entry_price > 0:
+                    size = round(position_size / entry_price, 6)
             price = exit_price if exit_price is not None else trade.get("entry_price") or trade.get("market_prob") or 0.5
 
             if not token_id or size <= 0:
@@ -152,6 +157,7 @@ class PaperTrader:
             "direction":     direction,
             "entry_price":   round(price, 4),
             "entry_value":   round(position_size * price, 4),
+            "share_size":    round(position_size / price, 6) if price > 0 else 0.0,
             "close_order_id": None,
             "exit_price":    None,
         }
