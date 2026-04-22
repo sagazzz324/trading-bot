@@ -34,6 +34,13 @@ class PaperTrader:
         self.log(msg, color)
         print(msg)
 
+    def _classify_result(self, pnl: float) -> str:
+        if pnl > 0:
+            return "win"
+        if pnl < 0:
+            return "loss"
+        return "flat"
+
     def _load_state(self):
         if self.log_file.exists():
             try:
@@ -400,7 +407,7 @@ class PaperTrader:
 
         updates = {
             "status": "resolved",
-            "result": "win" if pnl >= 0 else "loss",
+            "result": self._classify_result(pnl),
             "pnl":    round(pnl, 2),
             "settlement": "paper" if PAPER_TRADING else "live_sell",
             "exit_price": round(exit_price, 4) if exit_price is not None else trade.get("exit_price"),
@@ -423,7 +430,8 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 
-        logger.info(f"Trade #{trade_id} cerrado: {'WIN' if pnl >= 0 else 'LOSS'} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
+        result_label = "WIN" if pnl > 0 else ("LOSS" if pnl < 0 else "FLAT")
+        logger.info(f"Trade #{trade_id} cerrado: {result_label} PnL ${pnl:.2f} | Bankroll ${self.bankroll:.2f}")
         return True
 
     def _calc_duration(self, timestamp_str: str) -> float:
