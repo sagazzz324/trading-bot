@@ -4,7 +4,6 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from config.settings import PAPER_TRADING
-from config.settings import PAPER_TRADING
 print(f"🔧 PAPER_TRADING = {PAPER_TRADING}")
 
 logger = logging.getLogger(__name__)
@@ -81,18 +80,23 @@ class PaperTrader:
         # ── REAL TRADING ──────────────────────────────────────────────────────
         if not PAPER_TRADING:
             try:
+                from src.core.polymarket_executor import place_market_order
+                print(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price={price:.3f}")
                 resp = place_market_order(
-                token_id=market_id,
-                side="BUY",
-                amount_usdc=position_size,
-                price=price
-            )
+                    token_id=market_id,
+                    side="BUY",
+                    amount_usdc=position_size,
+                    price=price
+                )
+                print(f"📦 Respuesta executor: {resp}")
                 if not resp:
                     logger.error("Orden real fallida — no se ejecutó")
+                    print("❌ Orden real fallida — resp vacío")
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
                 trade["token_id"] = market_id
-                logger.info(f"Orden real ejecutada: {resp}")
+                logger.info(f"Orden real ejecutada: orderID={trade['order_id']}")
+                print(f"✅ Orden real OK: orderID={trade['order_id']}")
             except Exception as e:
                 logger.error(f"Error ejecutando orden real: {e}\n{traceback.format_exc()}")
                 print(f"❌ ERROR ORDEN REAL: {e}")
@@ -116,7 +120,6 @@ class PaperTrader:
         return False
 
     def resolve_trade(self, trade_id, outcome):
-        """Resuelve un trade por resultado binario (True=win, False=loss)."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
             logger.error(f"resolve_trade: Trade #{trade_id} no encontrado")
@@ -154,7 +157,6 @@ class PaperTrader:
         logger.info(f"Trade #{trade_id} resuelto: {'WIN' if outcome else 'LOSS'} PnL ${pnl:.2f}")
 
     def resolve_trade_with_pnl(self, trade_id, pnl):
-        """Cierra un trade con PnL calculado externamente."""
         trade = next((t for t in self.active_trades if t["id"] == trade_id), None)
         if not trade:
             logger.error(f"resolve_trade_with_pnl: Trade #{trade_id} no encontrado")
