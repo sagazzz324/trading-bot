@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class PaperTrader:
-    def __init__(self, bankroll=1000):
+    def __init__(self, bankroll=1000, log_fn=None):
         self.bankroll          = bankroll
         self.initial_bankroll  = bankroll
         self.trades            = []
@@ -19,11 +19,16 @@ class PaperTrader:
         self.wallet_balance    = bankroll
         self.balance_source    = "paper"
         self.last_balance_sync = None
+        self.log               = log_fn or (lambda msg, color="#ffffff": None)
         self.log_file          = Path("logs/paper_trades.json")
         self._balance_sync_ts  = 0.0
         self.log_file.parent.mkdir(exist_ok=True)
         self._load_state()
         self._sync_real_balance(force=True)
+
+    def _emit(self, msg: str, color: str = "#ffffff"):
+        self.log(msg, color)
+        print(msg)
 
     def _load_state(self):
         if self.log_file.exists():
@@ -144,7 +149,7 @@ class PaperTrader:
                 logger.error(f"_place_real_exit inválido: token_id={token_id} size={size}")
                 return None
 
-            print(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f}")
+            self._emit(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f}", "#41d6fc")
             resp = place_market_order(
                 token_id=token_id,
                 side="SELL",
@@ -152,11 +157,11 @@ class PaperTrader:
                 price=price,
                 order_type="FAK",
             )
-            print(f"📦 Respuesta exit executor: {resp}")
+            self._emit(f"📦 Respuesta exit executor: {resp}", "#ffffff60")
             return resp
         except Exception as e:
             logger.error(f"_place_real_exit: {e}\n{traceback.format_exc()}")
-            print(f"❌ ERROR EXIT REAL: {e}")
+            self._emit(f"❌ ERROR EXIT REAL: {e}", "#FF5050")
             return None
 
     def place_trade(self, market_id, question, true_prob, market_prob, ev, position_size,
@@ -168,6 +173,7 @@ class PaperTrader:
             return None
         if position_size > self.bankroll:
             logger.warning(f"Sin suficiente bankroll. Disponible: ${self.bankroll:.2f}")
+            self._emit(f"❌ Sin suficiente bankroll. Disponible: ${self.bankroll:.2f}", "#FF5050")
             return None
 
         trade = {
@@ -198,26 +204,26 @@ class PaperTrader:
         if not PAPER_TRADING:
             try:
                 from src.core.polymarket_executor import place_market_order
-                print(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price={price:.3f}")
+                self._emit(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price={price:.3f}", "#41d6fc")
                 resp = place_market_order(
                     token_id=market_id,
                     side="BUY",
                     amount_usdc=position_size,
                     price=price
                 )
-                print(f"📦 Respuesta executor: {resp}")
+                self._emit(f"📦 Respuesta executor: {resp}", "#ffffff60")
                 if not resp:
                     logger.error("Orden real fallida — no se ejecutó")
-                    print("❌ Orden real fallida — resp vacío")
+                    self._emit("❌ Orden real fallida — resp vacío", "#FF5050")
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
                 trade["share_size"] = self._extract_share_size(resp, position_size, price)
                 trade["token_id"] = market_id
                 logger.info(f"Orden real ejecutada: orderID={trade['order_id']} shares={trade['share_size']}")
-                print(f"✅ Orden real OK: orderID={trade['order_id']} shares={trade['share_size']}")
+                self._emit(f"✅ Orden real OK: orderID={trade['order_id']} shares={trade['share_size']}", "#00E887")
             except Exception as e:
                 logger.error(f"Error ejecutando orden real: {e}\n{traceback.format_exc()}")
-                print(f"❌ ERROR ORDEN REAL: {e}")
+                self._emit(f"❌ ERROR ORDEN REAL: {e}", "#FF5050")
                 return None
 
         if PAPER_TRADING:

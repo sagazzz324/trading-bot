@@ -87,7 +87,7 @@ def _run_btc_scalp(st: PolyState):
     from src.core.btc_scalper import BTCScalper
 
     st.add_log("Bot BTC Scalp iniciado · Up/Down 5m", "#00E887")
-    trader  = PaperTrader()
+    trader  = PaperTrader(log_fn=st.add_log)
     scalper = BTCScalper(trader=trader, log_fn=st.add_log)
 
     while st.running:
