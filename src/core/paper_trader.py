@@ -273,7 +273,8 @@ class PaperTrader:
                     token_id=market_id,
                     side="BUY",
                     amount_usdc=position_size,
-                    price=price
+                    price=price,
+                    order_type="FAK",
                 )
                 self._emit(f"📦 Respuesta executor: {resp}", "#ffffff60")
                 if not self._is_successful_order_response(resp):
