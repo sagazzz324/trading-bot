@@ -118,7 +118,7 @@ class PaperTrader:
         # Dejamos margen para fees/redondeos y evitar SELL rechazadas por exceso de size.
         return round((position_size / price) * 0.90, 6)
 
-    def _extract_share_size(self, resp: dict | None, position_size: float, price: float) -> float:
+    def _extract_share_size(self, resp: dict | None, position_size: float, price: float, side: str | None = None) -> float:
         fallback = self._estimate_share_size(position_size, price)
         if not isinstance(resp, dict):
             return fallback
@@ -136,6 +136,20 @@ class PaperTrader:
                         return round(raw, 6)
                 except Exception:
                     pass
+
+        nested = resp.get("resp") if isinstance(resp.get("resp"), dict) else {}
+        resp_side = str(side or resp.get("side") or "").upper()
+        raw_value = None
+        if resp_side == "BUY":
+            raw_value = nested.get("takingAmount")
+        elif resp_side == "SELL":
+            raw_value = nested.get("makingAmount")
+
+        try:
+            if raw_value is not None and float(raw_value) > 0:
+                return round(float(raw_value), 6)
+        except Exception:
+            pass
 
         return fallback
 
@@ -372,7 +386,7 @@ class PaperTrader:
                     self._emit(f"❌ Orden real fallida — {resp}", "#FF5050")
                     return None
                 trade["order_id"] = resp.get("orderID") or resp.get("id", "")
-                trade["share_size"] = self._extract_share_size(resp, position_size, price)
+                trade["share_size"] = self._extract_share_size(resp, position_size, price, side="BUY")
                 trade["filled_entry_usdc"] = self._extract_usdc_value(resp, "BUY", fallback=position_size)
                 trade["token_id"] = (
                     (resp.get("order_info") or {}).get("asset_id")
@@ -444,7 +458,7 @@ class PaperTrader:
             pnl = self._realized_pnl_from_exit(trade, exit_resp, pnl)
 
         filled_exit_usdc = self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc")
-        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0) if exit_resp else 0.0
+        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0, side="SELL") if exit_resp else 0.0
         exit_price_real = self._avg_price(filled_exit_usdc or 0.0, filled_exit_shares or 0.0)
 
         updates = {
@@ -505,7 +519,7 @@ class PaperTrader:
             pnl = self._realized_pnl_from_exit(trade, exit_resp, pnl)
 
         filled_exit_usdc = self._extract_usdc_value(exit_resp, "SELL", fallback=0.0) if exit_resp else trade.get("filled_exit_usdc")
-        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0) if exit_resp else 0.0
+        filled_exit_shares = self._extract_share_size(exit_resp, 0.0, 0.0, side="SELL") if exit_resp else 0.0
         exit_price_real = self._avg_price(filled_exit_usdc or 0.0, filled_exit_shares or 0.0)
 
         updates = {
