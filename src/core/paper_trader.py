@@ -243,16 +243,13 @@ class PaperTrader:
             from src.core.polymarket_executor import place_market_order, redeem_position
 
             token_id = trade.get("token_id") or trade.get("market_id")
+            trade_share_size = float(trade.get("share_size", 0) or 0)
             live_size = self._get_live_share_balance(token_id) if token_id else 0.0
-            live_position = None
-            if live_size <= 0:
-                live_position = self._find_live_position(trade)
-                if live_position:
-                    token_id = str(live_position.get("asset") or token_id)
+            live_position = self._find_live_position(trade)
+            if live_position:
+                token_id = str(live_position.get("asset") or token_id)
+                if live_size <= 0:
                     live_size = float(live_position.get("size", 0) or 0)
-
-            if live_position is None:
-                live_position = self._find_live_position(trade)
 
             if live_position and live_position.get("redeemable"):
                 condition_id = trade.get("condition_id")
@@ -265,16 +262,22 @@ class PaperTrader:
                 self._emit(f"📦 Respuesta redeem executor: {resp}", "#ffffff60")
                 return resp
 
-            size = live_size
+            size = 0.0
+            if trade_share_size > 0 and live_size > 0:
+                size = min(trade_share_size, live_size)
+            elif trade_share_size > 0:
+                size = trade_share_size
+            elif live_size > 0:
+                size = live_size
+            elif live_position:
+                size = float(live_position.get("size", 0) or 0)
             if size <= 0:
-                size = float(trade.get("share_size", 0) or 0)
-            if size <= 0:
-                entry_price = float(trade.get("entry_price", 0) or 0)
+                entry_price = float(trade.get("entry_price_real") or trade.get("entry_price", 0) or 0)
                 position_size = float(trade.get("position_size", 0) or 0)
                 if entry_price > 0:
                     size = round(position_size / entry_price, 6)
             if size > 0:
-                size = round(size * 0.995, 6)
+                size = round(size, 6)
             price = 0.0
 
             if not token_id or size <= 0:
@@ -282,7 +285,11 @@ class PaperTrader:
                 return None
 
             trade["token_id"] = token_id
-            self._emit(f"🔁 Exit executor: token={token_id[:20]}... size={size:.2f} price={price:.3f} live_balance={live_size:.4f}", "#41d6fc")
+            self._emit(
+                f"🔁 Exit executor: token={token_id[:20]}... size={size:.4f} "
+                f"trade_shares={trade_share_size:.4f} live_balance={live_size:.4f}",
+                "#41d6fc"
+            )
             resp = place_market_order(
                 token_id=token_id,
                 side="SELL",
