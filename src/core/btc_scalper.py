@@ -22,12 +22,15 @@ Q_MAX       = 0.72
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
 MAX_POSITION_PCT   = 0.05
-MIN_POSITION       = 5.0       # mínimo $5 para Polymarket
+MIN_POSITION       = 5.0
 MAX_SPREAD         = 0.06
 MIN_LIQUIDITY      = 300
-MAX_TRADE_DURATION = 90
-TP_PCT             = 0.05
-SL_PCT             = 0.08
+
+# ── PARAMETROS DE SALIDA ──────────────────────────────────────────────────────
+MAX_TRADE_DURATION  = 360   # 6 min — el mercado de 5m debería resolver
+RESOLUTION_WIN      = 0.92  # precio que indica "casi ganó"
+RESOLUTION_LOSS     = 0.08  # precio que indica "casi perdió"
+DEFENSIVE_DROP      = 0.35  # si el precio cae 35% desde entrada, salir
 
 # ── PARAMETROS DE SEGURIDAD ───────────────────────────────────────────────────
 SL_COOLDOWN_SEC    = 30
@@ -141,11 +144,9 @@ def find_active_btc_5m_market(log_fn=None):
     now = int(time_module.time())
     interval = 300
 
-    slugs_tried = []
     for i in [0, 1, 2, 3, -1]:
         ts = ((now // interval) + i) * interval
         slug = f"btc-updown-5m-{ts}"
-        slugs_tried.append(slug)
         try:
             r = requests.get(f"{GAMMA_API}/events",
                              params={"slug": slug}, timeout=6)
@@ -190,11 +191,8 @@ def _is_valid_btc_updown(market) -> bool:
     has_dir = any(w in q for w in ["up","down","higher","lower"]) or "updown" in slug
     if not has_btc or not has_dir: return False
     if any(w in q for w in sports): return False
-
-    # ── Verificar que el mercado esté abierto y aceptando órdenes ──
     if market.get("closed"): return False
     if not market.get("acceptingOrders", True): return False
-
     try:
         prices = json.loads(market.get("outcomePrices","[]")) if isinstance(market.get("outcomePrices"), str) else (market.get("outcomePrices") or [])
         if prices and any(float(p) in (0.0, 1.0) for p in prices):
@@ -282,42 +280,29 @@ def get_market_outcome_prices(market) -> dict:
 
 
 def _get_clob_token_id(market: dict, direction: str) -> str:
-    """
-    Extrae el clobTokenId correcto para el outcome UP o DOWN.
-    UP = índice 0, DOWN = índice 1 en clobTokenIds.
-    """
     try:
         clob_tokens = market.get("clobTokenIds", "[]")
         if isinstance(clob_tokens, str):
             clob_tokens = json.loads(clob_tokens)
-
         if not clob_tokens:
             return market.get("conditionId") or market.get("id", "")
-
         outcomes = market.get("outcomes", "[]")
         if isinstance(outcomes, str):
             outcomes = json.loads(outcomes)
-
         for i, outcome in enumerate(outcomes):
             o = outcome.lower()
             if direction == "up" and any(w in o for w in ["up", "higher", "above"]):
                 return clob_tokens[i] if i < len(clob_tokens) else clob_tokens[0]
             if direction == "down" and any(w in o for w in ["down", "lower", "below"]):
                 return clob_tokens[i] if i < len(clob_tokens) else clob_tokens[1]
-
         idx = 0 if direction == "up" else 1
         return clob_tokens[idx] if idx < len(clob_tokens) else clob_tokens[0]
-
     except Exception as e:
         logger.error(f"_get_clob_token_id: {e}")
         return market.get("conditionId") or market.get("id", "")
 
 
 def _get_best_ask(market: dict, direction: str) -> float:
-    """
-    Usa el precio del outcome correcto en vez del bestAsk global del mercado.
-    Para cruzar el libro, paga un tick por encima del precio visible.
-    """
     try:
         prices = get_market_outcome_prices(market)
         base = prices["up_price"] if direction == "up" else prices["down_price"]
@@ -325,16 +310,6 @@ def _get_best_ask(market: dict, direction: str) -> float:
     except Exception as e:
         logger.error(f"_get_best_ask: {e}")
         return 0.51
-
-
-def _get_exit_price(current_price: float | None, fallback_price: float) -> float:
-    base = current_price if current_price is not None else fallback_price
-    try:
-        # Para salir más agresivo que la entrada, rebajamos 3 ticks.
-        price = max(0.01, min(0.99, float(base) - 0.03))
-        return round(price, 2)
-    except Exception:
-        return max(0.01, min(0.99, round(fallback_price, 2)))
 
 
 def _has_active_market_position(active_trades: list, condition_id: str, question: str) -> bool:
@@ -515,55 +490,73 @@ class BTCScalper:
             pos     = trade["position_size"]
             elapsed = time_module.time() - meta["entered_at"]
             current = get_outcome_current_price(meta["market_id"], meta["direction"])
+            entry   = meta["entry_price"]
 
-            if elapsed >= MAX_TRADE_DURATION:
-                if current and abs(current - meta["entry_price"]) > 0.001:
-                    pnl = round(pos * (current - meta["entry_price"]) / meta["entry_price"], 2)
-                else:
-                    pnl = round(-pos * 0.03, 2)
-                exit_price = _get_exit_price(current, meta["entry_price"] * 0.97)
-                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
-                if not closed:
-                    self.log(f"❌ No se pudo cerrar trade #{trade_id} en mercado real", "#FF5050")
-                    continue
-                self._open.pop(trade_id, None)
-                if pnl < 0:
-                    self._register_sl(pnl)
-                else:
-                    self._register_tp(pnl)
-                self.log(
-                    f"⏱️ TIEMPO #{trade_id} · {'+'if pnl>=0 else ''}${pnl:.2f} ({elapsed:.0f}s)",
-                    "#F5A623" if pnl >= 0 else "#FF5050"
-                )
-                continue
-
+            # Sin precio — cerrar si ya expiró el tiempo
             if current is None:
+                if elapsed >= MAX_TRADE_DURATION:
+                    pnl = round(-pos * 0.05, 2)
+                    closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=entry * 0.95)
+                    if closed:
+                        self._open.pop(trade_id, None)
+                        self._register_sl(pnl)
+                        self.log(f"⏱️ TIEMPO sin precio #{trade_id} · ${pnl:.2f}", "#F5A623")
                 continue
 
-            entry  = meta["entry_price"]
-            change = (current - entry) / entry if entry > 0 else 0
+            pnl_actual = round(pos * (current - entry) / entry, 2) if entry > 0 else 0
 
-            if change >= TP_PCT:
-                pnl = round(pos * change, 2)
-                exit_price = _get_exit_price(current, entry)
-                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
+            # 1. EXIT POR RESOLUCIÓN — ganó
+            if current >= RESOLUTION_WIN:
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl_actual, exit_price=current)
+                if closed:
+                    self._open.pop(trade_id, None)
+                    self._register_tp(pnl_actual)
+                    self.log(
+                        f"✅ WIN #{trade_id} · +${pnl_actual:.2f} @ {current:.3f} ({elapsed:.0f}s)",
+                        "#00E887"
+                    )
+                continue
+
+            # 2. EXIT POR RESOLUCIÓN — perdió
+            if current <= RESOLUTION_LOSS:
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl_actual, exit_price=current)
+                if closed:
+                    self._open.pop(trade_id, None)
+                    self._register_sl(pnl_actual)
+                    self.log(
+                        f"🛑 LOSS #{trade_id} · ${pnl_actual:.2f} @ {current:.3f} ({elapsed:.0f}s)",
+                        "#FF5050"
+                    )
+                continue
+
+            # 3. EXIT DEFENSIVO — precio cayó mucho desde entrada
+            drop = (entry - current) / entry if entry > 0 else 0
+            if drop >= DEFENSIVE_DROP:
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl_actual, exit_price=current)
+                if closed:
+                    self._open.pop(trade_id, None)
+                    self._register_sl(pnl_actual)
+                    self.log(
+                        f"🛡️ DEFENSIVO #{trade_id} · ${pnl_actual:.2f} caída {drop*100:.0f}% ({elapsed:.0f}s)",
+                        "#FF5050"
+                    )
+                continue
+
+            # 4. EXIT POR TIEMPO — cierre forzado con lo que haya
+            if elapsed >= MAX_TRADE_DURATION:
+                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl_actual, exit_price=current)
                 if not closed:
-                    self.log(f"❌ TP sin fill para trade #{trade_id}", "#FF5050")
+                    self.log(f"❌ No se pudo cerrar trade #{trade_id}", "#FF5050")
                     continue
                 self._open.pop(trade_id, None)
-                self._register_tp(pnl)
-                self.log(f"✅ TP #{trade_id} · +${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s @ {exit_price:.2f}", "#00E887")
-
-            elif change <= -SL_PCT:
-                pnl = round(pos * change, 2)
-                exit_price = _get_exit_price(current, entry)
-                closed = self.trader.resolve_trade_with_pnl(trade_id, pnl, exit_price=exit_price)
-                if not closed:
-                    self.log(f"❌ SL sin fill para trade #{trade_id}", "#FF5050")
-                    continue
-                self._open.pop(trade_id, None)
-                self._register_sl(pnl)
-                self.log(f"🛑 SL #{trade_id} · ${pnl:.2f} ({change*100:.1f}%) {elapsed:.0f}s @ {exit_price:.2f}", "#FF5050")
+                if pnl_actual >= 0:
+                    self._register_tp(pnl_actual)
+                else:
+                    self._register_sl(pnl_actual)
+                self.log(
+                    f"⏱️ TIEMPO #{trade_id} · {'+'if pnl_actual>=0 else ''}${pnl_actual:.2f} @ {current:.3f} ({elapsed:.0f}s)",
+                    "#F5A623" if pnl_actual >= 0 else "#FF5050"
+                )
 
     def run_once(self):
         global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
@@ -601,7 +594,6 @@ class BTCScalper:
         market_id = market.get("conditionId") or market.get("id", "")
         question  = market.get("question", "")
 
-        # No abrir otra posición sobre el mismo mercado si una previa sigue abierta.
         if _has_active_market_position(active, market_id, question):
             return False
 
@@ -708,7 +700,6 @@ class BTCScalper:
                 self.log(f"💰 Capital insuficiente para mínimo ${MIN_POSITION}", "#FF5050")
                 return False
 
-        # Obtener token_id y precio real del mercado
         clob_token_id = _get_clob_token_id(market, direction)
         entry_price   = _get_best_ask(market, direction)
 
@@ -725,14 +716,14 @@ class BTCScalper:
             market_prob=market_price,
             ev=decision["gap"],
             position_size=position,
-            price=entry_price,          # ← precio real para el executor
+            price=entry_price,
             condition_id=market_id,
             direction=direction,
         )
 
         if trade:
             self._open[trade["id"]] = {
-                "market_id":   market_id,   # conditionId para monitorear precio
+                "market_id":   market_id,
                 "direction":   direction,
                 "entry_price": entry_price,
                 "entered_at":  time_module.time(),
