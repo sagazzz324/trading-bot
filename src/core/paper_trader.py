@@ -493,7 +493,7 @@ class PaperTrader:
         duration = self._calc_duration(entered_at)
         try:
             from src.core.equity_tracker import record_trade
-            record_trade(trade_id, round(pnl, 2), self.bankroll, duration)
+            record_trade(trade_id, round(pnl, 2), self.bankroll, duration, trade.copy())
         except Exception as e:
             logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 
@@ -556,7 +556,7 @@ class PaperTrader:
         duration = self._calc_duration(entered_at)
         try:
             from src.core.equity_tracker import record_trade
-            record_trade(trade_id, round(pnl, 2), self.bankroll, duration)
+            record_trade(trade_id, round(pnl, 2), self.bankroll, duration, trade.copy())
         except Exception as e:
             logger.error(f"equity_tracker error: {e}\n{traceback.format_exc()}")
 

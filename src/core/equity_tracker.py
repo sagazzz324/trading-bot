@@ -43,6 +43,7 @@ def _empty() -> dict:
     return {
         # Curva de equity
         "equity_curve": [],          # [{ts, balance, trade_id, pnl}]
+        "trade_ledger": [],          # [{...detalle por trade...}]
 
         # Drawdown
         "peak_balance":      1000.0,
@@ -83,6 +84,9 @@ def _empty() -> dict:
         # Volatilidad del equity
         "equity_returns":    [],     # lista de retornos % para calcular std
         "equity_volatility": 0.0,    # std dev de los retornos
+        "avg_entry_slippage": 0.0,
+        "avg_realized_return": 0.0,
+        "count_flats":       0,
 
         # Metadata
         "initial_balance":   1000.0,
@@ -91,7 +95,7 @@ def _empty() -> dict:
 
 
 def record_trade(trade_id: int, pnl: float, balance_after: float,
-                 duration_seconds: float = 0.0):
+                 duration_seconds: float = 0.0, trade_data: dict | None = None):
     """
     Llamar después de cada trade resuelto.
     trade_id: ID del trade
@@ -115,14 +119,41 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
         if len(data["equity_curve"]) > 2000:
             data["equity_curve"] = data["equity_curve"][-2000:]
 
+        if trade_data:
+            ledger_item = {
+                "ts": ts,
+                "trade_id": trade_id,
+                "pnl": round(pnl, 2),
+                "balance_after": round(balance_after, 2),
+                "question": trade_data.get("question"),
+                "direction": trade_data.get("direction"),
+                "result": trade_data.get("result"),
+                "entry_price_hint": trade_data.get("entry_price_hint"),
+                "entry_price_real": trade_data.get("entry_price_real"),
+                "entry_slippage": trade_data.get("entry_slippage"),
+                "exit_price_real": trade_data.get("exit_price_real"),
+                "filled_entry_usdc": trade_data.get("filled_entry_usdc"),
+                "filled_exit_usdc": trade_data.get("filled_exit_usdc"),
+                "wallet_balance_before_entry": trade_data.get("wallet_balance_before_entry"),
+                "wallet_balance_after_exit": trade_data.get("wallet_balance_after_exit"),
+                "share_size": trade_data.get("share_size"),
+                "settlement": trade_data.get("settlement"),
+            }
+            data["trade_ledger"].append(ledger_item)
+            if len(data["trade_ledger"]) > 500:
+                data["trade_ledger"] = data["trade_ledger"][-500:]
+
         # ── Totales ──────────────────────────────────────────────────────
         data["total_trades"] += 1
         data["total_pnl"]     = round(data["total_pnl"] + pnl, 2)
 
-        is_win = pnl >= 0
+        is_win = pnl > 0
+        is_flat = pnl == 0
         if is_win:
             data["sum_wins"]    = round(data["sum_wins"] + pnl, 2)
             data["count_wins"] += 1
+        elif is_flat:
+            data["count_flats"] += 1
         else:
             data["sum_losses"]    = round(data["sum_losses"] + abs(pnl), 2)
             data["count_losses"] += 1
@@ -205,6 +236,18 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
             variance = sum((r - mean) ** 2 for r in returns) / len(returns)
             data["equity_volatility"] = round(math.sqrt(variance), 4)
 
+        ledger = data.get("trade_ledger", [])
+        if ledger:
+            slips = [float(t["entry_slippage"]) for t in ledger if t.get("entry_slippage") is not None]
+            realized_returns = []
+            for t in ledger:
+                entry_usdc = float(t.get("filled_entry_usdc") or 0)
+                exit_usdc = float(t.get("filled_exit_usdc") or 0)
+                if entry_usdc > 0 and exit_usdc > 0:
+                    realized_returns.append((exit_usdc - entry_usdc) / entry_usdc * 100)
+            data["avg_entry_slippage"] = round(sum(slips) / len(slips), 4) if slips else 0.0
+            data["avg_realized_return"] = round(sum(realized_returns) / len(realized_returns), 4) if realized_returns else 0.0
+
         data["last_updated"] = ts
         _save(data)
         logger.debug(f"equity_tracker: trade #{trade_id} PnL={pnl:.2f} balance={balance_after:.2f} "
@@ -236,6 +279,10 @@ def get_summary() -> dict:
         "current_streak":     f"{data['current_streak']} {data['current_streak_type']}",
         "avg_trade_duration": f"{data['avg_trade_duration']:.0f}s",
         "equity_volatility":  data["equity_volatility"],
+        "avg_entry_slippage": data.get("avg_entry_slippage", 0.0),
+        "avg_realized_return": data.get("avg_realized_return", 0.0),
+        "count_flats":        data.get("count_flats", 0),
+        "trade_ledger":       data.get("trade_ledger", [])[-20:][::-1],
         "last_updated":       data["last_updated"],
     }
 

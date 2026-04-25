@@ -258,6 +258,14 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
 .eq-metric-val.g{color:var(--green)}.eq-metric-val.r{color:var(--red)}.eq-metric-val.b{color:var(--blue)}.eq-metric-val.amber{color:var(--amber)}
 .eq-dd-bar-wrap{margin-top:6px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
 .eq-dd-bar{height:100%;border-radius:2px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
+.eq-ledger-body{max-height:320px;overflow-y:auto}
+.eq-ledger-row{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.eq-ledger-row:last-child{border-bottom:none}
+.eq-ledger-main{flex:1;min-width:0}
+.eq-ledger-title{font-size:10px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.eq-ledger-sub{font-size:8px;color:var(--t3);font-family:var(--mono);line-height:1.5}
+.eq-ledger-pnl{font-size:11px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.eq-ledger-pnl.g{color:var(--green)}.eq-ledger-pnl.r{color:var(--red)}.eq-ledger-pnl.b{color:var(--blue)}
 
 @media(max-width:960px){.stats-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}.sidebar{display:none!important}.dash-main{padding:14px;padding-bottom:74px}.bottom-nav{display:block}}
 @media(max-width:640px){.trade-detail{padding:0 12px 12px 12px}.trade-detail-grid{grid-template-columns:1fr}}
@@ -600,6 +608,24 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
               <span class="eq-metric-lbl">Trades totales</span>
               <span class="eq-metric-val" id="eq-total">—</span>
             </div>
+            <div class="eq-metric-row">
+              <span class="eq-metric-lbl">Slip promedio entrada</span>
+              <span class="eq-metric-val" id="eq-slip">—</span>
+            </div>
+            <div class="eq-metric-row">
+              <span class="eq-metric-lbl">Return promedio real</span>
+              <span class="eq-metric-val" id="eq-ret">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">
+            <span class="card-title">Ledger Real</span>
+            <span class="card-meta" id="eq-ledger-meta">0 trades</span>
+          </div>
+          <div class="eq-ledger-body" id="eq-ledger-list">
+            <div class="empty-msg">Esperando trades reales</div>
           </div>
         </div>
       </div>
@@ -1081,11 +1107,35 @@ function applyEquity(d){
   setEl('eq-streak-cur','actual: '+streak)
   // Métricas adicionales
   setEl('eq-vol',(d.equity_volatility||0).toFixed(3)+'%')
+  setEl('eq-slip',((d.avg_entry_slippage||0)>=0?'+':'')+(d.avg_entry_slippage||0).toFixed(4))
+  setEl('eq-ret',((d.avg_realized_return||0)>=0?'+':'')+(d.avg_realized_return||0).toFixed(2)+'%')
   var tim=d.total_time_in_market||0
   var hours=Math.floor(tim/3600),mins=Math.floor((tim%3600)/60)
   setEl('eq-tim',hours+'h '+mins+'m')
   setEl('eq-total',(d.total_trades||0)+' trades')
   setEl('eq-last-updated',(d.last_updated||'').slice(11,19)||'—')
+  renderEquityLedger(d.trade_ledger||[])
+}
+
+function renderEquityLedger(rows){
+  setEl('eq-ledger-meta',(rows||[]).length+' trades')
+  var el=document.getElementById('eq-ledger-list');if(!el)return
+  if(!rows||!rows.length){el.innerHTML='<div class="empty-msg">Esperando trades reales</div>';return}
+  el.innerHTML=rows.map(function(t){
+    var pnl=Number(t.pnl||0)
+    var cls=pnl>0?'g':pnl<0?'r':'b'
+    var slip=t.entry_slippage!=null?Number(t.entry_slippage):null
+    var line1=((t.question||'—').slice(0,42))
+    var line2=((t.ts||'').slice(11,19)||'—')+
+      ' · in '+(t.entry_price_real!=null?Number(t.entry_price_real).toFixed(3):'—')+
+      ' · out '+(t.exit_price_real!=null?Number(t.exit_price_real).toFixed(3):'—')+
+      ' · slip '+(slip!=null?((slip>=0?'+':'')+slip.toFixed(3)):'—')
+    var line3='USDC '+(t.filled_entry_usdc!=null?Number(t.filled_entry_usdc).toFixed(2):'—')+
+      '→'+(t.filled_exit_usdc!=null?Number(t.filled_exit_usdc).toFixed(2):'—')+
+      ' · bal '+(t.wallet_balance_before_entry!=null?Number(t.wallet_balance_before_entry).toFixed(2):'—')+
+      '→'+(t.wallet_balance_after_exit!=null?Number(t.wallet_balance_after_exit).toFixed(2):'—')
+    return '<div class="eq-ledger-row"><div class="eq-ledger-main"><div class="eq-ledger-title">'+esc(line1)+'</div><div class="eq-ledger-sub">'+esc(line2)+'</div><div class="eq-ledger-sub">'+esc(line3)+'</div></div><div class="eq-ledger-pnl '+cls+'">'+(pnl>=0?'+$':'-$')+Math.abs(pnl).toFixed(2)+'</div></div>'
+  }).join('')
 }
 
 function buildEquityChart(curve){
