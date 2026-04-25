@@ -266,6 +266,15 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
 .eq-ledger-sub{font-size:8px;color:var(--t3);font-family:var(--mono);line-height:1.5}
 .eq-ledger-pnl{font-size:11px;font-weight:700;font-family:var(--mono);white-space:nowrap}
 .eq-ledger-pnl.g{color:var(--green)}.eq-ledger-pnl.r{color:var(--red)}.eq-ledger-pnl.b{color:var(--blue)}
+.eq-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.eq-toolbar-meta{font-size:8px;color:var(--t3);font-family:var(--mono);letter-spacing:.4px}
+.eq-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.eq-btn{height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border-hi);background:var(--bg2);color:var(--t1);font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;font-family:var(--mono);cursor:pointer;transition:all .18s ease}
+.eq-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.18);background:var(--bg3)}
+.eq-btn.reset{color:var(--amber);border-color:rgba(245,166,35,.18);background:var(--amber-dim)}
+.eq-btn.reset:hover{border-color:rgba(245,166,35,.34)}
+.eq-btn.download{color:var(--blue);border-color:rgba(79,142,247,.18);background:var(--blue-dim)}
+.eq-btn.download:hover{border-color:rgba(79,142,247,.34)}
 
 @media(max-width:960px){.stats-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}.sidebar{display:none!important}.dash-main{padding:14px;padding-bottom:74px}.bottom-nav{display:block}}
 @media(max-width:640px){.trade-detail{padding:0 12px 12px 12px}.trade-detail-grid{grid-template-columns:1fr}}
@@ -514,6 +523,21 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
 
       <!-- ── ANALYTICS PANEL ── -->
       <div class="tab-panel" id="panel-analytics">
+
+        <div class="card">
+          <div class="card-hdr">
+            <div class="eq-toolbar">
+              <div>
+                <span class="card-title">Sesión actual</span>
+                <div class="eq-toolbar-meta" id="eq-session-meta">Informe desde que prendiste el bot</div>
+              </div>
+              <div class="eq-toolbar-actions">
+                <button class="eq-btn reset" onclick="resetAnalytics()">Reiniciar analytics</button>
+                <button class="eq-btn download" onclick="downloadAnalyticsReport()">Descargar informe</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Equity Curve -->
         <div class="card">
@@ -1062,8 +1086,59 @@ function loadEquity(){
   fetch('/api/equity/curve').then(function(r){return r.json()}).then(function(curve){buildEquityChart(curve)}).catch(function(){})
 }
 
+function resetAnalytics(){
+  fetch('/api/equity/reset',{method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(!d||!d.ok)return
+      eqCurveHash='INIT'
+      if(eqChart){eqChart.destroy();eqChart=null}
+      setEl('eq-session-meta','Analytics reiniciado · nueva sesión desde ahora')
+      loadEquity()
+    })
+    .catch(function(){})
+}
+
+function downloadAnalyticsReport(){
+  fetch('/api/equity/report')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(!d||d.error)return
+      var started=(d.session_started_at||new Date().toISOString()).replace(/[:T]/g,'-').slice(0,19)
+      var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'})
+      var url=URL.createObjectURL(blob)
+      var a=document.createElement('a')
+      a.href=url
+      a.download='informe-analytics-'+started+'.json'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    })
+    .catch(function(){})
+}
+
+function clearEquityView(){
+  ;['eq-pf','eq-exp','eq-avgw','eq-avgl','eq-maxdd','eq-curdd','eq-rf','eq-apt','eq-maxws','eq-maxls','eq-curstreak','eq-vol','eq-tim','eq-total','eq-slip','eq-ret'].forEach(function(id){setEl(id,'—')})
+  setEl('eq-wins-count','0 wins')
+  setEl('eq-loss-count','0 losses')
+  setEl('eq-maxdd-vals','pico → trough')
+  setEl('eq-peak','pico: —')
+  setEl('eq-dur','dur promedio: —')
+  setEl('eq-streak-cur','—')
+  setEl('eq-last-updated','—')
+  renderEquityLedger([])
+  var maxBar=document.getElementById('eq-maxdd-bar'),curBar=document.getElementById('eq-curdd-bar')
+  if(maxBar)maxBar.style.width='0%'
+  if(curBar)curBar.style.width='0%'
+}
+
 function applyEquity(d){
-  if(!d||d.error||!d.total_trades)return
+  if(!d||d.error||!d.total_trades){
+    clearEquityView()
+    setEl('eq-session-meta','Esperando datos reales en esta sesión')
+    return
+  }
   // Profit Factor
   var pf=d.profit_factor||0
   var pfEl=document.getElementById('eq-pf')
@@ -1114,6 +1189,7 @@ function applyEquity(d){
   setEl('eq-tim',hours+'h '+mins+'m')
   setEl('eq-total',(d.total_trades||0)+' trades')
   setEl('eq-last-updated',(d.last_updated||'').slice(11,19)||'—')
+  setEl('eq-session-meta','Resumen vivo · último update '+((d.last_updated||'').slice(11,19)||'—'))
   renderEquityLedger(d.trade_ledger||[])
 }
 

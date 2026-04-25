@@ -2,6 +2,7 @@ import eventlet
 import json
 import logging
 import traceback
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
@@ -27,6 +28,90 @@ def _load_json(path: Path) -> dict:
         except:
             pass
     return {}
+
+
+def _now_ar() -> str:
+    return datetime.now(timezone(timedelta(hours=-3))).isoformat()
+
+
+def _parse_iso(value: str | None):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def _session_started_at():
+    started = _parse_iso(getattr(poly_state, "session_started_at", None))
+    if started:
+        return started
+    return None
+
+
+def _filter_session_rows(rows: list[dict], session_started_at):
+    if not session_started_at:
+        return list(rows or [])
+    filtered = []
+    for row in rows or []:
+        ts = _parse_iso(row.get("ts"))
+        if ts and ts >= session_started_at:
+            filtered.append(row)
+    return filtered
+
+
+def _build_session_report() -> dict:
+    equity_data = _load_json(Path("logs/equity.json"))
+    session_started = _session_started_at()
+    curve = _filter_session_rows(equity_data.get("equity_curve", []), session_started)
+    ledger = _filter_session_rows(equity_data.get("trade_ledger", []), session_started)
+
+    wins = [t for t in ledger if float(t.get("pnl", 0) or 0) > 0]
+    losses = [t for t in ledger if float(t.get("pnl", 0) or 0) < 0]
+    flats = [t for t in ledger if float(t.get("pnl", 0) or 0) == 0]
+    total_pnl = round(sum(float(t.get("pnl", 0) or 0) for t in ledger), 2)
+    avg_pnl = round(total_pnl / len(ledger), 4) if ledger else 0.0
+
+    slips = [float(t.get("entry_slippage") or 0) for t in ledger if t.get("entry_slippage") is not None]
+    realized_returns = []
+    for t in ledger:
+        entry_usdc = float(t.get("filled_entry_usdc") or 0)
+        exit_usdc = float(t.get("filled_exit_usdc") or 0)
+        if entry_usdc > 0 and exit_usdc > 0:
+            realized_returns.append(((exit_usdc - entry_usdc) / entry_usdc) * 100)
+
+    balance_start = None
+    balance_end = None
+    if curve:
+        balance_start = float(curve[0].get("balance", 0) or 0)
+        balance_end = float(curve[-1].get("balance", 0) or 0)
+
+    current_data = get_data()
+    poly = current_data.get("poly", {})
+
+    return {
+        "generated_at": _now_ar(),
+        "session_started_at": session_started.isoformat() if session_started else None,
+        "summary": {
+            "trade_count": len(ledger),
+            "wins": len(wins),
+            "losses": len(losses),
+            "flats": len(flats),
+            "win_rate": round((len(wins) / len(ledger)) * 100, 2) if ledger else 0.0,
+            "total_pnl": total_pnl,
+            "avg_pnl_per_trade": avg_pnl,
+            "avg_entry_slippage": round(sum(slips) / len(slips), 4) if slips else 0.0,
+            "avg_realized_return": round(sum(realized_returns) / len(realized_returns), 4) if realized_returns else 0.0,
+            "balance_start": round(balance_start, 2) if balance_start is not None else None,
+            "balance_end": round(balance_end, 2) if balance_end is not None else None,
+            "free_balance_now": poly.get("bankroll"),
+            "pending_capital_now": poly.get("pending_capital"),
+            "estimated_total_now": poly.get("estimated_total"),
+        },
+        "equity_curve": curve,
+        "trade_ledger": ledger,
+    }
 
 
 def get_data() -> dict:
@@ -195,7 +280,17 @@ def api_equity_reset():
     eq_file = Path("logs/equity.json")
     if eq_file.exists():
         eq_file.unlink()
+    poly_state.session_started_at = _now_ar()
     return jsonify({"ok": True})
+
+
+@app.route("/api/equity/report")
+def api_equity_report():
+    try:
+        return jsonify(_build_session_report())
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/regimes")

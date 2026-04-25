@@ -19,6 +19,7 @@ class PolyState:
         self.cycle_count  = 0
         self.logs         = []
         self.market_mode  = "btc_scalp"
+        self.session_started_at = None
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -35,6 +36,7 @@ class PolyState:
             self.logs = []
             self.last_cycle = None
             self.cycle_count = 0
+            self.session_started_at = datetime.now(timezone(timedelta(hours=-3))).isoformat()
 
 
 poly_state = PolyState()
