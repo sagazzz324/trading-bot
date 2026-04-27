@@ -25,6 +25,7 @@ MAX_POSITION_PCT   = 0.05
 MIN_POSITION       = 5.0
 MAX_SPREAD         = 0.06
 MIN_LIQUIDITY      = 300
+ALLOW_DOWN_ENTRIES = False
 
 # ── PARAMETROS DE SALIDA ──────────────────────────────────────────────────────
 MAX_TRADE_DURATION  = 360   # 6 min — el mercado de 5m debería resolver
@@ -637,6 +638,9 @@ class BTCScalper:
         if Q_MIN <= prices["down_price"] <= Q_MAX:
             dec = should_enter(P, current_state, prices["down_price"], "down")
             if dec["enter"]:
+                if not ALLOW_DOWN_ENTRIES:
+                    self.log(f"⏸️ Down bloqueado por modo UP-only — {dec['reason']}", "#F5A623")
+                    return False
                 return self._execute(market, market_id, question, "down",
                                      prices["down_price"], dec, bankroll,
                                      cap_disp, cap_uso, current_state)
