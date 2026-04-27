@@ -109,7 +109,7 @@ body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',s
   linear-gradient(145deg,rgba(255,255,255,.035),transparent 30%),
   linear-gradient(180deg,#050604 0%,#090b08 54%,#050604 100%)}
 .lp-grain{opacity:.045;mix-blend-mode:screen}
-.lp-ui{justify-content:center;gap:30px;padding:58px 24px 38px}
+.lp-ui{justify-content:center;gap:30px;padding:58px 24px 38px;opacity:1;transform:none}
 .lp-ui::before{content:'';position:absolute;left:50%;top:50%;width:min(920px,92vw);height:min(560px,66vh);transform:translate(-50%,-50%);border-radius:42px;border:1px solid rgba(255,255,255,.06);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.018) 44%,rgba(0,0,0,.16));box-shadow:inset 0 1px rgba(255,255,255,.12),0 48px 120px rgba(0,0,0,.48);backdrop-filter:blur(34px) saturate(140%);-webkit-backdrop-filter:blur(34px) saturate(140%);pointer-events:none}
 .lp-title{z-index:2;max-width:780px}
 .lp-title h1{font-family:'Chivo',sans-serif;font-size:64px;font-weight:900;letter-spacing:0;line-height:.93;color:#f6f1e8;text-shadow:0 18px 60px rgba(0,0,0,.5);margin-bottom:18px}
@@ -118,7 +118,7 @@ body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',s
 .lp-sys-status{bottom:-34px;color:rgba(218,255,232,.42);letter-spacing:2px}
 .lp-sys-dot{background:#8ff0b9;box-shadow:0 0 22px rgba(143,240,185,.42)}
 .lp-cards{z-index:2;display:grid;grid-template-columns:repeat(2,minmax(230px,300px));gap:12px;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:32px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.03));box-shadow:inset 0 1px rgba(255,255,255,.16),0 28px 80px rgba(0,0,0,.34);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%)}
-.lp-card{width:auto;min-height:190px;position:relative;border-radius:24px;padding:24px;background:linear-gradient(150deg,rgba(255,255,255,.115),rgba(255,255,255,.035) 50%,rgba(0,0,0,.16));border:1px solid rgba(255,255,255,.10);overflow:hidden}
+.lp-card{width:auto;min-height:190px;position:relative;border-radius:24px;padding:24px;background:linear-gradient(150deg,rgba(255,255,255,.115),rgba(255,255,255,.035) 50%,rgba(0,0,0,.16));border:1px solid rgba(255,255,255,.10);overflow:hidden;opacity:1;transform:none}
 .lp-card::before{content:'';position:absolute;inset:1px;border-radius:23px;background:linear-gradient(120deg,rgba(255,255,255,.18),transparent 24%,transparent 70%,rgba(255,255,255,.04));opacity:.72;pointer-events:none}
 .lp-card::after{content:'';position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.42),transparent);opacity:.55}
 .lp-card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.2)}
@@ -882,8 +882,8 @@ setTimeout(function(){
 function lpInitGsap(){
   if(!window.gsap)return
   if(window.ScrollTrigger)gsap.registerPlugin(ScrollTrigger)
-  gsap.fromTo('.lp-title',{y:18,filter:'blur(10px)'},{y:0,filter:'blur(0px)',duration:1.05,ease:'power3.out'})
-  gsap.fromTo('.lp-cards',{y:24,scale:.96,filter:'blur(12px)'},{y:0,scale:1,filter:'blur(0px)',duration:1.1,ease:'expo.out',delay:.08})
+  gsap.fromTo('.lp-title',{opacity:0,y:18,filter:'blur(10px)'},{opacity:1,y:0,filter:'blur(0px)',duration:1.05,ease:'power3.out'})
+  gsap.fromTo('.lp-cards',{opacity:0,y:24,scale:.96,filter:'blur(12px)'},{opacity:1,y:0,scale:1,filter:'blur(0px)',duration:1.1,ease:'expo.out',delay:.08})
   gsap.fromTo('.lp-footer-txt',{opacity:0,y:10},{opacity:1,y:0,duration:.8,ease:'power2.out',delay:.45})
   document.querySelectorAll('.lp-card').forEach(function(card){
     card.addEventListener('mousemove',function(e){
