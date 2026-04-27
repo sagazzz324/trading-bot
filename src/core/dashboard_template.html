@@ -1022,6 +1022,7 @@ body.landing-mode::before,body.dash-mode::before{
     linear-gradient(118deg,rgba(255,255,255,.16),transparent 24%,transparent 72%,rgba(255,255,255,.07))!important;
 }
 #view-landing,#view-dashboard,#hero,.dash-wrap{position:relative;z-index:1}
+body.landing-mode .bottom-nav{display:none!important}
 
 /* -- MOBILE APPLE BAR AND TOUCH GLASS -- */
 @media(hover:none),(pointer:coarse){
@@ -1047,8 +1048,9 @@ body.landing-mode::before,body.dash-mode::before{
   .card,.orch-card{border-radius:26px}
   .chart-body{height:230px}
   .log-body{height:250px}
-  .bottom-nav{
+  body.dash-mode .bottom-nav{
     display:block!important;
+    position:fixed!important;
     left:50%!important;right:auto!important;bottom:calc(14px + env(safe-area-inset-bottom))!important;
     width:min(430px,calc(100vw - 22px))!important;
     max-width:none;
@@ -1065,7 +1067,7 @@ body.landing-mode::before,body.dash-mode::before{
     overflow:hidden;
     transform-origin:center bottom;
   }
-  .bottom-nav::before{
+  body.dash-mode .bottom-nav::before{
     content:'';position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
     background:linear-gradient(110deg,rgba(255,255,255,.22),transparent 31%,transparent 68%,rgba(255,255,255,.10));
     opacity:.62;
@@ -1499,29 +1501,29 @@ body.landing-mode::before,body.dash-mode::before{
       </div>
     </main>
   </div>
-
-  <nav class="bottom-nav">
-    <div class="bn-orb"></div>
-    <div class="bn-grid">
-      <div class="bn-item active" onclick="switchTabMob('bybit',this)">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <span class="bn-lbl">Bybit</span>
-      </div>
-      <div class="bn-item" onclick="switchTabMob('poly',this)">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></div>
-        <span class="bn-lbl">Poly</span>
-      </div>
-      <div class="bn-item" onclick="switchTabMob('analytics',this)">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-        <span class="bn-lbl">Analytics</span>
-      </div>
-      <div class="bn-item" onclick="togglePoly()">
-        <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
-        <span class="bn-lbl">Poly ON</span>
-      </div>
-    </div>
-  </nav>
 </div>
+
+<nav class="bottom-nav">
+  <div class="bn-orb"></div>
+  <div class="bn-grid">
+    <div class="bn-item active" onclick="switchTabMob('bybit',this)">
+      <div class="bn-ico"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <span class="bn-lbl">Bybit</span>
+    </div>
+    <div class="bn-item" onclick="switchTabMob('poly',this)">
+      <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></div>
+      <span class="bn-lbl">Poly</span>
+    </div>
+    <div class="bn-item" onclick="switchTabMob('analytics',this)">
+      <div class="bn-ico"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+      <span class="bn-lbl">Analytics</span>
+    </div>
+    <div class="bn-item" onclick="togglePoly()">
+      <div class="bn-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg></div>
+      <span class="bn-lbl">Poly ON</span>
+    </div>
+  </div>
+</nav>
 
 <script>
 // ══ LANDING JS ════════════════════════════════════════════════════════════════
