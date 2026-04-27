@@ -775,6 +775,55 @@ body.landing-mode #hero{padding-top:64px;padding-bottom:54px;overflow:visible}
   .lp-title{padding-bottom:40px}
   .lp-sys-status{bottom:-24px}
 }
+
+/* -- READABILITY AND HOME CROP FIX -- */
+body.landing-mode #hero{min-height:100svh;padding-top:44px;padding-bottom:44px}
+.lp-ui{min-height:min(620px,calc(100svh - 88px));align-content:center}
+.lp-title{max-width:720px;padding-top:0;padding-bottom:34px;overflow:visible}
+.lp-title h1{
+  font-size:clamp(54px,7.1vw,92px);
+  line-height:.94;
+  letter-spacing:-.082em;
+  max-width:720px;
+  margin:0 0 18px;
+  overflow:visible;
+  text-wrap:balance;
+}
+.lp-word{overflow:visible}
+.lp-word span{padding-bottom:.05em}
+.lp-title p{font-size:17px;max-width:520px;margin-top:16px}
+.lp-sys-status{bottom:-18px}
+.lp-footer-txt{margin-top:24px}
+
+body.dash-mode,
+body.dash-mode .sidebar,
+body.dash-mode .dash-main,
+body.dash-mode .card,
+body.dash-mode .stat-card,
+body.dash-mode .orch-card,
+body.dash-mode .sb-bot-card,
+body.dash-mode .trade-card,
+body.dash-mode .trade-row,
+body.dash-mode .trade-detail,
+body.dash-mode .log-body{color:rgba(255,255,255,.88)}
+.sb-name,.sb-card-name,.page-title,.orch-title,.card-title,.t-pair,.eq-ledger-title{color:rgba(255,255,255,.94)!important}
+.sb-ver,.slabel,.sb-card-state,.sb-card-meta,.sb-nav-item,.sb-back,.page-sub,.card-meta,.stat-lbl,.stat-hint,.t-sub,.trade-detail-lbl,.log-time,.empty-msg,.log-empty,.eq-ledger-sub,.eq-toolbar-meta{color:rgba(255,255,255,.48)!important}
+.sb-nav-item.active,.sb-nav-item:hover,.mode-btn.active,.mode-btn:hover,.sb-back:hover{color:rgba(255,255,255,.88)!important}
+.mode-btn{color:rgba(255,255,255,.55)!important}
+.trade-row,.trade-detail,.trade-detail-item,.log-entry,.log-msg{color:rgba(255,255,255,.72)!important}
+.trade-detail-val{color:rgba(255,255,255,.86)!important}
+.log-msg.green,.ssm-val.g,.stat-num.g,.t-pnl.p,.eq-metric-val.g,.eq-ledger-pnl.g{color:var(--green)!important}
+.log-msg.red,.ssm-val.r,.stat-num.r,.t-pnl.l,.eq-metric-val.r,.eq-ledger-pnl.r{color:var(--red)!important}
+.log-msg.blue,.ssm-val.b,.stat-num.b,.eq-metric-val.b,.eq-ledger-pnl.b{color:var(--blue)!important}
+.log-msg.amber,.stat-num.amber,.eq-metric-val.amber{color:var(--amber)!important}
+.stat-num:not(.g):not(.r):not(.b):not(.amber),.orch-metric-val{color:rgba(255,255,255,.92)!important}
+.tbadge{color:inherit}
+.tbadge.buy{color:var(--green)!important}.tbadge.sell{color:var(--red)!important}
+@media(max-width:960px){
+  .lp-title h1{font-size:clamp(44px,12vw,68px);line-height:.96}
+  .lp-title{padding-bottom:32px}
+  .lp-sys-status{bottom:-22px}
+}
 </style>
 </head>
 <body class="landing-mode">
