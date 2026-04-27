@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&family=Chivo+Mono:wght@300;400&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body.landing-mode{background:#020204;overflow-x:hidden;font-family:'Chivo',sans-serif}
@@ -100,6 +102,66 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
 .lp-cta-btn:hover .lp-cta-arrow{transform:translateX(4px)}
 .lp-cta-note{font-family:'Chivo Mono',monospace;font-size:8px;font-weight:300;color:rgba(255,255,255,0.12);letter-spacing:2px;text-transform:uppercase;margin-top:16px}
 @media(max-width:640px){.lp-state-grid,.lp-perf-grid{grid-template-columns:1fr 1fr}.lp-section{padding:70px 20px 0}}
+
+/* -- LIQUID LANDING OVERRIDE -- */
+body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',sans-serif}
+#hero{background:
+  linear-gradient(145deg,rgba(255,255,255,.035),transparent 30%),
+  linear-gradient(180deg,#050604 0%,#090b08 54%,#050604 100%)}
+.lp-grain{opacity:.045;mix-blend-mode:screen}
+.lp-ui{justify-content:center;gap:30px;padding:58px 24px 38px}
+.lp-ui::before{content:'';position:absolute;left:50%;top:50%;width:min(920px,92vw);height:min(560px,66vh);transform:translate(-50%,-50%);border-radius:42px;border:1px solid rgba(255,255,255,.06);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.018) 44%,rgba(0,0,0,.16));box-shadow:inset 0 1px rgba(255,255,255,.12),0 48px 120px rgba(0,0,0,.48);backdrop-filter:blur(34px) saturate(140%);-webkit-backdrop-filter:blur(34px) saturate(140%);pointer-events:none}
+.lp-title{z-index:2;max-width:780px}
+.lp-title h1{font-family:'Chivo',sans-serif;font-size:64px;font-weight:900;letter-spacing:0;line-height:.93;color:#f6f1e8;text-shadow:0 18px 60px rgba(0,0,0,.5);margin-bottom:18px}
+.lp-title p{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2.8px;color:rgba(246,241,232,.42)}
+.lp-word{margin-right:.16em}
+.lp-sys-status{bottom:-34px;color:rgba(218,255,232,.42);letter-spacing:2px}
+.lp-sys-dot{background:#8ff0b9;box-shadow:0 0 22px rgba(143,240,185,.42)}
+.lp-cards{z-index:2;display:grid;grid-template-columns:repeat(2,minmax(230px,300px));gap:12px;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:32px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.03));box-shadow:inset 0 1px rgba(255,255,255,.16),0 28px 80px rgba(0,0,0,.34);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%)}
+.lp-card{width:auto;min-height:190px;position:relative;border-radius:24px;padding:24px;background:linear-gradient(150deg,rgba(255,255,255,.115),rgba(255,255,255,.035) 50%,rgba(0,0,0,.16));border:1px solid rgba(255,255,255,.10);overflow:hidden}
+.lp-card::before{content:'';position:absolute;inset:1px;border-radius:23px;background:linear-gradient(120deg,rgba(255,255,255,.18),transparent 24%,transparent 70%,rgba(255,255,255,.04));opacity:.72;pointer-events:none}
+.lp-card::after{content:'';position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.42),transparent);opacity:.55}
+.lp-card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.2)}
+.lp-card.bybit:hover{box-shadow:0 24px 70px rgba(0,0,0,.42),0 0 60px rgba(79,142,247,.09)}
+.lp-card.poly:hover{box-shadow:0 24px 70px rgba(0,0,0,.42),0 0 60px rgba(0,232,135,.10)}
+.lp-tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.6px;border-radius:999px;padding:5px 10px;margin-bottom:26px;background:rgba(255,255,255,.06)!important;color:rgba(246,241,232,.56)!important;border:1px solid rgba(255,255,255,.09)!important}
+.lp-card-name{font-family:'Chivo',sans-serif;font-size:32px;font-weight:900;letter-spacing:0;color:#fffaf0;margin-bottom:8px}
+.lp-card-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:rgba(246,241,232,.36)}
+.lp-card-desc{font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.45;color:rgba(246,241,232,.58);max-width:230px}
+.lp-card-line{height:1px;margin:18px 0 14px;opacity:.45;transform:scaleX(.35)}
+.lp-card.bybit .lp-card-line{background:linear-gradient(to right,#7fb2ff,transparent)}
+.lp-card.poly .lp-card-line{background:linear-gradient(to right,#8ff0b9,transparent)}
+.lp-card-cta{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.2px;color:rgba(246,241,232,.42)}
+.lp-card:hover .lp-card-cta{color:#f6f1e8}
+.lp-footer-txt{z-index:2;font-family:'DM Mono',monospace;color:rgba(246,241,232,.22);letter-spacing:2px}
+#scroll-track{height:300vh}
+#lp-sections{background:linear-gradient(180deg,#050604 0%,#0a0b08 100%);padding:40px 0 130px}
+.lp-section{max-width:1040px;padding:96px 28px 0}
+.lp-eyebrow{font-family:'DM Mono',monospace;color:rgba(143,240,185,.54);letter-spacing:2.8px}
+.lp-sec-title{font-size:42px;font-weight:900;letter-spacing:0;color:#f6f1e8;max-width:720px}
+.lp-state-grid,.lp-perf-grid{gap:10px}
+.lp-state-card,.lp-perf-card{border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px rgba(255,255,255,.08);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.lp-sc-label,.lp-pc-label{font-family:'DM Mono',monospace;color:rgba(246,241,232,.35);letter-spacing:1.8px}
+.lp-sc-val,.lp-pc-val{font-family:'Chivo',sans-serif;letter-spacing:0;color:#f6f1e8}
+.lp-sc-sub{color:rgba(246,241,232,.28)}
+.lp-pc-val.green{color:#8ff0b9}
+.lp-strat-body{border-left:1px solid rgba(143,240,185,.22)}
+.lp-strat-line{font-family:'Space Grotesk',sans-serif;font-size:17px;color:rgba(246,241,232,.46)}
+.lp-strat-line em{color:#8ff0b9}
+.lp-strat-line strong{color:#f6f1e8}
+.lp-cta-btn{border-radius:999px;background:#f6f1e8;color:#050604;font-family:'Space Grotesk',sans-serif;box-shadow:0 20px 80px rgba(246,241,232,.12)}
+.lp-cta-btn:hover{box-shadow:0 24px 90px rgba(246,241,232,.18)}
+@media(max-width:760px){
+  .lp-ui{padding:36px 16px 28px;gap:24px}
+  .lp-ui::before{width:calc(100vw - 22px);height:78vh;border-radius:30px}
+  .lp-title h1{font-size:46px}
+  .lp-cards{grid-template-columns:1fr;width:min(430px,100%);border-radius:26px;padding:10px}
+  .lp-card{min-height:156px;border-radius:20px}
+  .lp-card-name{font-size:28px}
+  .lp-section{padding:76px 18px 0}
+  .lp-sec-title{font-size:34px}
+  .lp-state-grid,.lp-perf-grid{grid-template-columns:1fr}
+}
 
 /* ── DASHBOARD STYLES ── */
 :root{
@@ -294,28 +356,28 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
     <div class="lp-ui" id="lp-ui">
       <div class="lp-title">
         <h1 id="lp-h1"></h1>
-        <p>Trade probability. Not emotion.</p>
+        <p>Execution, bankroll and live strategy control.</p>
         <div class="lp-sys-status"><div class="lp-sys-dot"></div><span id="lp-sys-label">SYSTEM READY</span></div>
       </div>
       <div class="lp-cards">
         <div class="lp-card bybit" id="lp-card-bybit" onmouseenter="lpSetHover('bybit')" onmouseleave="lpSetHover(null)" onmousedown="lpPressCard(this)" onmouseup="lpReleaseCard(this,'bybit')">
           <div class="lp-tag"><div class="lp-tag-dot"></div>LIVE</div>
           <div class="lp-card-name">Bybit</div>
-          <div class="lp-card-sub">Futures · Algorithmic</div>
-          <div class="lp-card-desc">Scalping + Grid con orquestación automática</div>
+          <div class="lp-card-sub">Futures · Control desk</div>
+          <div class="lp-card-desc">Operativa Bybit con estado, riesgo y actividad en vivo.</div>
           <div class="lp-card-line"></div>
           <div class="lp-card-cta">ABRIR <span>→</span></div>
         </div>
         <div class="lp-card poly" id="lp-card-poly" onmouseenter="lpSetHover('poly')" onmouseleave="lpSetHover(null)" onmousedown="lpPressCard(this)" onmouseup="lpReleaseCard(this,'poly')">
-          <div class="lp-tag"><div class="lp-tag-dot"></div>PAPER</div>
+          <div class="lp-tag"><div class="lp-tag-dot"></div>LIVE</div>
           <div class="lp-card-name">Polymarket</div>
-          <div class="lp-card-sub">Prediction · Markov</div>
-          <div class="lp-card-desc">Cadenas de Markov + State persistence filter</div>
+          <div class="lp-card-sub">BTC 5m · UP-only test</div>
+          <div class="lp-card-desc">Scalp probabilístico con ledger real, exits y analytics por sesión.</div>
           <div class="lp-card-line"></div>
           <div class="lp-card-cta">ABRIR <span>→</span></div>
         </div>
       </div>
-      <div class="lp-footer-txt">v2.0 · paper mode · Córdoba, AR</div>
+      <div class="lp-footer-txt">Neural Trade OS · live controls · Córdoba, AR</div>
     </div>
     <div class="lp-flood" id="lp-flood"></div>
     <div class="lp-flash" id="lp-flash"></div>
@@ -323,40 +385,39 @@ body.dash-mode{background:#080808;overflow:hidden;font-family:'Space Grotesk',sa
   <div id="scroll-track"></div>
   <div id="lp-sections">
     <div class="lp-section" id="lp-sec1">
-      <div class="lp-eyebrow">Sistema</div>
-      <div class="lp-sec-title">Estado del modelo</div>
+      <div class="lp-eyebrow">Control</div>
+      <div class="lp-sec-title">Elegís el motor, entrás al panel y controlás la sesión.</div>
       <div class="lp-state-grid">
-        <div class="lp-state-card"><div class="lp-sc-label">Estado actual</div><div class="lp-sc-val" id="lp-val-state">S0</div><div class="lp-sc-sub">Strong Bull</div></div>
-        <div class="lp-state-card"><div class="lp-sc-label">Persistencia τ</div><div class="lp-sc-val" id="lp-val-tau">0.00</div><div class="lp-sc-sub">Umbral mínimo</div></div>
-        <div class="lp-state-card"><div class="lp-sc-label">Gap ε</div><div class="lp-sc-val" id="lp-val-eps">0.000</div><div class="lp-sc-sub">Arbitrage edge</div></div>
+        <div class="lp-state-card"><div class="lp-sc-label">Modo Poly</div><div class="lp-sc-val" id="lp-val-state">UP</div><div class="lp-sc-sub">Filtro conservador activo</div></div>
+        <div class="lp-state-card"><div class="lp-sc-label">Persistencia τ</div><div class="lp-sc-val" id="lp-val-tau">0.00</div><div class="lp-sc-sub">Confirmación mínima</div></div>
+        <div class="lp-state-card"><div class="lp-sc-label">Gap ε</div><div class="lp-sc-val" id="lp-val-eps">0.000</div><div class="lp-sc-sub">Edge requerido</div></div>
       </div>
     </div>
     <div class="lp-section" id="lp-sec2">
-      <div class="lp-eyebrow">Performance</div>
-      <div class="lp-sec-title">30 días · paper mode</div>
+      <div class="lp-eyebrow">Analytics</div>
+      <div class="lp-sec-title">Datos para decidir, no solo números lindos.</div>
       <div class="lp-perf-grid">
-        <div class="lp-perf-card"><div class="lp-pc-label">PnL simulado</div><div class="lp-pc-val green" id="lp-val-pnl">$0</div><div class="lp-pc-bar-wrap"><div class="lp-pc-bar" id="lp-bar-pnl"></div></div></div>
+        <div class="lp-perf-card"><div class="lp-pc-label">Ledger real</div><div class="lp-pc-val green" id="lp-val-pnl">$0</div><div class="lp-pc-bar-wrap"><div class="lp-pc-bar" id="lp-bar-pnl"></div></div></div>
         <div class="lp-perf-card"><div class="lp-pc-label">Win rate</div><div class="lp-pc-val white" id="lp-val-wr">0%</div><div class="lp-pc-bar-wrap"><div class="lp-pc-bar" id="lp-bar-wr"></div></div></div>
-        <div class="lp-perf-card"><div class="lp-pc-label">Trades</div><div class="lp-pc-val white" id="lp-val-trades">0</div><div class="lp-pc-bar-wrap"><div class="lp-pc-bar" id="lp-bar-trades" style="background:rgba(255,255,255,0.3)"></div></div></div>
+        <div class="lp-perf-card"><div class="lp-pc-label">Informe</div><div class="lp-pc-val white" id="lp-val-trades">0</div><div class="lp-pc-bar-wrap"><div class="lp-pc-bar" id="lp-bar-trades" style="background:rgba(255,255,255,0.3)"></div></div></div>
       </div>
     </div>
     <div class="lp-section" id="lp-sec3">
-      <div class="lp-eyebrow">Lógica</div>
-      <div class="lp-sec-title">Cómo decide el bot</div>
+      <div class="lp-eyebrow">Arquitectura</div>
+      <div class="lp-sec-title">El panel separa ejecución, capital pendiente y resultado realizado.</div>
       <div class="lp-strat-body">
-        <div class="lp-strat-line">El mercado se clasifica en <em>4 estados</em> según el retorno porcentual de cada vela.</div>
-        <div class="lp-strat-line">Se estima una <em>matriz de transición</em> con las últimas 40 velas usando suavizado de Laplace.</div>
-        <div class="lp-strat-line">El bot entra solo si se cumplen <strong>dos condiciones simultáneas</strong>:</div>
-        <div class="lp-strat-line">→ La <em>persistencia diagonal</em> del próximo estado supera τ <em>(0.17)</em></div>
-        <div class="lp-strat-line">→ El gap entre <em>p_hat</em> y el precio del mercado supera ε <em>(0.03)</em></div>
-        <div class="lp-strat-line">Sin análisis técnico. Sin noticias. Solo <em>probabilidades de transición.</em></div>
+        <div class="lp-strat-line">La vista de Polymarket muestra <em>saldo libre</em>, capital pendiente y total estimado.</div>
+        <div class="lp-strat-line">Cada trade guarda <em>entrada real</em>, salida real, slippage, shares y balance.</div>
+        <div class="lp-strat-line">Analytics permite <strong>reiniciar sesión</strong> y descargar un informe completo.</div>
+        <div class="lp-strat-line">El modo actual prueba <em>UP-only</em> para comparar contra la sesión anterior.</div>
+        <div class="lp-strat-line">La idea es simple: menos intuición, más datos de ejecución real.</div>
       </div>
     </div>
     <div class="lp-section" id="lp-sec4">
       <div class="lp-cta-wrap">
-        <div class="lp-cta-sub">Todo listo</div>
-        <button class="lp-cta-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">Entrar al sistema <span class="lp-cta-arrow">→</span></button>
-        <div class="lp-cta-note">Sin dinero real · Paper trading activo</div>
+        <div class="lp-cta-sub">Volver arriba</div>
+        <button class="lp-cta-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">Elegir bot <span class="lp-cta-arrow">→</span></button>
+        <div class="lp-cta-note">Dashboard operativo · informes por sesión</div>
       </div>
     </div>
   </div>
@@ -721,16 +782,28 @@ window.addEventListener('scroll',function(){
   lpCheckSections()
 },{passive:true})
 var lpCountersRan=false,lpStratRan=false
+var lpLandingStats={pnl:0,wr:0,trades:0}
+function lpLoadLandingStats(){
+  fetch('/api/data').then(function(r){return r.json()}).then(function(d){
+    var p=d&&d.poly?d.poly:null
+    if(!p)return
+    lpLandingStats.pnl=Number(p.total_pnl||0)
+    lpLandingStats.wr=Number(p.win_rate||0)
+    lpLandingStats.trades=Number(p.total_trades||0)
+  }).catch(function(){})
+}
+lpLoadLandingStats()
 function lpCheckSections(){
   document.querySelectorAll('.lp-section').forEach(function(s){if(s.getBoundingClientRect().top<window.innerHeight*0.82)s.classList.add('in')})
   if(document.getElementById('lp-sec2').classList.contains('in')&&!lpCountersRan){lpCountersRan=true;lpAnimCounters()}
   if(document.getElementById('lp-sec3').classList.contains('in')&&!lpStratRan){lpStratRan=true;document.querySelectorAll('.lp-strat-line').forEach(function(l,i){setTimeout(function(){l.classList.add('in')},i*130)})}
 }
 function lpAnimCounters(){
-  lpCount('lp-val-pnl',128.40,1200,function(v){return'$'+v.toFixed(2)},'lp-bar-pnl',68)
-  lpCount('lp-val-wr',54.2,1000,function(v){return v.toFixed(1)+'%'},'lp-bar-wr',54)
-  lpCount('lp-val-trades',847,1400,function(v){return Math.round(v).toString()},'lp-bar-trades',70)
-  lpCount('lp-val-tau',0.17,800,function(v){return v.toFixed(2)})
+  var pnl=lpLandingStats.pnl||0,wr=lpLandingStats.wr||0,trades=lpLandingStats.trades||0
+  lpCount('lp-val-pnl',Math.abs(pnl),1200,function(v){return(pnl>=0?'+':'-')+'$'+v.toFixed(2)},'lp-bar-pnl',Math.min(100,Math.max(8,Math.abs(pnl)*4)))
+  lpCount('lp-val-wr',wr,1000,function(v){return v.toFixed(1)+'%'},'lp-bar-wr',Math.min(100,Math.max(8,wr)))
+  lpCount('lp-val-trades',trades,1400,function(v){return Math.round(v).toString()},'lp-bar-trades',Math.min(100,Math.max(8,trades*4)))
+  lpCount('lp-val-tau',0.10,800,function(v){return v.toFixed(2)})
   lpCount('lp-val-eps',0.031,900,function(v){return v.toFixed(3)})
 }
 function lpCount(id,target,dur,fmt,barId,barPct){
@@ -755,7 +828,7 @@ function lpSpawnFloat(){
 }
 setInterval(function(){if(lpProgress>30)lpSpawnFloat()},1400)
 window.addEventListener('mousemove',function(e){lpParTY=(e.clientY/lpH-0.5)*22})
-var LP_SYS=['SYSTEM READY','MODEL ACTIVE','MARKOV v2.1','PAPER MODE','TAU=0.17'],lpSI=0
+var LP_SYS=['SYSTEM READY','UP-ONLY TEST','MARKOV v2.1','LIVE LEDGER','TAU=0.10'],lpSI=0
 setInterval(function(){
   var el=document.getElementById('lp-sys-label');if(!el)return
   el.style.opacity='0';setTimeout(function(){lpSI=(lpSI+1)%LP_SYS.length;el.textContent=LP_SYS[lpSI];el.style.transition='opacity 0.6s';el.style.opacity='1'},400)
@@ -804,11 +877,39 @@ setTimeout(function(){
   document.getElementById('lp-ui').classList.add('visible')
   setTimeout(function(){document.getElementById('lp-card-bybit').classList.add('show')},320)
   setTimeout(function(){document.getElementById('lp-card-poly').classList.add('show')},530)
+  lpInitGsap()
 },1900)
+function lpInitGsap(){
+  if(!window.gsap)return
+  if(window.ScrollTrigger)gsap.registerPlugin(ScrollTrigger)
+  gsap.fromTo('.lp-title',{y:18,filter:'blur(10px)'},{y:0,filter:'blur(0px)',duration:1.05,ease:'power3.out'})
+  gsap.fromTo('.lp-cards',{y:24,scale:.96,filter:'blur(12px)'},{y:0,scale:1,filter:'blur(0px)',duration:1.1,ease:'expo.out',delay:.08})
+  gsap.fromTo('.lp-footer-txt',{opacity:0,y:10},{opacity:1,y:0,duration:.8,ease:'power2.out',delay:.45})
+  document.querySelectorAll('.lp-card').forEach(function(card){
+    card.addEventListener('mousemove',function(e){
+      var r=card.getBoundingClientRect()
+      var x=(e.clientX-r.left)/r.width-.5
+      var y=(e.clientY-r.top)/r.height-.5
+      gsap.to(card,{rotationY:x*7,rotationX:-y*6,y:-7,duration:.45,ease:'power3.out',transformPerspective:900})
+    })
+    card.addEventListener('mouseleave',function(){
+      gsap.to(card,{rotationY:0,rotationX:0,y:0,duration:.55,ease:'elastic.out(1,.55)'})
+    })
+  })
+  if(window.ScrollTrigger){
+    gsap.utils.toArray('.lp-section').forEach(function(sec){
+      gsap.fromTo(sec.querySelectorAll('.lp-eyebrow,.lp-sec-title,.lp-state-card,.lp-perf-card,.lp-strat-line,.lp-cta-wrap'),
+        {opacity:0,y:28,filter:'blur(10px)'},
+        {opacity:1,y:0,filter:'blur(0px)',duration:.9,stagger:.06,ease:'power3.out',
+          scrollTrigger:{trigger:sec,start:'top 78%',once:true}})
+    })
+    gsap.to('.lp-ui',{scale:.94,opacity:.58,ease:'none',scrollTrigger:{trigger:'#scroll-track',start:'top top',end:'bottom top',scrub:true}})
+  }
+}
 function lpSetHover(bot){
   lpHoverMode=bot;var t=document.getElementById('lp-tint')
   if(bot==='bybit')t.style.background='radial-gradient(ellipse 85% 65% at 50% 55%, rgba(59,130,246,0.08) 0%, transparent 70%)'
-  else if(bot==='poly')t.style.background='radial-gradient(ellipse 85% 65% at 50% 55%, rgba(139,92,246,0.07) 0%, transparent 70%)'
+  else if(bot==='poly')t.style.background='radial-gradient(ellipse 85% 65% at 50% 55%, rgba(143,240,185,0.08) 0%, transparent 70%)'
   else t.style.background='transparent'
 }
 function lpPressCard(el){el.classList.add('pressing')}
@@ -819,7 +920,7 @@ function lpSelectBot(bot){
   setTimeout(function(){
     lpZoom=true;lpZX=lpDotX;lpZY=lpDotY;lpZS=1
     var flood=document.getElementById('lp-flood')
-    flood.style.background=bot==='bybit'?'#1d4ed8':'#6d28d9'
+    flood.style.background=bot==='bybit'?'#1d4ed8':'#0f8f5a'
     flood.style.setProperty('--s','circle(0px at '+lpDotX+'px '+lpDotY+'px)')
     flood.style.setProperty('--e','circle(250vmax at '+lpDotX+'px '+lpDotY+'px)')
     flood.classList.add('active')
