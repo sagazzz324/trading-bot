@@ -730,6 +730,51 @@ body.dash-mode{overflow:hidden;background:
   .dash-topbar{min-height:72px;border-radius:28px}.page-title{font-size:24px}
   .bottom-nav{display:block!important}
 }
+
+/* -- HOME CONTINUITY AND SWITCH GLOW -- */
+body.landing-mode #hero{padding-top:64px;padding-bottom:54px;overflow:visible}
+.lp-ui{padding-top:18px;padding-bottom:18px;min-height:min(650px,calc(100svh - 118px));overflow:visible}
+.lp-title{padding-top:10px;padding-bottom:56px}
+.lp-title h1{line-height:.88}
+.lp-sys-status{bottom:-26px}
+#lp-sections{
+  margin-top:-1px;
+  background:
+    radial-gradient(ellipse 62% 38% at 18% 0%,rgba(176,244,211,.13),transparent 68%),
+    radial-gradient(ellipse 60% 42% at 85% 8%,rgba(178,220,255,.15),transparent 70%),
+    linear-gradient(180deg,#070708 0%,#0d1013 44%,#11161a 100%)!important;
+  transition:background .35s ease;
+}
+.lp-section{position:relative}
+.lp-section::before{content:'';position:absolute;left:28px;right:28px;top:56px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);opacity:.7}
+.toggle{
+  overflow:visible;
+  background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.045));
+  box-shadow:inset 0 1px rgba(255,255,255,.25),inset 0 -1px rgba(0,0,0,.22),0 8px 24px rgba(0,0,0,.22);
+}
+.toggle::before{content:'';position:absolute;inset:-10px;border-radius:999px;opacity:0;filter:blur(12px);transition:opacity .32s ease,transform .32s ease;transform:scale(.8);pointer-events:none}
+.toggle::after{content:'';position:absolute;inset:1px;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.24),transparent 48%);opacity:.42;pointer-events:none}
+.toggle.on-g{
+  background:linear-gradient(145deg,#baffd1,#35d482 58%,#119b5d);
+  border-color:rgba(186,255,209,.72);
+  box-shadow:0 0 0 1px rgba(186,255,209,.16),0 0 34px rgba(73,225,139,.42),0 0 76px rgba(73,225,139,.24),inset 0 1px rgba(255,255,255,.48);
+}
+.toggle.on-b{
+  background:linear-gradient(145deg,#d3e2ff,#78aaff 58%,#3677e8);
+  border-color:rgba(211,226,255,.72);
+  box-shadow:0 0 0 1px rgba(211,226,255,.16),0 0 34px rgba(120,170,255,.46),0 0 76px rgba(120,170,255,.26),inset 0 1px rgba(255,255,255,.48);
+}
+.toggle.on-g::before{opacity:1;transform:scale(1);background:rgba(73,225,139,.55)}
+.toggle.on-b::before{opacity:1;transform:scale(1);background:rgba(120,170,255,.58)}
+.toggle.on-g .toggle-knob,.toggle.on-b .toggle-knob{background:#fff;box-shadow:0 8px 22px rgba(0,0,0,.34),0 0 18px rgba(255,255,255,.62)}
+.sb-bot-card.running-g{box-shadow:inset 0 1px rgba(255,255,255,.30),0 18px 54px rgba(0,0,0,.20),0 0 46px rgba(73,225,139,.10)!important}
+.sb-bot-card.running-b{box-shadow:inset 0 1px rgba(255,255,255,.30),0 18px 54px rgba(0,0,0,.20),0 0 46px rgba(120,170,255,.12)!important}
+@media(max-width:960px){
+  body.landing-mode #hero{padding-top:34px;padding-bottom:32px}
+  .lp-ui{padding-top:0;min-height:auto}
+  .lp-title{padding-bottom:40px}
+  .lp-sys-status{bottom:-24px}
+}
 </style>
 </head>
 <body class="landing-mode">
@@ -1162,11 +1207,11 @@ function lpGetY(v){return lpH*(0.94-v*0.70)+lpParOY*0.4}
 window.addEventListener('scroll',function(){
   var raw=window.scrollY/Math.max(1,document.documentElement.scrollHeight-window.innerHeight)
   lpScrollP=Math.max(0,Math.min(1,raw));lpChartFill=lpScrollP
-  var cardOp=Math.max(0.72,1-lpScrollP*0.8)
+  var soft=Math.min(1,lpScrollP*1.6)
+  var cardOp=Math.max(0.78,1-soft*0.22)
   var cb=document.getElementById('lp-card-bybit'),cp=document.getElementById('lp-card-poly')
   if(cb)cb.style.opacity=cardOp;if(cp)cp.style.opacity=cardOp
-  var ui=document.getElementById('lp-ui');if(ui)ui.style.transform='translateY('+(-lpScrollP*18)+'px)'
-  var sect=document.getElementById('lp-sections');if(sect)sect.style.background='rgb(1,'+Math.round(12+lpScrollP*8)+',6)'
+  var ui=document.getElementById('lp-ui');if(ui)ui.style.transform='translateY('+(-soft*10)+'px)'
   lpCheckSections()
 },{passive:true})
 var lpCountersRan=false,lpStratRan=false
@@ -1223,10 +1268,17 @@ setInterval(function(){
 },3800)
 function lpDrawBg(){
   ctxbg.clearRect(0,0,lpW,lpH)
-  var g1=Math.round(2+lpScrollP*16),g2=Math.round(10+lpScrollP*22)
+  var soft=Math.min(1,lpScrollP*1.6)
+  var g1=Math.round(14+soft*18),g2=Math.round(16+soft*20),b1=Math.round(20+soft*16)
   var bg=ctxbg.createLinearGradient(0,0,0,lpH)
-  bg.addColorStop(0,'rgb(1,'+Math.round(g1*0.5)+',2)');bg.addColorStop(1,'rgb(0,'+g2+',6)')
+  bg.addColorStop(0,'rgb('+Math.round(12+soft*4)+','+g1+','+b1+')')
+  bg.addColorStop(1,'rgb('+Math.round(7+soft*5)+','+g2+','+Math.round(11+soft*12)+')')
   ctxbg.fillStyle=bg;ctxbg.fillRect(0,0,lpW,lpH)
+  var rg=ctxbg.createRadialGradient(lpW*0.62,lpH*0.18,0,lpW*0.5,lpH*0.3,lpW*0.72)
+  rg.addColorStop(0,'rgba(178,220,255,'+(0.035+soft*0.08)+')')
+  rg.addColorStop(.48,'rgba(176,244,211,'+(0.025+soft*0.045)+')')
+  rg.addColorStop(1,'rgba(0,0,0,0)')
+  ctxbg.fillStyle=rg;ctxbg.fillRect(0,0,lpW,lpH)
 }
 function lpDrawChart(){
   var drawn=Math.min(Math.floor(lpProgress),LP_TOTAL-1)
@@ -1234,22 +1286,23 @@ function lpDrawChart(){
   if(lpZoom&&lpZS>1){ctx.save();ctx.translate(lpZX,lpZY);ctx.scale(lpZS,lpZS);ctx.translate(-lpZX,-lpZY)}
   var pts=[];for(var i=0;i<=drawn;i++)pts.push({x:lpGetX(i),y:lpGetY(LP_PRICES[i])})
   var bp=function(){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(var i=1;i<pts.length;i++){var mx=(pts[i-1].x+pts[i].x)/2,my=(pts[i-1].y+pts[i].y)/2;ctx.quadraticCurveTo(pts[i-1].x,pts[i-1].y,mx,my)}}
-  bp();ctx.strokeStyle='rgba(0,232,135,0.04)';ctx.lineWidth=10;ctx.lineCap='round';ctx.shadowBlur=0;ctx.stroke()
-  bp();ctx.strokeStyle='rgba(0,232,135,'+(0.9+lpScrollP*0.1)+')';ctx.lineWidth=1.8;ctx.shadowBlur=lpHoverMode==='bybit'?12:7;ctx.shadowColor='rgba(0,232,135,0.5)';ctx.lineCap='round';ctx.stroke();ctx.shadowBlur=0
+  var soft=Math.min(1,lpScrollP*1.6)
+  bp();ctx.strokeStyle='rgba(210,235,255,0.035)';ctx.lineWidth=10;ctx.lineCap='round';ctx.shadowBlur=0;ctx.stroke()
+  bp();ctx.strokeStyle='rgba(186,255,222,'+(0.58+soft*0.20)+')';ctx.lineWidth=1.8;ctx.shadowBlur=lpHoverMode==='bybit'?12:7;ctx.shadowColor='rgba(186,255,222,0.36)';ctx.lineCap='round';ctx.stroke();ctx.shadowBlur=0
   var last=pts[pts.length-1]
   bp();ctx.lineTo(last.x,lpH);ctx.lineTo(pts[0].x,lpH);ctx.closePath()
   var fillTop=0.05+lpChartFill*0.75,fillBot=lpChartFill*0.65
   var fg=ctx.createLinearGradient(0,lpGetY(0.92),0,lpH)
-  fg.addColorStop(0,'rgba(0,60,25,'+fillTop+')');fg.addColorStop(0.4,'rgba(0,40,18,'+(fillBot*0.9)+')');fg.addColorStop(1,'rgba(0,20,10,'+fillBot+')')
+  fg.addColorStop(0,'rgba(186,255,222,'+fillTop+')');fg.addColorStop(0.4,'rgba(120,170,255,'+(fillBot*0.26)+')');fg.addColorStop(1,'rgba(178,220,255,'+(fillBot*0.22)+')')
   ctx.fillStyle=fg;ctx.fill()
   lpDotTX=last.x;lpDotTY=last.y
   var lag=0.08+lpScrollP*0.35;lpDotX+=(lpDotTX-lpDotX)*lag;lpDotY+=(lpDotTY-lpDotY)*lag
   var now=Date.now()
   var sonarPairs=[[0,0.22],[1000,0.12]]
-  for(var si=0;si<sonarPairs.length;si++){var off=sonarPairs[si][0],a=sonarPairs[si][1];var t=((now+off)%2400)/2400,e=1-(1-t)*(1-t);ctx.beginPath();ctx.arc(lpDotX,lpDotY,3+e*22,0,Math.PI*2);ctx.strokeStyle='rgba(0,232,135,'+(a*(1-e)*(1-e)*(1-lpScrollP*0.5))+')';ctx.lineWidth=0.5;ctx.stroke()}
-  var hh=ctx.createRadialGradient(lpDotX,lpDotY,0,lpDotX,lpDotY,12);hh.addColorStop(0,'rgba(0,232,135,0.14)');hh.addColorStop(1,'rgba(0,232,135,0)')
+  for(var si=0;si<sonarPairs.length;si++){var off=sonarPairs[si][0],a=sonarPairs[si][1];var t=((now+off)%2400)/2400,e=1-(1-t)*(1-t);ctx.beginPath();ctx.arc(lpDotX,lpDotY,3+e*22,0,Math.PI*2);ctx.strokeStyle='rgba(186,255,222,'+(a*(1-e)*(1-e)*(1-soft*0.45))+')';ctx.lineWidth=0.5;ctx.stroke()}
+  var hh=ctx.createRadialGradient(lpDotX,lpDotY,0,lpDotX,lpDotY,12);hh.addColorStop(0,'rgba(186,255,222,0.13)');hh.addColorStop(1,'rgba(186,255,222,0)')
   ctx.beginPath();ctx.arc(lpDotX,lpDotY,12,0,Math.PI*2);ctx.fillStyle=hh;ctx.fill()
-  ctx.beginPath();ctx.arc(lpDotX,lpDotY,3.8,0,Math.PI*2);ctx.fillStyle='#00E887';ctx.shadowBlur=9;ctx.shadowColor='rgba(0,232,135,0.55)';ctx.fill();ctx.shadowBlur=0
+  ctx.beginPath();ctx.arc(lpDotX,lpDotY,3.8,0,Math.PI*2);ctx.fillStyle='#baffde';ctx.shadowBlur=9;ctx.shadowColor='rgba(186,255,222,0.45)';ctx.fill();ctx.shadowBlur=0
   ctx.beginPath();ctx.arc(lpDotX,lpDotY,1.6,0,Math.PI*2);ctx.fillStyle='#d0ffe8';ctx.fill()
   if(lpZoom&&lpZS>1){ctx.restore();lpZS=Math.min(lpZS+0.07,7)}
 }
