@@ -925,9 +925,95 @@ body.landing-mode #hero::after{
   .lp-section{max-width:calc(100vw - 36px);padding:58px 0!important}
   .lp-sec-title{font-size:clamp(32px,8.8vw,46px)!important;line-height:1.04!important}
 }
+/* -- LIQUID GLASS ENGINE V2 -- */
+:root{
+  --lg-x:52%;
+  --lg-y:18%;
+  --lg-depth-1:rgba(255,255,255,.055);
+  --lg-depth-2:rgba(255,255,255,.028);
+  --lg-line-hot:rgba(255,255,255,.38);
+  --lg-shadow:rgba(0,0,0,.28);
+}
+body.landing-mode,body.dash-mode{
+  background:
+    radial-gradient(circle at var(--lg-x) var(--lg-y),rgba(255,255,255,.115),transparent 24%),
+    radial-gradient(ellipse 56% 44% at 18% 8%,rgba(148,242,188,.13),transparent 72%),
+    radial-gradient(ellipse 58% 46% at 88% 6%,rgba(176,207,255,.11),transparent 72%),
+    linear-gradient(180deg,#101317 0%,#07080a 100%)!important;
+}
+#view-landing,#view-dashboard{isolation:isolate}
+body.landing-mode #hero{padding-left:clamp(22px,4vw,72px);padding-right:clamp(22px,4vw,72px)}
+.lp-ui{width:min(1260px,100%);column-gap:clamp(42px,7vw,118px)}
+.lp-title{max-width:680px}
+.lp-title h1{font-size:clamp(56px,6.7vw,96px)!important;line-height:.92!important;letter-spacing:-.075em!important}
+.lp-title p{color:rgba(255,255,255,.66);font-size:18px}
+.lp-cards{gap:16px;padding:14px;background:rgba(255,255,255,.055);box-shadow:inset 0 1px rgba(255,255,255,.22),0 28px 95px rgba(0,0,0,.28)}
+.lp-card,.sidebar,.dash-topbar,.sb-bot-card,.card,.stat-card,.orch-card,.bottom-nav{
+  position:relative;
+  isolation:isolate;
+  contain:paint;
+  background:radial-gradient(circle at var(--lg-x) var(--lg-y),rgba(255,255,255,.145),transparent 26%),linear-gradient(145deg,var(--lg-depth-1),var(--lg-depth-2) 52%,rgba(255,255,255,.035))!important;
+  border:1px solid rgba(255,255,255,.135)!important;
+  box-shadow:inset 0 1px 0 var(--lg-line-hot),inset 0 -1px 0 rgba(255,255,255,.045),0 18px 62px var(--lg-shadow)!important;
+  backdrop-filter:blur(34px) saturate(155%) brightness(1.05);
+  -webkit-backdrop-filter:blur(34px) saturate(155%) brightness(1.05);
+}
+.lp-card::before,.sidebar::before,.dash-topbar::before,.sb-bot-card::before,.card::before,.stat-card::before,.orch-card::before{
+  content:'';position:absolute;inset:1px;border-radius:inherit;z-index:0;pointer-events:none;
+  background:radial-gradient(circle at var(--lg-x) var(--lg-y),rgba(255,255,255,.22),transparent 19%),linear-gradient(118deg,rgba(255,255,255,.16),transparent 24%,transparent 72%,rgba(255,255,255,.07));
+  opacity:.48;
+  filter:url(#liquid-glass-soft);
+  mix-blend-mode:screen;
+}
+.lp-card::after,.card::after,.stat-card::after,.orch-card::after,.dash-topbar::after,.sidebar::after,.sb-bot-card::after{
+  content:'';position:absolute;left:18px;right:18px;top:0;height:1px;border-radius:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.58),rgba(255,255,255,.12),transparent);
+  opacity:.56;
+}
+.lp-card > *,.sidebar > *,.dash-topbar > *,.sb-bot-card > *,.card > *,.stat-card > *,.orch-card > *{position:relative;z-index:2}
+.lp-card,.sb-nav-item,.mode-btn,.icon-btn,.eq-btn,.toggle{will-change:transform}
+.lp-card{min-height:218px;padding:30px;border-radius:34px}
+.lp-card:hover{transform:translateY(-5px) scale(1.012)!important;box-shadow:inset 0 1px rgba(255,255,255,.46),0 30px 96px rgba(0,0,0,.32),0 0 64px rgba(148,242,188,.08)!important}
+.dash-wrap{gap:22px;padding:22px}
+.sidebar{padding:22px;border-radius:38px}
+.dash-main{gap:22px}
+.dash-topbar{min-height:90px;padding:20px 24px;border-radius:36px}
+.sb-bot-card{padding:20px;border-radius:30px}
+.card,.stat-card,.orch-card{border-radius:32px}
+.stats-grid{gap:16px}
+.two-col,#panel-poly #btc-embed-wrap>.two-col{gap:22px}
+.log-body{height:280px}
+.chart-body{height:245px}
+.toggle.on-g,.toggle.on-b{
+  background:linear-gradient(145deg,#c8ffd9,#48df90 54%,#10975b)!important;
+  border-color:rgba(200,255,217,.78)!important;
+  box-shadow:0 0 0 1px rgba(200,255,217,.2),0 0 36px rgba(72,223,144,.52),0 0 92px rgba(72,223,144,.30),inset 0 1px rgba(255,255,255,.56)!important;
+}
+.toggle.on-g::before,.toggle.on-b::before{background:rgba(72,223,144,.62)!important}
+.status-chip.on-g,.status-chip.on-b,.sb-bot-card.running-g,.sb-bot-card.running-b{border-color:rgba(148,242,188,.28)!important}
+#lp-sections{background:radial-gradient(circle at 50% 0%,rgba(148,242,188,.11),transparent 28%),linear-gradient(180deg,#0a0f11 0%,#10161a 58%,#11161a 100%)!important}
+.lp-section{padding:104px 0!important}
+.lp-sec-title{font-size:clamp(40px,4.2vw,60px)!important;line-height:1.03!important}
+.lp-state-card,.lp-perf-card{background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025))!important;border-color:rgba(255,255,255,.11)}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .lp-card,.sb-nav-item,.mode-btn,.icon-btn,.eq-btn,.toggle{will-change:auto}
+}
+@media(max-width:960px){
+  .dash-wrap{padding:12px}
+  .lp-title h1{font-size:clamp(44px,11vw,68px)!important}
+  .lp-section{padding:68px 0!important}
+}
 </style>
 </head>
 <body class="landing-mode">
+<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+  <filter id="liquid-glass-soft" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.018" numOctaves="1" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    <feGaussianBlur stdDeviation=".28"/>
+  </filter>
+</svg>
 
 <!-- ══ LANDING ══ -->
 <div id="view-landing">
@@ -1411,6 +1497,15 @@ function lpSpawnFloat(){
 }
 setInterval(function(){if(lpProgress>30)lpSpawnFloat()},1400)
 window.addEventListener('mousemove',function(e){lpParTY=(e.clientY/lpH-0.5)*22})
+var lgRAF=0
+window.addEventListener('pointermove',function(e){
+  if(lgRAF)return
+  lgRAF=requestAnimationFrame(function(){
+    lgRAF=0
+    document.documentElement.style.setProperty('--lg-x',((e.clientX/window.innerWidth)*100).toFixed(1)+'%')
+    document.documentElement.style.setProperty('--lg-y',((e.clientY/window.innerHeight)*100).toFixed(1)+'%')
+  })
+},{passive:true})
 var LP_SYS=['SYSTEM READY','UP-ONLY TEST','MARKOV v2.1','LIVE LEDGER','TAU=0.10'],lpSI=0
 setInterval(function(){
   var el=document.getElementById('lp-sys-label');if(!el)return
