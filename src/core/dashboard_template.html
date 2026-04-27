@@ -824,6 +824,75 @@ body.dash-mode .log-body{color:rgba(255,255,255,.88)}
   .lp-title{padding-bottom:32px}
   .lp-sys-status{bottom:-22px}
 }
+
+/* -- ACTIVE GREEN AND HERO CONTINUITY -- */
+.toggle.on-b{
+  background:linear-gradient(145deg,#baffd1,#35d482 58%,#119b5d)!important;
+  border-color:rgba(186,255,209,.72)!important;
+  box-shadow:0 0 0 1px rgba(186,255,209,.16),0 0 34px rgba(73,225,139,.42),0 0 76px rgba(73,225,139,.24),inset 0 1px rgba(255,255,255,.48)!important;
+}
+.toggle.on-b::before{background:rgba(73,225,139,.55)!important}
+.sb-bot-card.running-b{
+  background:linear-gradient(145deg,rgba(143,240,185,.12),rgba(255,255,255,.03))!important;
+  border-color:rgba(143,240,185,.24)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.30),0 18px 54px rgba(0,0,0,.20),0 0 48px rgba(73,225,139,.13)!important;
+}
+.sb-bot-card.running-b .sb-card-state,.status-chip.on-b{color:var(--green)!important}
+.status-chip.on-b{border-color:rgba(143,240,185,.28)!important;background:var(--green-dim)!important}
+.status-chip.on-b .chip-dot{background:var(--green)!important}
+
+body.landing-mode #hero{min-height:100svh;margin-bottom:-11vh}
+body.landing-mode #hero::after{
+  content:'';position:absolute;left:0;right:0;bottom:-1px;height:24vh;pointer-events:none;z-index:5;
+  background:linear-gradient(180deg,rgba(7,7,8,0),rgba(9,13,13,.72) 56%,#0b1112 100%);
+}
+#lp-sections{
+  position:relative;
+  z-index:6;
+  padding-top:18vh!important;
+  background:
+    radial-gradient(ellipse 70% 42% at 50% 0%,rgba(186,255,222,.16),transparent 70%),
+    radial-gradient(ellipse 56% 38% at 84% 10%,rgba(178,220,255,.13),transparent 70%),
+    linear-gradient(180deg,#0b1112 0%,#10161a 48%,#12171b 100%)!important;
+}
+#lp-sections::before{
+  content:'';position:absolute;left:50%;top:5vh;width:min(1120px,88vw);height:34vh;transform:translateX(-50%);
+  border-radius:44px;border:1px solid rgba(255,255,255,.075);
+  background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+  box-shadow:inset 0 1px rgba(255,255,255,.16),0 34px 120px rgba(0,0,0,.20);
+  pointer-events:none;
+}
+.lp-section{
+  max-width:min(1120px,88vw);
+  min-height:58vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:8vh 0!important;
+  opacity:0;
+  transform:translateY(34px) scale(.985);
+  transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1);
+}
+.lp-section.in{opacity:1;transform:none}
+.lp-section::before{left:0;right:0;top:6vh}
+.lp-sec-title{font-size:clamp(44px,5.8vw,78px);line-height:.94;letter-spacing:-.075em;max-width:900px;margin-bottom:40px}
+.lp-state-grid,.lp-perf-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.lp-state-card,.lp-perf-card{min-height:150px;padding:28px;border-radius:30px}
+.lp-sc-val,.lp-pc-val{font-size:clamp(34px,4vw,54px)}
+.home-returning #view-landing{animation:homeReturn .72s cubic-bezier(.2,.8,.2,1) both}
+@keyframes homeReturn{from{opacity:0;filter:blur(18px);transform:scale(.985)}to{opacity:1;filter:blur(0);transform:scale(1)}}
+.tab-panel.was-active{display:flex;opacity:0;transform:translateY(-8px) scale(.995);filter:blur(8px);transition:opacity .22s ease,transform .22s ease,filter .22s ease}
+.tab-panel.active{animation:tabReveal .48s cubic-bezier(.2,.8,.2,1) both}
+@keyframes tabReveal{from{opacity:0;transform:translateY(14px) scale(.992);filter:blur(10px)}to{opacity:1;transform:none;filter:blur(0)}}
+.sb-nav-item,.mode-btn,.bn-item,.icon-btn,.eq-btn,.lp-card,.toggle{transition:transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s ease,border-color .24s ease,background .24s ease,color .24s ease,opacity .24s ease}
+.sb-nav-item:active,.mode-btn:active,.bn-item:active,.icon-btn:active,.eq-btn:active,.lp-card:active{transform:scale(.975)}
+@media(max-width:960px){
+  body.landing-mode #hero{margin-bottom:-5vh}
+  #lp-sections{padding-top:10vh!important}
+  .lp-section{max-width:calc(100vw - 36px);min-height:auto;padding:72px 0!important}
+  .lp-sec-title{font-size:clamp(36px,10vw,54px)}
+  .lp-state-grid,.lp-perf-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body class="landing-mode">
@@ -1476,8 +1545,18 @@ function goToDashboard(bot){
   requestAnimationFrame(function(){db.classList.add('app-ready');setTimeout(function(){db.classList.remove('app-enter')},760)})
 }
 function goToLanding(){
-  var db=document.getElementById('view-dashboard');db.classList.remove('visible','app-enter','app-ready')
-  document.body.classList.remove('dash-mode');document.body.classList.add('landing-mode')
+  var db=document.getElementById('view-dashboard')
+  if(window.gsap){
+    gsap.to('#view-dashboard',{opacity:0,scale:.985,filter:'blur(16px)',duration:.32,ease:'power2.inOut',onComplete:function(){finishGoToLanding(db)}})
+  }else{
+    finishGoToLanding(db)
+  }
+}
+function finishGoToLanding(db){
+  db.classList.remove('visible','app-enter','app-ready')
+  db.style.opacity='';db.style.transform='';db.style.filter=''
+  if(window.gsap)gsap.set('#view-dashboard',{clearProps:'opacity,scale,filter,transform'})
+  document.body.classList.remove('dash-mode');document.body.classList.add('landing-mode','home-returning')
   ;['bybit','poly'].forEach(function(b){
     document.getElementById('slabel-'+b).style.display=''
     document.getElementById('sb-card-'+b).style.display=''
@@ -1495,6 +1574,7 @@ function goToLanding(){
     ui.classList.add('visible')
     setTimeout(function(){document.getElementById('lp-card-bybit').classList.add('show')},320)
     setTimeout(function(){document.getElementById('lp-card-poly').classList.add('show')},530)
+    setTimeout(function(){document.body.classList.remove('home-returning')},760)
   },200)
   lpSetHover(null)
 }
@@ -1511,11 +1591,15 @@ var INIT_BAL=1000,socket=null
 var eqCurveHash='INIT'
 
 function switchTab(tab,el){
+  var old=document.querySelector('.tab-panel.active')
+  if(old)old.classList.add('was-active')
   currentTab=tab
   document.querySelectorAll('.sb-nav-item').forEach(function(i){i.classList.remove('active')})
   if(el)el.classList.add('active')
   document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')})
-  document.getElementById('panel-'+tab).classList.add('active')
+  var panel=document.getElementById('panel-'+tab)
+  panel.classList.add('active')
+  setTimeout(function(){document.querySelectorAll('.tab-panel.was-active').forEach(function(p){p.classList.remove('was-active')})},260)
   var titles={bybit:['Bybit Bot','Scalping + Grid · orquestación automática'],poly:['Polymarket Bot','Markov Chain · State Persistence · Arbitrage Gap'],analytics:['Analytics','Equity curve · drawdown · métricas avanzadas']}
   var t=titles[tab]||titles['bybit']
   document.getElementById('page-title').textContent=t[0]
