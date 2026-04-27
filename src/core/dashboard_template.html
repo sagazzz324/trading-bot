@@ -1049,12 +1049,13 @@ body.landing-mode::before,body.dash-mode::before{
   .log-body{height:250px}
   .bottom-nav{
     display:block!important;
-    left:10px!important;right:10px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;
-    width:auto!important;
-    max-width:520px;
-    margin:0 auto;
-    transform:none!important;
+    left:50%!important;right:auto!important;bottom:calc(14px + env(safe-area-inset-bottom))!important;
+    width:min(430px,calc(100vw - 22px))!important;
+    max-width:none;
+    margin:0!important;
+    transform:translate3d(-50%,0,0)!important;
     padding:7px;
+    z-index:9999!important;
     border:1px solid rgba(255,255,255,.18)!important;
     border-radius:999px!important;
     background:linear-gradient(145deg,rgba(48,52,56,.76),rgba(16,18,20,.62) 52%,rgba(255,255,255,.08))!important;
@@ -1062,6 +1063,7 @@ body.landing-mode::before,body.dash-mode::before{
     backdrop-filter:blur(34px) saturate(170%) brightness(1.08)!important;
     -webkit-backdrop-filter:blur(34px) saturate(170%) brightness(1.08)!important;
     overflow:hidden;
+    transform-origin:center bottom;
   }
   .bottom-nav::before{
     content:'';position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
@@ -1070,26 +1072,33 @@ body.landing-mode::before,body.dash-mode::before{
     filter:url(#liquid-glass-soft);
   }
   .bn-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .bn-orb{
+    position:absolute;z-index:0;top:7px;bottom:7px;left:7px;
+    width:calc((100% - 14px - 15px) / 4);
+    border-radius:999px;pointer-events:none;
+    transform:translate3d(calc(var(--bn-active,0) * (100% + 5px)),0,0);
+    background:radial-gradient(circle at 50% 0%,rgba(218,255,230,.64),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.36),rgba(255,255,255,.12));
+    box-shadow:inset 0 1px rgba(255,255,255,.60),0 10px 30px rgba(64,226,134,.34),0 0 58px rgba(64,226,134,.24);
+    transition:transform .56s cubic-bezier(.18,.9,.18,1.08),opacity .28s ease,filter .36s ease;
+    filter:saturate(1.06);
+  }
+  .bn-orb::after{
+    content:'';position:absolute;inset:1px;border-radius:inherit;
+    background:linear-gradient(115deg,rgba(255,255,255,.42),transparent 34%,rgba(255,255,255,.08) 72%,transparent);
+    mix-blend-mode:screen;
+  }
   .bn-item{
     position:relative;min-height:52px;padding:7px 2px 6px;border-radius:999px;
     color:rgba(255,255,255,.64);
     transition:transform .42s cubic-bezier(.2,.9,.18,1),color .32s ease,opacity .32s ease;
     -webkit-tap-highlight-color:transparent;
   }
-  .bn-item::before{
-    content:'';position:absolute;inset:2px;border-radius:inherit;z-index:-1;
-    background:radial-gradient(circle at 50% 0%,rgba(210,255,226,.56),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.34),rgba(255,255,255,.12));
-    box-shadow:inset 0 1px rgba(255,255,255,.55),0 10px 30px rgba(64,226,134,.32),0 0 58px rgba(64,226,134,.22);
-    opacity:0;
-    transform:scale(.72) translateY(8px);
-    transition:opacity .42s ease,transform .42s cubic-bezier(.2,.9,.18,1);
-  }
   .bn-item.active{color:#f7fff9;transform:translateY(-2px)}
-  .bn-item.active::before{opacity:1;transform:scale(1) translateY(0)}
   .bn-item .bn-ico{opacity:.56;transition:opacity .28s ease,transform .38s cubic-bezier(.2,.9,.18,1)}
   .bn-item.active .bn-ico{opacity:1;transform:translateY(-1px) scale(1.05)}
   .bn-ico svg{width:20px;height:20px;stroke:currentColor}
   .bn-lbl{font-size:8px;color:currentColor;font-weight:800;letter-spacing:-.02em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab-panel.was-active{display:none!important}
 }
 @media(max-width:640px){
   body.landing-mode #hero{min-height:auto!important;padding:22px 12px 30px!important}
@@ -1492,6 +1501,7 @@ body.landing-mode::before,body.dash-mode::before{
   </div>
 
   <nav class="bottom-nav">
+    <div class="bn-orb"></div>
     <div class="bn-grid">
       <div class="bn-item active" onclick="switchTabMob('bybit',this)">
         <div class="bn-ico"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
@@ -1843,7 +1853,13 @@ function switchTab(tab,el){
 function switchTabMob(tab,el){
   switchTab(tab,document.getElementById('nav-'+tab))
   document.querySelectorAll('.bn-item').forEach(function(b){b.classList.remove('active')})
-  if(el)el.classList.add('active')
+  if(el){
+    el.classList.add('active')
+    var items=[].slice.call(document.querySelectorAll('.bn-item'))
+    var idx=Math.max(0,items.indexOf(el))
+    var nav=document.querySelector('.bottom-nav')
+    if(nav)nav.style.setProperty('--bn-active',idx)
+  }
 }
 function initDashboard(){
   if(dashInited)return;dashInited=true;buildBybitChart();initSocket()
