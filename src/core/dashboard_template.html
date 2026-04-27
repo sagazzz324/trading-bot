@@ -893,6 +893,38 @@ body.landing-mode #hero::after{
   .lp-sec-title{font-size:clamp(36px,10vw,54px)}
   .lp-state-grid,.lp-perf-grid{grid-template-columns:1fr}
 }
+
+/* -- HERO CONTINUITY CORRECTION -- */
+body.landing-mode #hero{margin-bottom:0!important}
+body.landing-mode #hero::after{
+  height:18vh!important;
+  background:linear-gradient(180deg,rgba(7,7,8,0),rgba(8,11,12,.45) 62%,#0b1012 100%)!important;
+}
+#lp-sections{
+  padding-top:7vh!important;
+  background:
+    linear-gradient(180deg,#0b1012 0%,#10161a 54%,#12171b 100%)!important;
+}
+#lp-sections::before{display:none!important}
+.lp-section{
+  max-width:min(1120px,88vw);
+  min-height:auto!important;
+  padding:88px 0!important;
+  justify-content:flex-start!important;
+}
+.lp-sec-title{
+  font-size:clamp(38px,4.4vw,62px)!important;
+  line-height:1.02!important;
+  letter-spacing:-.058em!important;
+  max-width:860px!important;
+  margin-bottom:34px!important;
+}
+.lp-section::before{top:54px!important}
+@media(max-width:960px){
+  #lp-sections{padding-top:42px!important}
+  .lp-section{max-width:calc(100vw - 36px);padding:58px 0!important}
+  .lp-sec-title{font-size:clamp(32px,8.8vw,46px)!important;line-height:1.04!important}
+}
 </style>
 </head>
 <body class="landing-mode">
