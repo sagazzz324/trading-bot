@@ -338,6 +338,39 @@ body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',s
 .eq-btn.download{color:var(--blue);border-color:rgba(79,142,247,.18);background:var(--blue-dim)}
 .eq-btn.download:hover{border-color:rgba(79,142,247,.34)}
 
+/* -- LIQUID GLASS APP PASS -- */
+body.landing-mode #hero{position:relative;min-height:100svh;height:auto}
+body.landing-mode #scroll-track{height:1px}
+body.landing-mode #lp-sections{margin-top:0}
+body.landing-mode .lp-section{opacity:1;transform:none}
+.lp-cards{box-shadow:inset 0 1px rgba(255,255,255,.22),inset 0 -1px rgba(255,255,255,.05),0 36px 120px rgba(0,0,0,.48)}
+.lp-card{box-shadow:inset 0 1px rgba(255,255,255,.24),inset 0 -1px rgba(0,0,0,.18),0 18px 58px rgba(0,0,0,.28)}
+.lp-card::before{background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(255,255,255,.03) 38%,rgba(255,255,255,.1) 82%);mix-blend-mode:screen}
+.lp-card::after{height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),rgba(255,255,255,.16),transparent)}
+.lp-card-cta{margin-top:2px;padding:9px 12px;width:max-content;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.055);box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.lp-card:hover .lp-card-cta{background:rgba(255,255,255,.11);box-shadow:inset 0 1px rgba(255,255,255,.22),0 10px 28px rgba(0,0,0,.24)}
+body.dash-mode{background:
+  radial-gradient(circle at 20% 8%,rgba(143,240,185,.08),transparent 28%),
+  radial-gradient(circle at 84% 18%,rgba(127,178,255,.07),transparent 30%),
+  linear-gradient(180deg,#060705 0%,#090a08 100%)}
+.dash-wrap{background:transparent}
+.sidebar{background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border-right:1px solid rgba(255,255,255,.08);box-shadow:inset -1px 0 rgba(255,255,255,.05),22px 0 80px rgba(0,0,0,.24);backdrop-filter:blur(34px) saturate(150%);-webkit-backdrop-filter:blur(34px) saturate(150%)}
+.dash-main{background:transparent}
+.dash-topbar{position:sticky;top:0;z-index:20;padding:12px 14px;margin:-8px -4px 0;border:1px solid rgba(255,255,255,.075);border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.024));box-shadow:inset 0 1px rgba(255,255,255,.13),0 20px 60px rgba(0,0,0,.22);backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%)}
+.sb-bot-card,.card,.stat-card,.orch-card{background:linear-gradient(145deg,rgba(255,255,255,.072),rgba(255,255,255,.024));border:1px solid rgba(255,255,255,.082);box-shadow:inset 0 1px rgba(255,255,255,.12),inset 0 -1px rgba(0,0,0,.14),0 18px 48px rgba(0,0,0,.16);backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%)}
+.sb-bot-card{position:relative;overflow:hidden;border-radius:18px;padding:14px}
+.sb-bot-card::before{content:'';position:absolute;inset:1px;border-radius:17px;background:linear-gradient(130deg,rgba(255,255,255,.16),transparent 32%,rgba(255,255,255,.04));pointer-events:none}
+.sb-bot-card.running-g,.sb-bot-card.running-b{background:linear-gradient(145deg,rgba(143,240,185,.11),rgba(255,255,255,.028))!important;border-color:rgba(143,240,185,.22)!important}
+.toggle{width:48px;height:28px;border-radius:999px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035));box-shadow:inset 0 1px rgba(255,255,255,.18),inset 0 -1px rgba(0,0,0,.2)}
+.toggle-knob{width:20px;height:20px;top:3px;left:4px;background:linear-gradient(145deg,#fff,#bfc6bd);box-shadow:0 5px 18px rgba(0,0,0,.45)}
+.toggle.on-g,.toggle.on-b{background:linear-gradient(145deg,#8ff0b9,#18a76d);border-color:rgba(143,240,185,.62);box-shadow:0 0 28px rgba(143,240,185,.22),inset 0 1px rgba(255,255,255,.32)}
+.toggle.on-g .toggle-knob,.toggle.on-b .toggle-knob{transform:translateX(20px);background:#fff}
+.mode-btn,.sb-nav-item,.icon-btn,.status-chip,.bottom-nav{background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.018));border-color:rgba(255,255,255,.075);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.mode-btn.active,.sb-nav-item.active{background:linear-gradient(145deg,rgba(143,240,185,.12),rgba(255,255,255,.025));border-color:rgba(143,240,185,.18);color:#dffff0}
+.stat-card,.card{border-radius:20px}
+.card-hdr{background:rgba(255,255,255,.018)}
+.bottom-nav{left:10px;right:10px;bottom:10px;border:1px solid rgba(255,255,255,.08);border-radius:24px;box-shadow:inset 0 1px rgba(255,255,255,.14),0 20px 60px rgba(0,0,0,.34)}
+
 @media(max-width:960px){.stats-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}.sidebar{display:none!important}.dash-main{padding:14px;padding-bottom:74px}.bottom-nav{display:block}}
 @media(max-width:640px){.trade-detail{padding:0 12px 12px 12px}.trade-detail-grid{grid-template-columns:1fr}}
 @media(max-width:380px){.stats-grid{grid-template-columns:1fr}}
@@ -771,13 +804,12 @@ var lpHoverMode=null,lpParOY=0,lpParTY=0,lpSpeedMul=1,lpScrollP=0,lpChartFill=0
 function lpGetX(i){return lpW*(0.01+(i/(LP_TOTAL-1))*0.97)}
 function lpGetY(v){return lpH*(0.94-v*0.70)+lpParOY*0.4}
 window.addEventListener('scroll',function(){
-  var track=document.getElementById('scroll-track');if(!track)return
-  var raw=window.scrollY/(track.offsetTop+track.offsetHeight-window.innerHeight)
+  var raw=window.scrollY/Math.max(1,document.documentElement.scrollHeight-window.innerHeight)
   lpScrollP=Math.max(0,Math.min(1,raw));lpChartFill=lpScrollP
-  var cardOp=Math.max(0.42,1-lpScrollP*1.4)
+  var cardOp=Math.max(0.72,1-lpScrollP*0.8)
   var cb=document.getElementById('lp-card-bybit'),cp=document.getElementById('lp-card-poly')
   if(cb)cb.style.opacity=cardOp;if(cp)cp.style.opacity=cardOp
-  var ui=document.getElementById('lp-ui');if(ui)ui.style.transform='translateY('+(-lpScrollP*28)+'px)'
+  var ui=document.getElementById('lp-ui');if(ui)ui.style.transform='translateY('+(-lpScrollP*18)+'px)'
   var sect=document.getElementById('lp-sections');if(sect)sect.style.background='rgb(1,'+Math.round(12+lpScrollP*8)+',6)'
   lpCheckSections()
 },{passive:true})
@@ -903,7 +935,7 @@ function lpInitGsap(){
         {opacity:1,y:0,filter:'blur(0px)',duration:.9,stagger:.06,ease:'power3.out',
           scrollTrigger:{trigger:sec,start:'top 78%',once:true}})
     })
-    gsap.to('.lp-ui',{scale:.94,opacity:.58,ease:'none',scrollTrigger:{trigger:'#scroll-track',start:'top top',end:'bottom top',scrub:true}})
+    gsap.to('.lp-ui',{scale:.97,opacity:.82,ease:'none',scrollTrigger:{trigger:'#lp-sections',start:'top bottom',end:'top top',scrub:true}})
   }
 }
 function lpSetHover(bot){
