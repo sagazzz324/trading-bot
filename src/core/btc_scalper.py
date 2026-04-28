@@ -331,6 +331,19 @@ def _is_btc_scalp_trade(trade: dict) -> bool:
     return direction in ("up", "down") and has_btc and has_5m
 
 
+def _trade_age_seconds(trade: dict) -> float | None:
+    raw = trade.get("timestamp") or trade.get("entered_at")
+    if not raw:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return max(0.0, (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds())
+    except Exception:
+        return None
+
+
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
     try:
         r = requests.get(
@@ -588,14 +601,25 @@ class BTCScalper:
         self.log("🧭 Paso 4/6 · cargar estado/balance", "#ffffff30")
         state    = self.trader.load_state()
         active_all = state["active_trades"]
-        active   = [t for t in active_all if _is_btc_scalp_trade(t)]
-        bankroll = state["bankroll"]
+        btc_active_all = [t for t in active_all if _is_btc_scalp_trade(t)]
+        active = [
+            t for t in btc_active_all
+            if t.get("id") in self._open or (_trade_age_seconds(t) or 999999) < 900
+        ]
+        bankroll = float(state.get("wallet_balance") or state.get("bankroll") or 0)
 
         cap_disp = bankroll * (1 - BANKROLL_RESERVE)
         cap_uso  = sum(t["position_size"] for t in active)
-        ignored_active = len(active_all) - len(active)
+        ignored_active = len(active_all) - len(btc_active_all)
+        stale_btc = len(btc_active_all) - len(active)
         if ignored_active > 0:
             self.log(f"Ignorando {ignored_active} trade(s) activos viejos fuera de BTC scalp", "#ffffff40")
+        if stale_btc > 0:
+            self.log(f"Ignorando {stale_btc} trade(s) BTC scalp viejos sin tracking activo", "#ffffff40")
+        self.log(
+            f"Capital BTC · wallet=${bankroll:.2f} disp=${cap_disp:.2f} en_uso=${cap_uso:.2f}",
+            "#ffffff40"
+        )
         if cap_uso >= cap_disp:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
@@ -709,6 +733,13 @@ class BTCScalper:
         position = self._calc_position_size(
             decision["gap"], bankroll, cap_disp, cap_uso, current_state
         )
+
+        if position < MIN_POSITION and cap_disp - cap_uso < MIN_POSITION and bankroll - cap_uso >= MIN_POSITION:
+            cap_disp = bankroll
+            self.log(
+                f"Usando mínimo ${MIN_POSITION:.2f} con wallet libre; reserva omitida para no bloquear entrada",
+                "#F5A623"
+            )
 
         if position < MIN_POSITION:
             if cap_disp - cap_uso >= MIN_POSITION:
