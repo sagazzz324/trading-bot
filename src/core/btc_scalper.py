@@ -322,6 +322,15 @@ def _has_active_market_position(active_trades: list, condition_id: str, question
     return False
 
 
+def _is_btc_scalp_trade(trade: dict) -> bool:
+    question = (trade.get("question") or "").lower()
+    slug = (trade.get("slug") or "").lower()
+    direction = (trade.get("direction") or "").lower()
+    has_btc = "btc" in question or "bitcoin" in question or "btc" in slug
+    has_5m = "5m" in question or "5 min" in question or "5-minute" in question or "up or down" in question
+    return direction in ("up", "down") and has_btc and has_5m
+
+
 def _fetch_market_by_condition_id(condition_id: str) -> dict | None:
     try:
         r = requests.get(
@@ -578,11 +587,15 @@ class BTCScalper:
 
         self.log("🧭 Paso 4/6 · cargar estado/balance", "#ffffff30")
         state    = self.trader.load_state()
-        active   = state["active_trades"]
+        active_all = state["active_trades"]
+        active   = [t for t in active_all if _is_btc_scalp_trade(t)]
         bankroll = state["bankroll"]
 
         cap_disp = bankroll * (1 - BANKROLL_RESERVE)
         cap_uso  = sum(t["position_size"] for t in active)
+        ignored_active = len(active_all) - len(active)
+        if ignored_active > 0:
+            self.log(f"Ignorando {ignored_active} trade(s) activos viejos fuera de BTC scalp", "#ffffff40")
         if cap_uso >= cap_disp:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
