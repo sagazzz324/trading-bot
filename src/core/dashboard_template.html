@@ -207,10 +207,11 @@ body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',s
 .toggle.on-b{background:var(--blue);border-color:var(--blue);box-shadow:0 0 12px rgba(79,142,247,.3)}
 .toggle-knob{position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform var(--spring),background var(--spring);pointer-events:none}
 .toggle.on-g .toggle-knob,.toggle.on-b .toggle-knob{transform:translateX(17px);background:#fff}
-.mode-btns{display:flex;gap:4px;margin-top:8px}
-.mode-btn{flex:1;padding:4px 0;border-radius:6px;border:1px solid rgba(255,255,255,.08);background:var(--bg3);color:var(--t3);font-size:8px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;letter-spacing:.3px}
+.mode-btns{display:flex;gap:4px;margin-top:8px;position:relative;padding:3px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);overflow:hidden}
+.mode-orb{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc((100% - 6px - 12px) / 4);border-radius:999px;pointer-events:none;transform:translate3d(calc(var(--mode-active,0) * (100% + 4px)),0,0);background:radial-gradient(circle at 50% 0%,rgba(210,255,226,.48),transparent 52%),linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.08));box-shadow:inset 0 1px rgba(255,255,255,.42),0 8px 26px rgba(64,226,134,.20);transition:transform .48s cubic-bezier(.18,.9,.18,1.08)}
+.mode-btn{position:relative;z-index:1;flex:1;padding:4px 0;border-radius:999px;border:0;background:transparent;color:var(--t3);font-size:8px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:color .22s ease,transform .22s ease;letter-spacing:.3px}
 .mode-btn:hover{border-color:rgba(79,142,247,.3);color:var(--t2)}
-.mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(79,142,247,.4)}
+.mode-btn.active{background:transparent;color:rgba(255,255,255,.96);border-color:transparent}
 .strat-badge{display:inline-flex;align-items:center;gap:5px;font-size:8px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:5px;font-family:var(--mono);text-transform:uppercase}
 .strat-badge.scalping{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,135,.15)}
 .strat-badge.grid{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,.15)}
@@ -256,11 +257,14 @@ body.landing-mode{background:#050604;color:#f4f1e8;font-family:'Space Grotesk',s
 .stat-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px;font-weight:700}
 .stat-num{font-size:22px;font-weight:700;letter-spacing:-1.5px;font-family:var(--mono);line-height:1}
 .stat-num.g{color:var(--green)}.stat-num.r{color:var(--red)}.stat-num.b{color:var(--blue)}.stat-num.amber{color:var(--amber)}
+.stat-num.b,.stat-num.amber,#bybit-wr,#poly-wr,#poly-wr-g,#bybit-balance,#poly-balance,#poly-balance-g,#bybit-pos,#poly-pos,#poly-pos-g,#eq-pf,#eq-rf,#eq-curdd,#eq-maxdd{color:rgba(255,255,255,.94)!important}
+.stat-num.g,.stat-num.r{ text-shadow:0 0 24px color-mix(in srgb,currentColor 28%,transparent)}
 .stat-hint{font-size:8px;color:var(--t3);margin-top:5px;font-family:var(--mono)}
-.odo-wrap{display:inline-flex;align-items:baseline;gap:0;overflow:hidden;height:1em;vertical-align:baseline;line-height:1}
+.odo-wrap{display:inline-flex;align-items:baseline;gap:0;overflow:hidden;height:1em;vertical-align:baseline;line-height:1;font-variant-numeric:tabular-nums}
 .odo-char{display:inline-block;overflow:hidden;height:1em;line-height:1}
 .odo-strip{display:flex;flex-direction:column;will-change:transform}
 .odo-strip span{height:1em;line-height:1;display:block}
+.odo-static{display:inline-block;line-height:1}
 .orch-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .orch-left{display:flex;align-items:center;gap:10px}
 .orch-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-dim);border:1px solid rgba(79,142,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -817,6 +821,8 @@ body.dash-mode .log-body{color:rgba(255,255,255,.88)}
 .log-msg.blue,.ssm-val.b,.stat-num.b,.eq-metric-val.b,.eq-ledger-pnl.b{color:var(--blue)!important}
 .log-msg.amber,.stat-num.amber,.eq-metric-val.amber{color:var(--amber)!important}
 .stat-num:not(.g):not(.r):not(.b):not(.amber),.orch-metric-val{color:rgba(255,255,255,.92)!important}
+#bybit-balance,#bybit-wr,#bybit-pos,#poly-balance,#poly-balance-g,#poly-wr,#poly-wr-g,#poly-pos,#poly-pos-g,#eq-pf,#eq-rf,#eq-maxdd,#eq-curdd,.stat-num.b,.stat-num.amber{color:rgba(255,255,255,.94)!important}
+.mode-btn,.mode-btn.active{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 .tbadge{color:inherit}
 .tbadge.buy{color:var(--green)!important}.tbadge.sell{color:var(--red)!important}
 @media(max-width:960px){
@@ -1239,6 +1245,7 @@ body.landing-mode .bottom-nav{display:none!important}
           </div>
           <div class="sb-card-meta" style="margin-top:4px">Markov Chain · State Persistence</div>
           <div class="mode-btns">
+            <div class="mode-orb"></div>
             <button class="mode-btn active" id="mode-btc_scalp" onclick="setPolyMode('btc_scalp')">⚡ BTC</button>
             <button class="mode-btn" id="mode-crypto" onclick="setPolyMode('crypto')">🪙 CRYPTO</button>
             <button class="mode-btn" id="mode-politics" onclick="setPolyMode('politics')">🏛️ POL</button>
@@ -1885,7 +1892,7 @@ function applyBybit(d){
   document.getElementById('sb-bybit-pnl').className='ssm-val '+(pnl>=0?'g':'r')
   if(d.win_rate!=null)odoSet('bybit-wr',d.win_rate+'%')
   if(d.total_trades!=null)setEl('bybit-trades',d.total_trades+' trades')
-  setEl('bybit-pos',Array.isArray(d.open_positions)?d.open_positions.length:0)
+  odoSet('bybit-pos',Array.isArray(d.open_positions)?d.open_positions.length:0)
   if(d.recent_trades)renderBybitTrades(d.recent_trades)
   if(d.running!=null)applyBybitState(d.running)
   if(d.active_strategy)updateOrchCard(d)
@@ -1931,7 +1938,7 @@ function applyPoly(d){
   document.getElementById('sb-poly-pnl').className='ssm-val '+(pnl>=0?'g':'r')
   if(d.win_rate!=null)odoSet(isBtc?'poly-wr':'poly-wr-g',d.win_rate+'%')
   if(d.total_trades!=null)setEl(isBtc?'poly-trades':'poly-trades-g',d.total_trades+' trades')
-  setEl(isBtc?'poly-pos':'poly-pos-g',Array.isArray(d.open_positions)?d.open_positions.length:0)
+  odoSet(isBtc?'poly-pos':'poly-pos-g',Array.isArray(d.open_positions)?d.open_positions.length:0)
   if(d.recent_trades)renderPolyTrades(d.recent_trades,isBtc)
   if(d.running!=null)applyPolyState(d.running)
   if(d.logs&&d.logs.length){
@@ -1968,7 +1975,10 @@ function togglePoly(){if(socket&&socket.connected){if(polyOn){socket.emit('stop_
 function setPolyMode(mode){currentPolyMode=mode;syncModeButtons(mode);if(socket&&socket.connected)socket.emit('set_poly_mode',{mode:mode})}
 function syncModeButtons(mode){
   currentPolyMode=mode
-  ;['btc_scalp','crypto','politics','all'].forEach(function(m){var btn=document.getElementById('mode-'+m);if(!btn)return;if(m===mode)btn.classList.add('active');else btn.classList.remove('active')})
+  var modes=['btc_scalp','crypto','politics','all']
+  modes.forEach(function(m){var btn=document.getElementById('mode-'+m);if(!btn)return;if(m===mode)btn.classList.add('active');else btn.classList.remove('active')})
+  var wrap=document.querySelector('.mode-btns')
+  if(wrap)wrap.style.setProperty('--mode-active',Math.max(0,modes.indexOf(mode)))
 }
 function updateOrchCard(d){
   var strat=d.active_strategy||'AUTO',regime=d.regime||'—',reason=d.orch_reason||'—'
@@ -2201,20 +2211,54 @@ function buildEquityChart(curve){
 }
 
 // ── ODOMETRO ─────────────────────────────────────────────────────────────────
+applyEquity=function(d){
+  if(!d||d.error||!d.total_trades){clearEquityView();setEl('eq-session-meta','Esperando datos reales en esta sesion');return}
+  var pf=d.profit_factor||0,exp=d.expectancy||0,maxdd=d.max_drawdown_pct||0,curdd=d.current_drawdown||0,rf=d.recovery_factor||0,apt=d.avg_pnl_per_trade||0
+  var pfEl=document.getElementById('eq-pf');if(pfEl){odoSet('eq-pf',pf>=999?'∞':pf.toFixed(2));pfEl.className='stat-num'}
+  var expEl=document.getElementById('eq-exp');if(expEl){odoSet('eq-exp',(exp>=0?'+':'')+'$'+Math.abs(exp).toFixed(2));expEl.className='stat-num '+(exp>=0?'g':'r')}
+  odoSet('eq-avgw','+$'+(d.avg_win||0).toFixed(2));odoSet('eq-avgl','-$'+(d.avg_loss||0).toFixed(2))
+  setEl('eq-wins-count',(d.count_wins||0)+' wins');setEl('eq-loss-count',(d.count_losses||0)+' losses')
+  var maxddEl=document.getElementById('eq-maxdd');if(maxddEl){odoSet('eq-maxdd',maxdd.toFixed(1)+'%');maxddEl.className='stat-num'}
+  var curddEl=document.getElementById('eq-curdd');if(curddEl){odoSet('eq-curdd',curdd.toFixed(1)+'%');curddEl.className='stat-num'}
+  setEl('eq-maxdd-vals','$'+(d.max_dd_peak||0).toFixed(0)+' -> $'+(d.max_dd_trough||0).toFixed(0));setEl('eq-peak','pico: $'+(d.peak_balance||0).toFixed(2))
+  var maxBar=document.getElementById('eq-maxdd-bar'),curBar=document.getElementById('eq-curdd-bar');if(maxBar)setTimeout(function(){maxBar.style.width=Math.min(maxdd,100)+'%'},100);if(curBar)setTimeout(function(){curBar.style.width=Math.min(curdd,100)+'%'},100)
+  var rfEl=document.getElementById('eq-rf');if(rfEl){odoSet('eq-rf',rf.toFixed(2));rfEl.className='stat-num'}
+  var aptEl=document.getElementById('eq-apt');if(aptEl){odoSet('eq-apt',(apt>=0?'+':'')+'$'+Math.abs(apt).toFixed(2));aptEl.className='stat-num '+(apt>=0?'g':'r')}
+  setEl('eq-dur','dur: '+(d.avg_trade_duration||'—'));setEl('eq-maxws',(d.max_win_streak||0)+' trades');setEl('eq-maxls',(d.max_loss_streak||0)+' trades')
+  var streak=d.current_streak||'',streakEl=document.getElementById('eq-curstreak');if(streakEl){streakEl.textContent=streak;streakEl.className='eq-metric-val '+(streak.indexOf('win')>=0?'g':streak.indexOf('loss')>=0?'r':'')}
+  setEl('eq-streak-cur','actual: '+streak);renderEquityLedger(d.recent||[]);renderEquityChart(d.equity_curve||[])
+}
+
 var _odoVals={}
 function odoSet(id,val){
   var el=document.getElementById(id);if(!el)return
-  var str=String(val);if(_odoVals[id]===str)return;_odoVals[id]=str
+  var str=String(val);if(_odoVals[id]===str)return
+  var prev=String(_odoVals[id]||el.textContent||'')
+  _odoVals[id]=str
+  var prevDigits=(prev.match(/\d/g)||[]),nextDigits=(str.match(/\d/g)||[])
+  var offset=prevDigits.length-nextDigits.length
+  var digitIndex=0
   var html='<span class="odo-wrap" style="font-size:inherit;font-weight:inherit;font-family:inherit;color:inherit;letter-spacing:inherit">'
   for(var i=0;i<str.length;i++){
     var ch=str[i]
-    if(ch>='0'&&ch<='9'){var d=parseInt(ch);var rows='';for(var n=0;n<=9;n++)rows+='<span>'+n+'</span>';html+='<span class="odo-char"><span class="odo-strip" style="transform:translateY(-'+d+'em);transition:transform 0.6s cubic-bezier(0.22,1,0.36,1)">'+rows+'</span></span>'}
-    else{html+='<span style="display:inline-block">'+ch+'</span>'}
+    if(ch>='0'&&ch<='9'){
+      var d=parseInt(ch),pd=parseInt(prevDigits[digitIndex+offset]||'0')
+      var rows='';for(var n=0;n<=9;n++)rows+='<span>'+n+'</span>'
+      html+='<span class="odo-char"><span class="odo-strip" data-to="'+d+'" style="transform:translateY(-'+pd+'em)">'+rows+'</span></span>'
+      digitIndex++
+    }
+    else{html+='<span class="odo-static">'+ch+'</span>'}
   }
   html+='</span>';el.innerHTML=html
+  requestAnimationFrame(function(){
+    el.querySelectorAll('.odo-strip').forEach(function(strip){
+      strip.style.transition='transform 0.72s cubic-bezier(0.16,1,0.3,1)'
+      strip.style.transform='translateY(-'+strip.getAttribute('data-to')+'em)'
+    })
+  })
 }
 
-function setEl(id,val){var el=document.getElementById(id);if(el)el.textContent=val}
+function setEl(id,val){var el=document.getElementById(id);if(!el)return;if(el.classList&&el.classList.contains('stat-num'))odoSet(id,val);else el.textContent=val}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function hexClass(h){if(!h)return'';var u=h.toUpperCase();if(u==='#00E887'||u==='#5DB05E')return'green';if(u==='#FF5050')return'red';if(u==='#41D6FC'||u==='#4F8EF7')return'blue';if(u==='#F5A623')return'amber';return'dim'}
 function loadData(){fetch('/api/data').then(function(r){return r.json()}).then(function(d){if(d.bybit)applyBybit(d.bybit);if(d.poly)applyPoly(d.poly)}).catch(function(){})}
