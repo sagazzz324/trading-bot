@@ -67,10 +67,25 @@ def _build_session_report() -> dict:
     curve = _filter_session_rows(equity_data.get("equity_curve", []), session_started)
     ledger = _filter_session_rows(equity_data.get("trade_ledger", []), session_started)
 
-    wins = [t for t in ledger if float(t.get("pnl", 0) or 0) > 0]
-    losses = [t for t in ledger if float(t.get("pnl", 0) or 0) < 0]
-    flats = [t for t in ledger if float(t.get("pnl", 0) or 0) == 0]
-    total_pnl = round(sum(float(t.get("pnl", 0) or 0) for t in ledger), 2)
+    def cash_pnl(t):
+        try:
+            entry = float(t.get("filled_entry_usdc") or 0)
+            if entry > 0 and t.get("filled_exit_usdc") is not None:
+                return round(float(t.get("filled_exit_usdc") or 0) - entry, 6)
+        except Exception:
+            pass
+        return float(t.get("pnl", 0) or 0)
+
+    for t in ledger:
+        pnl = cash_pnl(t)
+        t["cash_pnl"] = round(pnl, 2)
+        t["pnl"] = round(pnl, 2)
+        t["result"] = "win" if pnl > 0 else "loss" if pnl < 0 else "flat"
+
+    wins = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) > 0]
+    losses = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) < 0]
+    flats = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) == 0]
+    total_pnl = round(sum(float(t.get("cash_pnl", 0) or 0) for t in ledger), 2)
     avg_pnl = round(total_pnl / len(ledger), 4) if ledger else 0.0
 
     slips = [float(t.get("entry_slippage") or 0) for t in ledger if t.get("entry_slippage") is not None]

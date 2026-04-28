@@ -181,7 +181,7 @@ class PaperTrader:
             return round(fallback_pnl, 6)
         entry_usdc = float(trade.get("filled_entry_usdc") or trade.get("entry_value") or trade.get("position_size") or 0.0)
         exit_usdc = self._extract_usdc_value(exit_resp, "SELL", fallback=0.0)
-        if entry_usdc > 0 and exit_usdc > 0:
+        if entry_usdc > 0:
             return round(exit_usdc - entry_usdc, 6)
         return round(fallback_pnl, 6)
 

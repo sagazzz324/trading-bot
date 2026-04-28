@@ -106,6 +106,17 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
     try:
         data = _load()
         ts   = _now_ar()
+        effective_pnl = float(pnl)
+        if trade_data:
+            try:
+                entry_usdc = float(trade_data.get("filled_entry_usdc") or 0)
+                raw_exit = trade_data.get("filled_exit_usdc")
+                if entry_usdc > 0 and raw_exit is not None:
+                    effective_pnl = round(float(raw_exit or 0) - entry_usdc, 6)
+                    trade_data["pnl"] = round(effective_pnl, 2)
+                    trade_data["result"] = "win" if effective_pnl > 0 else "loss" if effective_pnl < 0 else "flat"
+            except Exception:
+                pass
 
         # ── Curva de equity ──────────────────────────────────────────────
         prev_balance = data["equity_curve"][-1]["balance"] if data["equity_curve"] else data["initial_balance"]
@@ -113,7 +124,7 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
             "ts":       ts,
             "balance":  round(balance_after, 2),
             "trade_id": trade_id,
-            "pnl":      round(pnl, 2),
+            "pnl":      round(effective_pnl, 2),
         })
         # Mantener últimos 2000 puntos para no inflar el archivo
         if len(data["equity_curve"]) > 2000:
@@ -123,7 +134,7 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
             ledger_item = {
                 "ts": ts,
                 "trade_id": trade_id,
-                "pnl": round(pnl, 2),
+                "pnl": round(effective_pnl, 2),
                 "balance_after": round(balance_after, 2),
                 "question": trade_data.get("question"),
                 "direction": trade_data.get("direction"),
@@ -145,17 +156,17 @@ def record_trade(trade_id: int, pnl: float, balance_after: float,
 
         # ── Totales ──────────────────────────────────────────────────────
         data["total_trades"] += 1
-        data["total_pnl"]     = round(data["total_pnl"] + pnl, 2)
+        data["total_pnl"]     = round(data["total_pnl"] + effective_pnl, 2)
 
-        is_win = pnl > 0
-        is_flat = pnl == 0
+        is_win = effective_pnl > 0
+        is_flat = effective_pnl == 0
         if is_win:
-            data["sum_wins"]    = round(data["sum_wins"] + pnl, 2)
+            data["sum_wins"]    = round(data["sum_wins"] + effective_pnl, 2)
             data["count_wins"] += 1
         elif is_flat:
             data["count_flats"] += 1
         else:
-            data["sum_losses"]    = round(data["sum_losses"] + abs(pnl), 2)
+            data["sum_losses"]    = round(data["sum_losses"] + abs(effective_pnl), 2)
             data["count_losses"] += 1
 
         # ── Drawdown ─────────────────────────────────────────────────────
