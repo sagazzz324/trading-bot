@@ -14,18 +14,20 @@ logger = logging.getLogger(__name__)
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 # ── PARAMETROS MARKOV ─────────────────────────────────────────────────────────
-TAU         = 0.10
-EPSILON     = 0.03
-Q_MIN       = 0.35
-Q_MAX       = 0.72
+TAU         = 0.25
+EPSILON     = 0.08
+Q_MIN       = 0.38
+Q_MAX       = 0.58
 
 # ── PARAMETROS DE RIESGO ──────────────────────────────────────────────────────
 BANKROLL_RESERVE   = 0.30
 MAX_POSITION_PCT   = 0.05
 MIN_POSITION       = 5.0
-MAX_SPREAD         = 0.06
-MIN_LIQUIDITY      = 300
+MAX_SPREAD         = 0.03
+MIN_LIQUIDITY      = 800
 ALLOW_DOWN_ENTRIES = False
+MAX_ACTIVE_BTC_TRADES = 1
+MAX_ENTRY_PRICE    = 0.58
 
 # ── PARAMETROS DE SALIDA ──────────────────────────────────────────────────────
 MAX_TRADE_DURATION  = 360   # 6 min — el mercado de 5m debería resolver
@@ -34,15 +36,15 @@ RESOLUTION_LOSS     = 0.08  # precio que indica "casi perdió"
 DEFENSIVE_DROP      = 0.35  # si el precio cae 35% desde entrada, salir
 
 # ── PARAMETROS DE SEGURIDAD ───────────────────────────────────────────────────
-SL_COOLDOWN_SEC    = 30
-SL_STREAK_LIMIT    = 3
-SL_STREAK_PAUSE    = 300
-DAILY_LOSS_LIMIT   = -50.0
+SL_COOLDOWN_SEC    = 90
+SL_STREAK_LIMIT    = 2
+SL_STREAK_PAUSE    = 900
+DAILY_LOSS_LIMIT   = -12.0
 
 STATE_THRESHOLDS = [0.15, 0.0, -0.15]
 
 _tune_counter = 0
-_TUNE_EVERY   = 50
+_TUNE_EVERY   = 999999  # desactivado en real: no queremos que afloje filtros solo por historial paper
 
 
 def classify_state(change_pct: float) -> int:
@@ -623,6 +625,9 @@ class BTCScalper:
         if cap_uso >= cap_disp:
             self.log(f"🔒 Capital protegido · en uso ${cap_uso:.2f}", "#F5A623")
             return False
+        if len(active) >= MAX_ACTIVE_BTC_TRADES:
+            self.log(f"⏸️ Ya hay {len(active)} trade BTC activo · sin solapar entradas", "#F5A623")
+            return False
 
         self.log("🧭 Paso 5/6 · buscar mercado BTC 5m", "#ffffff30")
         market = find_active_btc_5m_market(log_fn=self.log)
@@ -750,6 +755,13 @@ class BTCScalper:
 
         clob_token_id = _get_clob_token_id(market, direction)
         entry_price   = _get_best_ask(market, direction)
+
+        if entry_price > MAX_ENTRY_PRICE:
+            self.log(
+                f"⏸️ Entrada cara {entry_price:.3f} > max {MAX_ENTRY_PRICE:.3f}",
+                "#F5A623"
+            )
+            return False
 
         if not _token_has_executable_asks(clob_token_id):
             self.log(f"⏸️ Sin asks reales para {direction.upper()} en CLOB", "#F5A623")

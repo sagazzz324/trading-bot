@@ -371,8 +371,9 @@ class PaperTrader:
         if not PAPER_TRADING:
             try:
                 from src.core.polymarket_executor import place_market_order
-                exec_price = 0.0
-                self._emit(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price=auto (hint={price:.3f})", "#41d6fc")
+                exec_price = min(round(float(price) + 0.02, 2), 0.58)
+                self._emit(f"🔄 Executor: token={market_id[:20]}... amount={position_size:.2f} price≤{exec_price:.2f} (hint={price:.3f})", "#41d6fc")
+                self._emit(f"Protección entrada: precio límite <= {exec_price:.2f}", "#ffffff60")
                 resp = place_market_order(
                     token_id=market_id,
                     side="BUY",
@@ -396,6 +397,11 @@ class PaperTrader:
                 if entry_price_real is not None:
                     trade["entry_price_real"] = round(entry_price_real, 4)
                     trade["entry_slippage"] = round(entry_price_real - float(trade["entry_price_hint"]), 4)
+                    if trade["entry_slippage"] > 0.025:
+                        self._emit(
+                            f"Slippage alto en entrada: hint={float(trade['entry_price_hint']):.3f} real={entry_price_real:.3f}",
+                            "#F5A623"
+                        )
                     trade["entry_price"] = round(entry_price_real, 4)
                     trade["entry_value"] = round(trade["filled_entry_usdc"], 6)
                 logger.info(f"Orden real ejecutada: orderID={trade['order_id']} shares={trade['share_size']}")
