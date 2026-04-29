@@ -6,7 +6,10 @@ import requests
 import logging
 import time as time_module
 import json
+import asyncio
+import threading
 import numpy as np
+from collections import deque
 from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
@@ -88,10 +91,79 @@ def should_enter(P: np.ndarray, current_state: int,
 # ── CACHE COINGECKO ───────────────────────────────────────────────────────────
 _btc_cache   = {"data": [], "ts": 0}
 _price_cache = {"price": 0.0, "ts": 0}
+_binance_ws_started = False
+_binance_ws_lock = threading.Lock()
+_binance_klines = deque(maxlen=240)
+_binance_last_price = 0.0
+_binance_last_ts = 0.0
+
+
+def _start_binance_ws_once():
+    global _binance_ws_started
+    if _binance_ws_started:
+        return
+    with _binance_ws_lock:
+        if _binance_ws_started:
+            return
+        _binance_ws_started = True
+        thread = threading.Thread(target=_run_binance_ws_loop, name="binance-btc-ws", daemon=True)
+        thread.start()
+
+
+def _run_binance_ws_loop():
+    try:
+        asyncio.run(_binance_ws_worker())
+    except Exception as e:
+        logger.error(f"binance ws loop stopped: {e}")
+
+
+async def _binance_ws_worker():
+    global _binance_last_price, _binance_last_ts
+    import websockets
+
+    url = "wss://stream.binance.com:9443/ws/btcusdt@kline_1m"
+    while True:
+        try:
+            async with websockets.connect(url, ping_interval=20, ping_timeout=10, close_timeout=3) as ws:
+                async for raw in ws:
+                    msg = json.loads(raw)
+                    kline = msg.get("k") or {}
+                    close = float(kline.get("c") or 0)
+                    open_time = int(kline.get("t") or 0)
+                    if close <= 0 or open_time <= 0:
+                        continue
+                    _binance_last_price = close
+                    _binance_last_ts = time_module.time()
+                    item = {"open_time": open_time, "close": close}
+                    with _binance_ws_lock:
+                        if _binance_klines and _binance_klines[-1]["open_time"] == open_time:
+                            _binance_klines[-1] = item
+                        else:
+                            _binance_klines.append(item)
+        except Exception as e:
+            logger.error(f"binance ws reconnect: {e}")
+            await asyncio.sleep(2)
+
+
+def _binance_buffer_changes(n: int) -> list:
+    _start_binance_ws_once()
+    with _binance_ws_lock:
+        closes = [float(row["close"]) for row in list(_binance_klines)]
+    if len(closes) < max(8, n // 2):
+        return []
+    changes = [
+        (closes[i] - closes[i - 1]) / closes[i - 1] * 100
+        for i in range(1, len(closes))
+        if closes[i - 1] > 0
+    ]
+    return changes[-n:]
 
 
 def get_btc_candles(n: int = 40) -> list:
     global _btc_cache
+    ws_changes = _binance_buffer_changes(n)
+    if ws_changes:
+        return ws_changes
     if time_module.time() - _btc_cache["ts"] < 60 and _btc_cache["data"]:
         return _btc_cache["data"][-n:]
     try:
@@ -115,6 +187,9 @@ def get_btc_candles(n: int = 40) -> list:
 
 def get_btc_current_price() -> float:
     global _price_cache
+    _start_binance_ws_once()
+    if _binance_last_price > 0 and time_module.time() - _binance_last_ts < 10:
+        return _binance_last_price
     if time_module.time() - _price_cache["ts"] < 15 and _price_cache["price"] > 0:
         return _price_cache["price"]
     try:
