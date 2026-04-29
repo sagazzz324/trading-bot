@@ -31,6 +31,7 @@ MIN_LIQUIDITY      = 800
 ALLOW_DOWN_ENTRIES = False
 MAX_ACTIVE_BTC_TRADES = 1
 MAX_ENTRY_PRICE    = 0.58
+MAX_ESTIMATED_SLIPPAGE = 0.12
 
 # ── PARAMETROS DE SALIDA ──────────────────────────────────────────────────────
 MAX_TRADE_DURATION  = 360   # 6 min — el mercado de 5m debería resolver
@@ -338,6 +339,41 @@ def _token_has_executable_asks(token_id: str) -> bool:
         return False
     asks = book.get("asks") or []
     return len(asks) > 0
+
+
+def _estimate_buy_fill_price(token_id: str, amount_usdc: float) -> float | None:
+    book = _get_token_book(token_id)
+    if not isinstance(book, dict):
+        return None
+    asks = book.get("asks") or []
+    levels = []
+    for ask in asks:
+        try:
+            price = float(ask.get("price") if isinstance(ask, dict) else ask[0])
+            size = float(ask.get("size") if isinstance(ask, dict) else ask[1])
+            if price > 0 and size > 0:
+                levels.append((price, size))
+        except Exception:
+            continue
+    if not levels or amount_usdc <= 0:
+        return None
+    levels.sort(key=lambda row: row[0])
+    remaining = amount_usdc
+    shares = 0.0
+    spent = 0.0
+    for price, size in levels:
+        max_cost = price * size
+        use_cost = min(remaining, max_cost)
+        if use_cost <= 0:
+            continue
+        shares += use_cost / price
+        spent += use_cost
+        remaining -= use_cost
+        if remaining <= 1e-9:
+            break
+    if spent <= 0 or shares <= 0 or remaining > 0.01:
+        return None
+    return round(spent / shares, 4)
 
 
 def _market_has_live_orderbook(market: dict) -> bool:
@@ -870,6 +906,18 @@ class BTCScalper:
 
         if not _token_has_executable_asks(clob_token_id):
             self.log(f"⏸️ Sin asks reales para {direction.upper()} en CLOB", "#F5A623")
+            return False
+
+        estimated_fill = _estimate_buy_fill_price(clob_token_id, position)
+        if estimated_fill is None:
+            self.log("⏸️ Sin liquidez suficiente para estimar fill", "#F5A623")
+            return False
+        estimated_slippage = abs(estimated_fill - entry_price)
+        if estimated_slippage > MAX_ESTIMATED_SLIPPAGE:
+            self.log(
+                f"⏸️ SLIPPAGE ESTIMADO {estimated_slippage:.3f} > {MAX_ESTIMATED_SLIPPAGE:.3f} · ask={entry_price:.3f} fill≈{estimated_fill:.3f}",
+                "#F5A623"
+            )
             return False
 
         self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction} ask={entry_price:.3f}", "#ffffff30")
