@@ -586,11 +586,13 @@ class BTCScalper:
     def run_once(self):
         global _tune_counter, TAU, EPSILON, Q_MIN, Q_MAX
 
+        timing = {"t0": time_module.perf_counter()}
         self.cycle += 1
         self.log(f"🧭 Ciclo BTCScalp #{self.cycle} · start", "#ffffff30")
         self._reset_daily_if_needed()
         self.log("🧭 Paso 1/6 · precio BTC", "#ffffff30")
         get_btc_current_price()
+        timing["t1"] = time_module.perf_counter()
         self.log("🧭 Paso 2/6 · revisar salidas", "#ffffff30")
         self._check_exits()
 
@@ -633,6 +635,7 @@ class BTCScalper:
         market = find_active_btc_5m_market(log_fn=self.log)
         if not market:
             return False
+        timing["t2"] = time_module.perf_counter()
 
         market_id = market.get("conditionId") or market.get("id", "")
         question  = market.get("question", "")
@@ -660,6 +663,7 @@ class BTCScalper:
         current_state = states[-1]
 
         prices = get_market_outcome_prices(market)
+        timing["t3"] = time_module.perf_counter()
         self.log(
             f"Poly Up={prices['up_price']:.3f} Down={prices['down_price']:.3f} · "
             f"estado={current_state} · "
@@ -674,7 +678,7 @@ class BTCScalper:
             if dec["enter"]:
                 return self._execute(market, market_id, question, "up",
                                      prices["up_price"], dec, bankroll,
-                                     cap_disp, cap_uso, current_state)
+                                     cap_disp, cap_uso, current_state, timing)
             self.log(f"⏸️ Up — {dec['reason']}", "#F5A623")
 
         if Q_MIN <= prices["down_price"] <= Q_MAX:
@@ -685,10 +689,11 @@ class BTCScalper:
                     return False
                 return self._execute(market, market_id, question, "down",
                                      prices["down_price"], dec, bankroll,
-                                     cap_disp, cap_uso, current_state)
+                                     cap_disp, cap_uso, current_state, timing)
             self.log(f"⏸️ Down — {dec['reason']}", "#F5A623")
 
         # ── Auto-tuning cada 50 trades ────────────────────────────────────
+        self._log_latency(timing)
         _tune_counter += 1
         if _tune_counter % _TUNE_EVERY == 0:
             try:
@@ -733,7 +738,7 @@ class BTCScalper:
         return False
 
     def _execute(self, market, market_id, question, direction, market_price,
-                 decision, bankroll, cap_disp, cap_uso, current_state):
+                 decision, bankroll, cap_disp, cap_uso, current_state, timing=None):
 
         position = self._calc_position_size(
             decision["gap"], bankroll, cap_disp, cap_uso, current_state
@@ -769,6 +774,9 @@ class BTCScalper:
 
         self.log(f"🔑 clob_token={clob_token_id[:20]}... dir={direction} ask={entry_price:.3f}", "#ffffff30")
 
+        if timing is None:
+            timing = {}
+        timing["t4"] = time_module.perf_counter()
         trade = self.trader.place_trade(
             market_id=clob_token_id,
             question=question,
@@ -780,6 +788,9 @@ class BTCScalper:
             condition_id=market_id,
             direction=direction,
         )
+        timing["t5"] = time_module.perf_counter()
+        timing["t6"] = timing["t5"] if trade else time_module.perf_counter()
+        self._log_latency(timing)
 
         if trade:
             self._open[trade["id"]] = {
@@ -800,3 +811,19 @@ class BTCScalper:
             )
             return True
         return False
+
+    def _log_latency(self, timing: dict):
+        labels = [
+            ("t1", "t0"),
+            ("t2", "t1"),
+            ("t3", "t2"),
+            ("t4", "t3"),
+            ("t5", "t4"),
+            ("t6", "t5"),
+        ]
+        parts = []
+        for end, start in labels:
+            if end in timing and start in timing:
+                parts.append(f"{end}-{start}={int((timing[end] - timing[start]) * 1000)}ms")
+        if parts:
+            self.log("⏱️ " + " ".join(parts), "#41D6FC")
