@@ -91,6 +91,7 @@ def should_enter(P: np.ndarray, current_state: int,
 # ── CACHE COINGECKO ───────────────────────────────────────────────────────────
 _btc_cache   = {"data": [], "ts": 0}
 _price_cache = {"price": 0.0, "ts": 0}
+_market_cache = {"slot": None, "market": None, "condition_id": "", "tokens": {}}
 _binance_ws_started = False
 _binance_ws_lock = threading.Lock()
 _binance_klines = deque(maxlen=240)
@@ -221,6 +222,10 @@ def find_active_btc_5m_market(log_fn=None):
     log = log_fn or (lambda m, c="#ffffff40": None)
     now = int(time_module.time())
     interval = 300
+    slot = now // interval
+    cached = _market_cache.get("market")
+    if _market_cache.get("slot") == slot and cached:
+        return cached
 
     for i in [0, 1, 2, 3, -1]:
         ts = ((now // interval) + i) * interval
@@ -234,6 +239,7 @@ def find_active_btc_5m_market(log_fn=None):
                     m = events[0]["markets"][0]
                     if _is_valid_btc_updown(m) and _market_has_live_orderbook(m):
                         logger.info(f"Mercado encontrado: {slug}")
+                        _set_market_cache(slot, m)
                         return m
         except Exception:
             continue
@@ -252,6 +258,7 @@ def find_active_btc_5m_market(log_fn=None):
                     markets = event.get("markets", [])
                     if markets and _is_valid_btc_updown(markets[0]) and _market_has_live_orderbook(markets[0]):
                         logger.info(f"Mercado encontrado por keyword: {slug}")
+                        _set_market_cache(slot, markets[0])
                         return markets[0]
     except Exception as e:
         logger.error(f"find_active_btc_5m_market fallback: {e}")
@@ -278,6 +285,21 @@ def _is_valid_btc_updown(market) -> bool:
     except:
         pass
     return True
+
+
+def _set_market_cache(slot: int, market: dict):
+    tokens = {}
+    for direction in ("up", "down"):
+        try:
+            tokens[direction] = _get_clob_token_id(market, direction)
+        except Exception:
+            tokens[direction] = ""
+    _market_cache.update({
+        "slot": slot,
+        "market": market,
+        "condition_id": market.get("conditionId") or market.get("id", ""),
+        "tokens": tokens,
+    })
 
 
 def _token_has_orderbook(token_id: str) -> bool:
@@ -358,6 +380,9 @@ def get_market_outcome_prices(market) -> dict:
 
 
 def _get_clob_token_id(market: dict, direction: str) -> str:
+    cached_tokens = _market_cache.get("tokens") or {}
+    if _market_cache.get("market") is market and cached_tokens.get(direction):
+        return cached_tokens[direction]
     try:
         clob_tokens = market.get("clobTokenIds", "[]")
         if isinstance(clob_tokens, str):
