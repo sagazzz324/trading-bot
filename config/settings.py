@@ -8,6 +8,24 @@ def _is_truthy(value: str | None, default: bool = True) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_trading_mode(value: str | None) -> str:
+    mode = (value or "").strip().lower()
+    if not mode:
+        return "paper"
+    aliases = {
+        "sim": "paper",
+        "simulate": "paper",
+        "dry": "shadow",
+        "dry-run": "shadow",
+        "readonly": "shadow",
+        "real": "live",
+    }
+    mode = aliases.get(mode, mode)
+    if mode not in {"paper", "shadow", "live"}:
+        return "paper"
+    return mode
+
+
 # En Railway usamos solo variables del entorno remoto.
 # El .env local queda reservado para desarrollo local.
 if not os.getenv("RAILWAY_ENVIRONMENT"):
@@ -15,7 +33,10 @@ if not os.getenv("RAILWAY_ENVIRONMENT"):
 
 
 # Modo de operación
-PAPER_TRADING = _is_truthy(os.getenv("PAPER_TRADING"), default=True)
+TRADING_MODE = _normalize_trading_mode(os.getenv("TRADING_MODE"))
+PAPER_TRADING = TRADING_MODE != "live"
+SHADOW_TRADING = TRADING_MODE == "shadow"
+LIVE_TRADING = TRADING_MODE == "live"
 
 # Capital
 BANKROLL = float(os.getenv("BANKROLL", 1000))

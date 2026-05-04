@@ -4,7 +4,15 @@ bybit_client.py — Bybit API client con verbose error logging
 import logging
 import traceback
 from pybit.unified_trading import HTTP
-from config.settings import BYBIT_API_KEY, BYBIT_SECRET_KEY, BYBIT_TESTNET, PAPER_TRADING
+from config.settings import (
+    BYBIT_API_KEY,
+    BYBIT_SECRET_KEY,
+    BYBIT_TESTNET,
+    TRADING_MODE,
+    PAPER_TRADING,
+    SHADOW_TRADING,
+    LIVE_TRADING,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +24,31 @@ class BybitClient:
             api_key=BYBIT_API_KEY,
             api_secret=BYBIT_SECRET_KEY,
         )
+        self.mode = TRADING_MODE
         self.paper = PAPER_TRADING
-        logger.info(f"Bybit init (testnet={BYBIT_TESTNET}, paper={self.paper})")
+        self.shadow = SHADOW_TRADING
+        self.live = LIVE_TRADING
+        logger.info(
+            f"Bybit init (testnet={BYBIT_TESTNET}, mode={self.mode}, paper={self.paper})"
+        )
+
+    def get_execution_mode(self) -> str:
+        return self.mode
+
+    def can_execute_orders(self) -> bool:
+        return self.live
+
+    def build_order_preview(self, symbol: str, side: str, qty: float,
+                            order_type: str = "Market") -> dict:
+        return {
+            "mode": self.mode,
+            "category": "linear",
+            "symbol": symbol,
+            "side": side.capitalize(),
+            "orderType": order_type,
+            "qty": str(qty),
+            "timeInForce": "IOC",
+        }
 
     # ── PRICE ─────────────────────────────────────────────────────────────────
 
@@ -151,13 +182,105 @@ class BybitClient:
             logger.error(f"get_balance {asset}:\n{traceback.format_exc()}")
             return 0.0
 
+    def get_account_snapshot(self, asset: str = "USDT") -> dict:
+        try:
+            r = self.client.get_wallet_balance(accountType="UNIFIED", coin=asset)
+            account = r.get("result", {}).get("list", [{}])[0]
+            coins = account.get("coin", [])
+            coin = next((c for c in coins if c.get("coin") == asset), None)
+            if not coin:
+                logger.error(f"get_account_snapshot: {asset} no encontrado â€” response={r}")
+                return {
+                    "asset": asset,
+                    "wallet_balance": 0.0,
+                    "equity": 0.0,
+                    "free_balance": 0.0,
+                    "unrealized_pnl": 0.0,
+                    "account_im": 0.0,
+                    "account_mm": 0.0,
+                    "mode": self.mode,
+                }
+            return {
+                "asset": asset,
+                "wallet_balance": float(coin.get("walletBalance", 0) or 0),
+                "equity": float(coin.get("equity", 0) or 0),
+                "free_balance": float(coin.get("availableToWithdraw", 0) or 0),
+                "unrealized_pnl": float(coin.get("unrealisedPnl", 0) or 0),
+                "account_im": float(account.get("totalInitialMargin", 0) or 0),
+                "account_mm": float(account.get("totalMaintenanceMargin", 0) or 0),
+                "mode": self.mode,
+            }
+        except Exception:
+            logger.error(f"get_account_snapshot {asset}:\n{traceback.format_exc()}")
+            return {
+                "asset": asset,
+                "wallet_balance": 0.0,
+                "equity": 0.0,
+                "free_balance": 0.0,
+                "unrealized_pnl": 0.0,
+                "account_im": 0.0,
+                "account_mm": 0.0,
+                "mode": self.mode,
+            }
+
+    def get_positions(self, settle_coin: str = "USDT") -> list:
+        try:
+            r = self.client.get_positions(category="linear", settleCoin=settle_coin)
+            items = r.get("result", {}).get("list", [])
+            positions = []
+            for item in items:
+                size = float(item.get("size", 0) or 0)
+                if size <= 0:
+                    continue
+                positions.append({
+                    "symbol": item.get("symbol"),
+                    "side": (item.get("side") or "").capitalize(),
+                    "size": size,
+                    "avg_price": float(item.get("avgPrice", 0) or 0),
+                    "mark_price": float(item.get("markPrice", 0) or 0),
+                    "unrealized_pnl": float(item.get("unrealisedPnl", 0) or 0),
+                    "position_value": float(item.get("positionValue", 0) or 0),
+                    "leverage": float(item.get("leverage", 0) or 0),
+                    "updated_time": item.get("updatedTime"),
+                })
+            return positions
+        except Exception:
+            logger.error(f"get_positions:\n{traceback.format_exc()}")
+            return []
+
+    def get_open_position(self, symbol: str) -> dict | None:
+        try:
+            r = self.client.get_positions(category="linear", symbol=symbol)
+            items = r.get("result", {}).get("list", [])
+            for item in items:
+                size = float(item.get("size", 0) or 0)
+                if size <= 0:
+                    continue
+                return {
+                    "symbol": item.get("symbol"),
+                    "side": (item.get("side") or "").capitalize(),
+                    "size": size,
+                    "avg_price": float(item.get("avgPrice", 0) or 0),
+                    "mark_price": float(item.get("markPrice", 0) or 0),
+                    "unrealized_pnl": float(item.get("unrealisedPnl", 0) or 0),
+                    "position_value": float(item.get("positionValue", 0) or 0),
+                    "leverage": float(item.get("leverage", 0) or 0),
+                    "updated_time": item.get("updatedTime"),
+                }
+            return None
+        except Exception:
+            logger.error(f"get_open_position {symbol}:\n{traceback.format_exc()}")
+            return None
+
     # ── PLACE ORDER ───────────────────────────────────────────────────────────
 
     def place_order(self, symbol: str, side: str, qty: float,
                     order_type: str = "Market") -> dict | None:
+        preview = self.build_order_preview(symbol, side, qty, order_type=order_type)
         if self.paper:
-            logger.info(f"[PAPER] {side} {qty} {symbol}")
-            return {"paper": True, "symbol": symbol, "side": side, "qty": qty}
+            tag = "[SHADOW]" if self.shadow else "[PAPER]"
+            logger.info(f"{tag} preview order: {preview}")
+            return {"paper": not self.shadow, "shadow": self.shadow, "preview": preview}
         try:
             r = self.client.place_order(
                 category="linear",
@@ -168,10 +291,50 @@ class BybitClient:
                 timeInForce="IOC",
             )
             logger.info(f"Order placed: {side} {qty} {symbol} → {r}")
-            return r.get("result")
+            result = r.get("result", {})
+            return {
+                "mode": self.mode,
+                "symbol": symbol,
+                "side": side.capitalize(),
+                "qty": qty,
+                "order_type": order_type,
+                "order_id": result.get("orderId"),
+                "order_link_id": result.get("orderLinkId"),
+                "raw": result,
+            }
         except Exception as e:
             logger.error(f"place_order {symbol}:\n{traceback.format_exc()}")
             return None
+
+    def place_market_order(self, symbol: str, side: str, qty: float) -> dict | None:
+        return self.place_order(symbol=symbol, side=side, qty=qty, order_type="Market")
+
+    def get_order_executions(self, symbol: str, order_id: str, limit: int = 20) -> list:
+        try:
+            r = self.client.get_executions(
+                category="linear",
+                symbol=symbol,
+                orderId=order_id,
+                limit=limit,
+            )
+            items = r.get("result", {}).get("list", [])
+            executions = []
+            for item in items:
+                executions.append({
+                    "symbol": item.get("symbol"),
+                    "side": item.get("side"),
+                    "order_id": item.get("orderId"),
+                    "exec_id": item.get("execId"),
+                    "price": float(item.get("execPrice", 0) or 0),
+                    "qty": float(item.get("execQty", 0) or 0),
+                    "value": float(item.get("execValue", 0) or 0),
+                    "fee": float(item.get("execFee", 0) or 0),
+                    "time": item.get("execTime"),
+                })
+            return executions
+        except Exception:
+            logger.error(f"get_order_executions {symbol} {order_id}:\n{traceback.format_exc()}")
+            return []
 
     # ── WEBSOCKET ─────────────────────────────────────────────────────────────
 
