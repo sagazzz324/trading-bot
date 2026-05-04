@@ -115,6 +115,10 @@ def _run_bot(st: BybitState):
         client = BybitClient()
         price = client.get_price("BTCUSDT")
         snapshot = client.get_account_snapshot("USDT")
+        if snapshot["equity"] > 0 and st.trading_mode == "live":
+            st.balance = snapshot["equity"]
+            if not st.closed_trades and not st.open_positions:
+                st.initial_balance = snapshot["equity"]
         st.add_log(
             f"Bybit conectado · BTC ${price:,.2f} · free ${snapshot['free_balance']:.2f} · eq ${snapshot['equity']:.2f}",
             "#00E887",
@@ -176,6 +180,11 @@ def _run_scalping_cycle(st: BybitState):
     bot = ScalpingBot(max_positions=3, risk_per_trade=0.01, capital=st.balance)
     with st._lock:
         bot.state["open_positions"] = list(st.open_positions)
+        bot.state["trades"] = list(reversed(st.closed_trades))
+        bot.state["total_pnl"] = round(st.balance - st.initial_balance, 4)
+        bot.state["session_pnl"] = st.session_pnl
+        bot.state["win_count"] = st.win_count
+        bot.state["loss_count"] = st.loss_count
     bot.capital = st.balance
     bot.initial_cap = st.initial_balance
 
@@ -198,26 +207,14 @@ def _run_scalping_cycle(st: BybitState):
     builtins.print = log_print
 
     try:
-        orig_close = bot._close_position
-
-        def close_sync(pos, exit_price, reason, pnl):
-            orig_close(pos, exit_price, reason, pnl)
-            st.close_position(pos["id"], exit_price, reason, pnl)
-
-        bot._close_position = close_sync
-
-        orig_open = bot.open_position
-
-        def open_sync(signal):
-            pos = orig_open(signal)
-            if pos:
-                st.add_position(pos)
-            return pos
-
-        bot.open_position = open_sync
         bot.run_once()
 
         with st._lock:
+            st.open_positions = list(bot.state["open_positions"])
+            st.closed_trades = list(reversed(bot.state["trades"]))[:50]
+            st.win_count = bot.state.get("win_count", st.win_count)
+            st.loss_count = bot.state.get("loss_count", st.loss_count)
+            st.session_pnl = bot.state.get("session_pnl", st.session_pnl)
             st.balance = bot.capital
 
         stats = st.get_stats()

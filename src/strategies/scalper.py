@@ -96,6 +96,7 @@ class ScalpingBot:
     def __init__(self, max_positions=MAX_POSITIONS, risk_per_trade=0.01, capital=1000.0):
         from src.exchanges.bybit_client import BybitClient
         self.client         = BybitClient()
+        self.mode           = self.client.get_execution_mode()
         self.max_positions  = max_positions
         self.risk_per_trade = risk_per_trade
         self.capital        = capital
@@ -111,6 +112,24 @@ class ScalpingBot:
         self._htf_cache: dict[str,tuple] = {}
         self._htf_ttl       = 300
         self._lock          = threading.Lock()
+        self._sync_capital_from_exchange(initial=True)
+
+    def _sync_capital_from_exchange(self, initial: bool = False):
+        if self.mode != "live":
+            return
+        try:
+            snapshot = self.client.get_account_snapshot("USDT")
+            equity = float(snapshot.get("equity", 0) or 0)
+            free_balance = float(snapshot.get("free_balance", 0) or 0)
+            if equity > 0:
+                self.capital = equity
+                if initial:
+                    self.initial_cap = equity
+                logger.info(
+                    f"Live capital sync: equity={equity:.2f} free={free_balance:.2f}"
+                )
+        except Exception:
+            logger.error(f"_sync_capital_from_exchange:\n{traceback.format_exc()}")
 
     # ── CIRCUIT BREAKERS ──────────────────────────────────────────────────────
 
@@ -267,37 +286,132 @@ class ScalpingBot:
             pos = self._calc_position(signal)
             if not pos:
                 return
-            position = {
-                "id":            len(self.state["trades"]) + 1,
-                "symbol":        signal["symbol"],
-                "direction":     signal["direction"],
-                "entry_price":   pos["fill_price"],
-                "sl_price":      pos["sl"],
-                "tp_price":      pos["tp"],
-                "position_usdt": pos["size"],
-                "quantity":      pos["qty"],
-                "sl_pct":        pos["sl_pct"],
-                "tp_pct":        pos["tp_pct"],
-                "fee_paid":      pos["fee_usdt"],
-                "reasons":       signal.get("reasons", []),
-                "strength":      signal["strength"],
-                "rsi":           signal.get("rsi", 50),
-                "htf_trend":     signal.get("htf", "neutral"),
-                "ob_imbalance":  signal.get("ob", {}).get("imbalance", 0.5),
-                "timestamp":     datetime.now().isoformat(),
-                "status":        "open"
-            }
+            if self.mode == "live":
+                position = self._execute_live_entry(signal, pos)
+            else:
+                position = self._execute_simulated_entry(signal, pos)
+            if not position:
+                return
             with self._lock:
                 self.state["open_positions"].append(position)
             save_state_async(self.state)
-            icon = "🟢" if signal["direction"] == "long" else "🔴"
-            print(f"{icon} {signal['symbol']} {signal['direction'].upper()} "
-                  f"@ ${pos['fill_price']:.4f} | {signal['strength']}/100 "
-                  f"| HTF:{signal.get('htf','?')} "
-                  f"| OB:{signal.get('ob',{}).get('imbalance',0.5):.2f} "
-                  f"| SL${pos['sl']:.4f} TP${pos['tp']:.4f}")
         except Exception as e:
             logger.error(f"_execute_entry {signal.get('symbol')}:\n{traceback.format_exc()}")
+
+    def _build_position_record(self, signal: dict, pos: dict, *,
+                               entry_price: float, qty: float, fee_paid: float,
+                               order_meta: dict | None = None) -> dict:
+        return {
+            "id":            len(self.state["trades"]) + 1,
+            "symbol":        signal["symbol"],
+            "direction":     signal["direction"],
+            "entry_price":   entry_price,
+            "sl_price":      pos["sl"],
+            "tp_price":      pos["tp"],
+            "position_usdt": pos["size"],
+            "quantity":      qty,
+            "sl_pct":        pos["sl_pct"],
+            "tp_pct":        pos["tp_pct"],
+            "fee_paid":      fee_paid,
+            "reasons":       signal.get("reasons", []),
+            "strength":      signal["strength"],
+            "rsi":           signal.get("rsi", 50),
+            "htf_trend":     signal.get("htf", "neutral"),
+            "ob_imbalance":  signal.get("ob", {}).get("imbalance", 0.5),
+            "timestamp":     datetime.now().isoformat(),
+            "status":        "open",
+            "mode":          self.mode,
+            "order_meta":    order_meta or {},
+        }
+
+    def _execute_simulated_entry(self, signal: dict, pos: dict) -> dict:
+        order_meta = {"simulated": True, "mode": self.mode}
+        if self.mode == "shadow":
+            side = "Buy" if signal["direction"] == "long" else "Sell"
+            preview = self.client.build_order_preview(signal["symbol"], side, pos["qty"])
+            order_meta["preview"] = preview
+            print(f"[SHADOW] preview {preview}")
+        position = self._build_position_record(
+            signal,
+            pos,
+            entry_price=pos["fill_price"],
+            qty=pos["qty"],
+            fee_paid=pos["fee_usdt"],
+            order_meta=order_meta,
+        )
+        icon = "🟢" if signal["direction"] == "long" else "🔴"
+        print(f"{icon} {signal['symbol']} {signal['direction'].upper()} "
+              f"@ ${pos['fill_price']:.4f} | {signal['strength']}/100 "
+              f"| HTF:{signal.get('htf','?')} "
+              f"| OB:{signal.get('ob',{}).get('imbalance',0.5):.2f} "
+              f"| SL${pos['sl']:.4f} TP${pos['tp']:.4f}")
+        return position
+
+    def _fetch_execution_summary(self, symbol: str, order_id: str, retries: int = 4,
+                                 delay: float = 0.8) -> dict | None:
+        for attempt in range(retries):
+            executions = self.client.get_order_executions(symbol, order_id)
+            if executions:
+                total_qty = sum(x["qty"] for x in executions)
+                total_value = sum(x["value"] for x in executions)
+                total_fee = sum(x["fee"] for x in executions)
+                avg_price = (total_value / total_qty) if total_qty > 0 else 0.0
+                return {
+                    "qty": total_qty,
+                    "value": total_value,
+                    "avg_price": avg_price,
+                    "fee": total_fee,
+                    "executions": executions,
+                }
+            if attempt < retries - 1:
+                time.sleep(delay)
+        return None
+
+    def _execute_live_entry(self, signal: dict, pos: dict) -> dict | None:
+        side = "Buy" if signal["direction"] == "long" else "Sell"
+        order_resp = self.client.place_market_order(signal["symbol"], side, pos["qty"])
+        if not order_resp or not order_resp.get("order_id"):
+            logger.error(f"live entry {signal['symbol']}: respuesta inválida {order_resp}")
+            return None
+        fill = self._fetch_execution_summary(signal["symbol"], order_resp["order_id"])
+        if not fill or fill["qty"] <= 0 or fill["avg_price"] <= 0:
+            logger.error(
+                f"live entry {signal['symbol']}: sin fills para orden {order_resp['order_id']}"
+            )
+            return None
+
+        entry_price = round(fill["avg_price"], 6)
+        qty = round(fill["qty"], 6)
+        fee_paid = round(fill["fee"], 6)
+        direction = signal["direction"]
+        sl = round(entry_price * (1 - pos["sl_pct"] / 100), 6) if direction == "long" else round(entry_price * (1 + pos["sl_pct"] / 100), 6)
+        tp = round(entry_price * (1 + pos["tp_pct"] / 100), 6) if direction == "long" else round(entry_price * (1 - pos["tp_pct"] / 100), 6)
+        live_pos = dict(pos)
+        live_pos["sl"] = sl
+        live_pos["tp"] = tp
+        live_pos["qty"] = qty
+        live_pos["fill_price"] = entry_price
+        position = self._build_position_record(
+            signal,
+            live_pos,
+            entry_price=entry_price,
+            qty=qty,
+            fee_paid=fee_paid,
+            order_meta={
+                "simulated": False,
+                "mode": self.mode,
+                "entry_order_id": order_resp["order_id"],
+                "entry_preview": self.client.build_order_preview(signal["symbol"], side, pos["qty"]),
+                "entry_executions": fill["executions"],
+                "entry_value": round(fill["value"], 6),
+            },
+        )
+        self._sync_capital_from_exchange()
+        icon = "🟢" if signal["direction"] == "long" else "🔴"
+        print(f"{icon} LIVE {signal['symbol']} {signal['direction'].upper()} "
+              f"@ ${entry_price:.4f} qty={qty:.6f} fee=${fee_paid:.4f} "
+              f"| SL${sl:.4f} TP${tp:.4f}")
+        return position
 
     def _calc_position(self, signal) -> dict | None:
         try:
@@ -362,12 +476,12 @@ class ScalpingBot:
                 net_pnl  = pos["position_usdt"] * (pnl_pct - FEE_RT*100) / 100
                 if hit_tp:
                     print(f"🎯 TP {pos['symbol']} +${net_pnl:.4f}")
-                    self._close_position(pos, current, "tp", net_pnl)
-                    closed.append(pos["id"])
+                    if self._close_position(pos, current, "tp", net_pnl):
+                        closed.append(pos["id"])
                 elif hit_sl:
                     print(f"🛑 SL {pos['symbol']} -${abs(net_pnl):.4f}")
-                    self._close_position(pos, current, "sl", net_pnl)
-                    closed.append(pos["id"])
+                    if self._close_position(pos, current, "sl", net_pnl):
+                        closed.append(pos["id"])
                 elif pnl_pct > 1.0:
                     new_sl  = round(current*0.997,6) if d=="long" else round(current*1.003,6)
                     better  = new_sl > pos["sl_price"] if d=="long" else new_sl < pos["sl_price"]
@@ -385,7 +499,12 @@ class ScalpingBot:
                 ]
             save_state_async(self.state)
 
-    def _close_position(self, pos, exit_price, reason, pnl):
+    def _close_position(self, pos, exit_price, reason, pnl) -> bool:
+        if self.mode == "live":
+            return self._close_live_position(pos, reason)
+        return self._close_simulated_position(pos, exit_price, reason, pnl)
+
+    def _close_simulated_position(self, pos, exit_price, reason, pnl) -> bool:
         trade = {
             **pos,
             "exit_price":  exit_price,
@@ -403,6 +522,64 @@ class ScalpingBot:
             else:       self.state["loss_count"] += 1
         self.capital += pnl
         save_state_async(self.state)
+        return True
+
+    def _close_live_position(self, pos, reason: str) -> bool:
+        try:
+            side = "Sell" if pos["direction"] == "long" else "Buy"
+            qty = float(pos.get("quantity", 0) or 0)
+            if qty <= 0:
+                logger.error(f"live close {pos.get('symbol')}: quantity inválida {qty}")
+                return False
+            order_resp = self.client.place_market_order(
+                pos["symbol"], side, qty, reduce_only=True
+            )
+            if not order_resp or not order_resp.get("order_id"):
+                logger.error(f"live close {pos['symbol']}: respuesta inválida {order_resp}")
+                return False
+            fill = self._fetch_execution_summary(pos["symbol"], order_resp["order_id"])
+            if not fill or fill["qty"] <= 0 or fill["avg_price"] <= 0:
+                logger.error(
+                    f"live close {pos['symbol']}: sin fills para orden {order_resp['order_id']}"
+                )
+                return False
+            exit_price = round(fill["avg_price"], 6)
+            gross = (
+                fill["value"] - pos["quantity"] * pos["entry_price"]
+                if pos["direction"] == "long"
+                else pos["quantity"] * pos["entry_price"] - fill["value"]
+            )
+            pnl = round(gross - pos.get("fee_paid", 0) - fill["fee"], 4)
+            trade = {
+                **pos,
+                "exit_price": exit_price,
+                "exit_reason": reason,
+                "pnl_usdt": pnl,
+                "pnl_pct": round((exit_price-pos["entry_price"])/pos["entry_price"]*100,4),
+                "closed_at": datetime.now().isoformat(),
+                "status": "closed",
+                "order_meta": {
+                    **(pos.get("order_meta") or {}),
+                    "exit_order_id": order_resp["order_id"],
+                    "exit_executions": fill["executions"],
+                    "exit_value": round(fill["value"], 6),
+                },
+            }
+            with self._lock:
+                self.state["trades"].append(trade)
+                self.state["total_pnl"] = round(self.state["total_pnl"] + pnl, 4)
+                self.state["session_pnl"] = round(self.state["session_pnl"] + pnl, 4)
+                if pnl > 0:
+                    self.state["win_count"] += 1
+                else:
+                    self.state["loss_count"] += 1
+            self._sync_capital_from_exchange()
+            save_state_async(self.state)
+            print(f"✅ LIVE CLOSE {pos['symbol']} @ ${exit_price:.4f} pnl=${pnl:.4f}")
+            return True
+        except Exception:
+            logger.error(f"_close_live_position {pos.get('symbol')}:\n{traceback.format_exc()}")
+            return False
 
     # ── POLLING FALLBACK ──────────────────────────────────────────────────────
 

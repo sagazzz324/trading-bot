@@ -2,22 +2,17 @@ import eventlet
 import json
 import logging
 import traceback
-from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 
 from src.core.bot_controller_bybit import bybit_state, start_bybit, stop_bybit
-from src.core.bot_controller_poly  import poly_state,  start_poly,  stop_poly
-from src.core.btc_scalper import _price_cache as btc_price_cache
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 logger = logging.getLogger(__name__)
 
-TEMPLATE  = Path(__file__).parent / "dashboard_template.html"
-POLY_LOG  = Path("logs/paper_trades.json")
-SCALP_LOG = Path("logs/scalping_trades.json")
+TEMPLATE = Path(__file__).parent / "dashboard_template.html"
 
 
 def _load_json(path: Path) -> dict:
@@ -25,182 +20,33 @@ def _load_json(path: Path) -> dict:
         try:
             with open(path) as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return {}
 
 
-def _now_ar() -> str:
-    return datetime.now(timezone(timedelta(hours=-3))).isoformat()
-
-
-def _parse_iso(value: str | None):
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except Exception:
-        return None
-
-
-def _session_started_at():
-    started = _parse_iso(getattr(poly_state, "session_started_at", None))
-    if started:
-        return started
-    return None
-
-
-def _filter_session_rows(rows: list[dict], session_started_at):
-    if not session_started_at:
-        return list(rows or [])
-    filtered = []
-    for row in rows or []:
-        ts = _parse_iso(row.get("ts"))
-        if ts and ts >= session_started_at:
-            filtered.append(row)
-    return filtered
-
-
-def _build_session_report() -> dict:
-    equity_data = _load_json(Path("logs/equity.json"))
-    session_started = _session_started_at()
-    curve = _filter_session_rows(equity_data.get("equity_curve", []), session_started)
-    ledger = _filter_session_rows(equity_data.get("trade_ledger", []), session_started)
-
-    def cash_pnl(t):
-        try:
-            entry = float(t.get("filled_entry_usdc") or 0)
-            if entry > 0 and t.get("filled_exit_usdc") is not None:
-                return round(float(t.get("filled_exit_usdc") or 0) - entry, 6)
-        except Exception:
-            pass
-        return float(t.get("pnl", 0) or 0)
-
-    for t in ledger:
-        pnl = cash_pnl(t)
-        t["cash_pnl"] = round(pnl, 2)
-        t["pnl"] = round(pnl, 2)
-        t["result"] = "win" if pnl > 0 else "loss" if pnl < 0 else "flat"
-
-    wins = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) > 0]
-    losses = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) < 0]
-    flats = [t for t in ledger if float(t.get("cash_pnl", 0) or 0) == 0]
-    total_pnl = round(sum(float(t.get("cash_pnl", 0) or 0) for t in ledger), 2)
-    avg_pnl = round(total_pnl / len(ledger), 4) if ledger else 0.0
-
-    slips = [float(t.get("entry_slippage") or 0) for t in ledger if t.get("entry_slippage") is not None]
-    realized_returns = []
-    for t in ledger:
-        entry_usdc = float(t.get("filled_entry_usdc") or 0)
-        exit_usdc = float(t.get("filled_exit_usdc") or 0)
-        if entry_usdc > 0 and exit_usdc > 0:
-            realized_returns.append(((exit_usdc - entry_usdc) / entry_usdc) * 100)
-
-    balance_start = None
-    balance_end = None
-    if curve:
-        balance_start = float(curve[0].get("balance", 0) or 0)
-        balance_end = float(curve[-1].get("balance", 0) or 0)
-
-    current_data = get_data()
-    poly = current_data.get("poly", {})
-
-    return {
-        "generated_at": _now_ar(),
-        "session_started_at": session_started.isoformat() if session_started else None,
-        "summary": {
-            "trade_count": len(ledger),
-            "wins": len(wins),
-            "losses": len(losses),
-            "flats": len(flats),
-            "win_rate": round((len(wins) / len(ledger)) * 100, 2) if ledger else 0.0,
-            "total_pnl": total_pnl,
-            "avg_pnl_per_trade": avg_pnl,
-            "avg_entry_slippage": round(sum(slips) / len(slips), 4) if slips else 0.0,
-            "avg_realized_return": round(sum(realized_returns) / len(realized_returns), 4) if realized_returns else 0.0,
-            "balance_start": round(balance_start, 2) if balance_start is not None else None,
-            "balance_end": round(balance_end, 2) if balance_end is not None else None,
-            "free_balance_now": poly.get("bankroll"),
-            "pending_capital_now": poly.get("pending_capital"),
-            "estimated_total_now": poly.get("estimated_total"),
-        },
-        "equity_curve": curve,
-        "trade_ledger": ledger,
-    }
-
-
 def get_data() -> dict:
-    # ── Bybit (from memory) ───────────────────────────────────────────────────
     s = bybit_state.get_stats()
     bybit = {
         "bankroll":        s["balance"],
         "initial_balance": bybit_state.initial_balance,
         "total_pnl":       round(s["balance"] - bybit_state.initial_balance, 2),
         "session_pnl":     s["session_pnl"],
+        "trading_mode":    bybit_state.trading_mode,
         "win_rate":        s["win_rate"],
         "total_trades":    s["total_trades"],
         "open_positions":  bybit_state.open_positions,
-        "recent_trades":   bybit_state.closed_trades[:10],
+        "recent_trades":   bybit_state.closed_trades[:20],
         "running":         bybit_state.running,
         "strategy":        bybit_state.strategy,
-        "logs":            bybit_state.logs[:30],
+        "active_strategy": bybit_state.active_strategy,
+        "regime":          bybit_state.regime,
+        "orch_reason":     bybit_state.orch_reason,
+        "logs":            bybit_state.logs[:50],
         "last_cycle":      bybit_state.last_cycle,
         "cycle_count":     bybit_state.cycle_count,
     }
-
-    # ── Polymarket (from JSON file) ───────────────────────────────────────────
-    try:
-        from src.core.paper_trader import PaperTrader
-        poly_data = PaperTrader().load_state()
-    except Exception:
-        poly_data = _load_json(POLY_LOG)
-    trades    = poly_data.get("trades", [])
-    resolved  = [t for t in trades if t.get("status") == "resolved"]
-    wins      = [t for t in resolved if t.get("result") == "win"]
-    active_trades = poly_data.get("active_trades", [])
-    total_pnl = sum(t.get("pnl", 0) for t in resolved)
-    bankroll  = poly_data.get("wallet_balance", poly_data.get("bankroll", 1000))
-    init_bank = poly_data.get("initial_bankroll", 1000)
-    estimated_bankroll = poly_data.get("bankroll", bankroll)
-    pending_capital = sum(float(t.get("position_size", 0) or 0) for t in active_trades)
-    estimated_total = bankroll + pending_capital
-
-    import time as _t
-    try:
-        from src.core.polymarket_executor import get_balance as get_poly_balance
-        live_balance = float(get_poly_balance())
-        if live_balance > 0:
-            bankroll = live_balance
-            poly_data["wallet_balance"] = live_balance
-            poly_data["balance_source"] = "executor_live"
-    except Exception:
-        pass
-
-    poly = {
-        "bankroll":        round(bankroll, 2),
-        "initial_balance": init_bank,
-        "total_pnl":       round(total_pnl, 2),
-        "win_rate":        round(len(wins) / len(resolved) * 100, 1) if resolved else 0,
-        "total_trades":    len(resolved),
-        "open_positions":  active_trades,
-        "recent_trades":   trades[-10:][::-1],
-        "estimated_bankroll": round(estimated_bankroll, 2),
-        "pending_capital": round(pending_capital, 2),
-        "pending_positions": len(active_trades),
-        "estimated_total": round(estimated_total, 2),
-        "balance_source":   poly_data.get("balance_source", "paper"),
-        "last_balance_sync": poly_data.get("last_balance_sync"),
-        "running":         poly_state.running,
-        "logs":            poly_state.logs[:30],
-        "last_cycle":      poly_state.last_cycle,
-        "cycle_count":     poly_state.cycle_count,
-        "interval":        poly_state.interval,
-        "market_mode":     poly_state.market_mode,
-        "btc_embed_slug":  f"btc-updown-5m-{(int(_t.time()) // 300 + 1) * 300}",
-        "btc_price":       btc_price_cache.get("price", 0),
-    }
-
-    return {"bybit": bybit, "poly": poly}
+    return {"bybit": bybit}
 
 
 # ── ROUTES ────────────────────────────────────────────────────────────────────
@@ -217,10 +63,7 @@ def api_data():
 
 @app.route("/api/positions")
 def api_positions():
-    return jsonify({
-        "bybit": bybit_state.open_positions,
-        "poly":  _load_json(POLY_LOG).get("active_trades", [])
-    })
+    return jsonify({"bybit": bybit_state.open_positions})
 
 
 @app.route("/api/tv/signal")
@@ -230,20 +73,12 @@ def tv_signal():
     pos = bybit_state.open_positions[-1]
     return jsonify({
         "active":    True,
-        "symbol":    pos["symbol"],
-        "direction": pos["direction"],
-        "entry":     pos["entry_price"],
-        "sl":        pos["sl_price"],
-        "tp":        pos["tp_price"],
+        "symbol":    pos.get("symbol"),
+        "direction": pos.get("direction"),
+        "entry":     pos.get("entry_price"),
+        "sl":        pos.get("sl_price"),
+        "tp":        pos.get("tp_price"),
     })
-
-
-@app.route("/api/poly/interval", methods=["POST"])
-def poly_interval():
-    mins = int((request.json or {}).get("minutes", 15))
-    poly_state.interval = max(1, min(60, mins))
-    poly_state.add_log(f"Intervalo → {poly_state.interval} min", "#41d6fc")
-    return jsonify({"ok": True})
 
 
 @app.route("/webhook/tradingview", methods=["POST"])
@@ -253,25 +88,12 @@ def tradingview_webhook():
         symbol = data.get("symbol", "BTCUSDT").replace("BINANCE:", "").replace(".P", "")
         action = data.get("action", "notify_only").lower()
         price  = float(data.get("price", 0))
-        bybit_state.add_log(f"TradingView: {action.upper()} {symbol} @ ${price:.4f}", "#f0c040")
+        bybit_state.add_log(f"TradingView: {action.upper()} {symbol} @ ${price:.4f}", "#FBBF24")
         socketio.emit("update", get_data())
         return jsonify({"ok": True})
     except Exception as e:
         logger.error(traceback.format_exc())
         return jsonify({"ok": False, "error": str(e)}), 400
-
-
-@app.route("/api/poly/reset", methods=["POST"])
-def poly_reset():
-    amount = float((request.json or {}).get("amount", 94))
-    data = {"bankroll": amount, "initial_bankroll": amount, "trades": [], "active_trades": []}
-    POLY_LOG.parent.mkdir(exist_ok=True)
-    with open(POLY_LOG, "w") as f:
-        json.dump(data, f)
-    eq_file = Path("logs/equity.json")
-    if eq_file.exists():
-        eq_file.unlink()
-    return jsonify({"ok": True, "bankroll": amount})
 
 
 @app.route("/api/equity")
@@ -295,17 +117,7 @@ def api_equity_reset():
     eq_file = Path("logs/equity.json")
     if eq_file.exists():
         eq_file.unlink()
-    poly_state.session_started_at = _now_ar()
     return jsonify({"ok": True})
-
-
-@app.route("/api/equity/report")
-def api_equity_report():
-    try:
-        return jsonify(_build_session_report())
-    except Exception as e:
-        logger.error(traceback.format_exc())
-        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/regimes")
@@ -313,20 +125,6 @@ def api_regimes():
     data = _load_json(Path("logs/regimes.json"))
     return jsonify(data)
 
-
-@app.route("/api/test/polymarket")
-def test_polymarket():
-    try:
-        from src.core.polymarket_executor import place_market_order
-        from src.core.btc_scalper import find_active_btc_5m_market, _get_clob_token_id
-        market = find_active_btc_5m_market()
-        if not market:
-            return jsonify({"ok": False, "error": "Sin mercado activo"})
-        token_id = _get_clob_token_id(market, "up")
-        resp = place_market_order(token_id=token_id, side="BUY", amount_usdc=1.0)
-        return jsonify({"ok": True, "resp": str(resp), "token_id": token_id})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()})
 
 # ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
 
@@ -337,47 +135,13 @@ def on_connect():
 
 @socketio.on("start_bybit")
 def on_start_bybit(data=None):
-    strategy = (data or {}).get("strategy", "Scalping")
+    strategy = (data or {}).get("strategy", "Auto")
     start_bybit(strategy)
     emit("update", get_data())
 
 
 @socketio.on("stop_bybit")
 def on_stop_bybit():
-    stop_bybit()
-    emit("update", get_data())
-
-
-@socketio.on("start_poly")
-def on_start_poly(data=None):
-    mode = (data or {}).get("mode", poly_state.market_mode)
-    start_poly(mode)
-    emit("update", get_data())
-
-
-@socketio.on("set_poly_mode")
-def on_set_poly_mode(data=None):
-    mode = (data or {}).get("mode", "all")
-    from src.core.bot_controller_poly import set_poly_mode
-    set_poly_mode(mode)
-    emit("update", get_data())
-
-
-@socketio.on("stop_poly")
-def on_stop_poly():
-    stop_poly()
-    emit("update", get_data())
-
-
-@socketio.on("start_bot")
-def on_start_bot(data=None):
-    strategy = (data or {}).get("strategy", "Scalping")
-    start_bybit(strategy)
-    emit("update", get_data())
-
-
-@socketio.on("stop_bot")
-def on_stop_bot():
     stop_bybit()
     emit("update", get_data())
 

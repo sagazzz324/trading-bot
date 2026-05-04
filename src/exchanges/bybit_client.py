@@ -39,8 +39,9 @@ class BybitClient:
         return self.live
 
     def build_order_preview(self, symbol: str, side: str, qty: float,
-                            order_type: str = "Market") -> dict:
-        return {
+                            order_type: str = "Market",
+                            reduce_only: bool = False) -> dict:
+        preview = {
             "mode": self.mode,
             "category": "linear",
             "symbol": symbol,
@@ -49,6 +50,9 @@ class BybitClient:
             "qty": str(qty),
             "timeInForce": "IOC",
         }
+        if reduce_only:
+            preview["reduceOnly"] = True
+        return preview
 
     # ── PRICE ─────────────────────────────────────────────────────────────────
 
@@ -275,8 +279,10 @@ class BybitClient:
     # ── PLACE ORDER ───────────────────────────────────────────────────────────
 
     def place_order(self, symbol: str, side: str, qty: float,
-                    order_type: str = "Market") -> dict | None:
-        preview = self.build_order_preview(symbol, side, qty, order_type=order_type)
+                    order_type: str = "Market", reduce_only: bool = False) -> dict | None:
+        preview = self.build_order_preview(
+            symbol, side, qty, order_type=order_type, reduce_only=reduce_only
+        )
         if self.paper:
             tag = "[SHADOW]" if self.shadow else "[PAPER]"
             logger.info(f"{tag} preview order: {preview}")
@@ -289,6 +295,7 @@ class BybitClient:
                 orderType=order_type,
                 qty=str(qty),
                 timeInForce="IOC",
+                reduceOnly=reduce_only,
             )
             logger.info(f"Order placed: {side} {qty} {symbol} → {r}")
             result = r.get("result", {})
@@ -306,8 +313,15 @@ class BybitClient:
             logger.error(f"place_order {symbol}:\n{traceback.format_exc()}")
             return None
 
-    def place_market_order(self, symbol: str, side: str, qty: float) -> dict | None:
-        return self.place_order(symbol=symbol, side=side, qty=qty, order_type="Market")
+    def place_market_order(self, symbol: str, side: str, qty: float,
+                           reduce_only: bool = False) -> dict | None:
+        return self.place_order(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            order_type="Market",
+            reduce_only=reduce_only,
+        )
 
     def get_order_executions(self, symbol: str, order_id: str, limit: int = 20) -> list:
         try:
