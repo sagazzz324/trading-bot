@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
 MIN_ATR_PCT = 0.04      # less strict for 1m Bybit paper/shadow discovery
-SIGNAL_THRESHOLD = 60   # less strict for initial Bybit paper/shadow validation
-MIN_EDGE_GAP = 12       # require edge, but avoid starving the scanner
+SIGNAL_THRESHOLD = 55   # allow more setups during Bybit validation
+MIN_EDGE_GAP = 6        # avoid starving the scanner on balanced 1m signals
 
 
 # ── INDICATORS (correct implementations) ─────────────────────────────────────
@@ -169,8 +169,8 @@ def find_liquidity_zones(highs: list, lows: list, closes: list, lookback: int = 
         "dist_to_resistance_pct": round(dist_to_resistance, 3),
         "dist_to_support_pct":   round(dist_to_support, 3),
         # Don't enter long if resistance is within 0.3% — no room to run
-        "room_to_run_long":  dist_to_resistance > 0.5,
-        "room_to_run_short": dist_to_support    > 0.5,
+        "room_to_run_long":  dist_to_resistance > 0.25,
+        "room_to_run_short": dist_to_support    > 0.25,
     }
 
 
