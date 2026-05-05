@@ -196,6 +196,7 @@ button{background:none;border:none;cursor:pointer;font-family:inherit;color:inhe
   transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),background 0.2s;
 }
 .i-toggle:hover{transform:scale(1.1)}
+#btn-report{background:rgba(96,165,250,0.15);color:var(--blue)}
 #btn-toggle{background:rgba(52,211,153,0.15);color:var(--green)}
 #btn-toggle.stop{background:rgba(248,113,113,0.15);color:var(--red)}
 
@@ -960,6 +961,32 @@ function applyBybit(b){
 }
 
 // ── SOCKET.IO ─────────────────────────────────────────────────────────────────
+function ensureReportButton(){
+  if(document.getElementById('btn-report')) return;
+  const island = document.getElementById('island');
+  const toggle = document.getElementById('btn-toggle');
+  if(!island || !toggle) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'i-toggle';
+  btn.id = 'btn-report';
+  btn.title = 'Descargar informe';
+  btn.textContent = '↓';
+  island.insertBefore(btn, toggle);
+
+  btn.addEventListener('click', ()=>{
+    const link = document.createElement('a');
+    link.href = '/api/report';
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showToast('Informe descargado', '#60A5FA');
+  });
+}
+
+ensureReportButton();
+
 const socket = io({transports:['websocket','polling']});
 socket.on('connect',()=>{ console.log('WS connected'); });
 socket.on('update', data=>{ if(data.bybit) applyBybit(data.bybit); });

@@ -4,10 +4,12 @@ import threading
 import time
 import traceback
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from config.settings import TRADING_MODE
 
 logger = logging.getLogger(__name__)
+AR_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
 MAX_DRAWDOWN = 0.15
 DAILY_LOSS_LIM = -50.0
@@ -38,7 +40,7 @@ class BybitState:
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
             self.logs.insert(0, {
-                "time": datetime.now().strftime("%H:%M:%S"),
+                "time": datetime.now(AR_TZ).strftime("%H:%M:%S"),
                 "msg": msg,
                 "color": color,
             })
@@ -61,7 +63,7 @@ class BybitState:
                 "exit_price": exit_price,
                 "exit_reason": reason,
                 "pnl_usdt": round(pnl, 4),
-                "closed_at": datetime.now().isoformat(),
+                "closed_at": datetime.now(AR_TZ).isoformat(),
                 "status": "closed",
             }
             self.closed_trades.insert(0, trade)
@@ -137,7 +139,7 @@ def _run_bot(st: BybitState):
 
         try:
             st.cycle_count += 1
-            st.last_cycle = datetime.now().strftime("%H:%M:%S")
+            st.last_cycle = datetime.now(AR_TZ).strftime("%H:%M:%S")
 
             decision = orchestrator.decide()
             strategy = decision["strategy"]

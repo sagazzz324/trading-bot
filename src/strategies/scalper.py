@@ -9,6 +9,7 @@ import threading
 from collections import Counter
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -19,6 +20,7 @@ from src.strategies.scalping_engine import (
 
 logger = logging.getLogger(__name__)
 LOG_FILE = Path("logs/scalping_trades.json")
+AR_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
 WHITELIST = [
     "BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT",
@@ -327,7 +329,7 @@ class ScalpingBot:
             "rsi":           signal.get("rsi", 50),
             "htf_trend":     signal.get("htf", "neutral"),
             "ob_imbalance":  signal.get("ob", {}).get("imbalance", 0.5),
-            "timestamp":     datetime.now().isoformat(),
+            "timestamp":     datetime.now(AR_TZ).isoformat(),
             "status":        "open",
             "mode":          self.mode,
             "order_meta":    order_meta or {},
@@ -520,7 +522,7 @@ class ScalpingBot:
             "exit_reason": reason,
             "pnl_usdt":    round(pnl,4),
             "pnl_pct":     round((exit_price-pos["entry_price"])/pos["entry_price"]*100,4),
-            "closed_at":   datetime.now().isoformat(),
+            "closed_at":   datetime.now(AR_TZ).isoformat(),
             "status":      "closed"
         }
         with self._lock:
@@ -565,7 +567,7 @@ class ScalpingBot:
                 "exit_reason": reason,
                 "pnl_usdt": pnl,
                 "pnl_pct": round((exit_price-pos["entry_price"])/pos["entry_price"]*100,4),
-                "closed_at": datetime.now().isoformat(),
+                "closed_at": datetime.now(AR_TZ).isoformat(),
                 "status": "closed",
                 "order_meta": {
                     **(pos.get("order_meta") or {}),
