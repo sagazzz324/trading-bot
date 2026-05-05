@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
 MIN_ATR_PCT = 0.04      # less strict for 1m Bybit paper/shadow discovery
-SIGNAL_THRESHOLD = 55   # allow more setups during Bybit validation
-MIN_EDGE_GAP = 6        # avoid starving the scanner on balanced 1m signals
+SIGNAL_THRESHOLD = 50   # allow more setups during Bybit validation
+MIN_EDGE_GAP = 3        # small edge is enough in paper/shadow discovery
 
 
 # ── INDICATORS (correct implementations) ─────────────────────────────────────
@@ -169,8 +169,8 @@ def find_liquidity_zones(highs: list, lows: list, closes: list, lookback: int = 
         "dist_to_resistance_pct": round(dist_to_resistance, 3),
         "dist_to_support_pct":   round(dist_to_support, 3),
         # Don't enter long if resistance is within 0.3% — no room to run
-        "room_to_run_long":  dist_to_resistance > 0.25,
-        "room_to_run_short": dist_to_support    > 0.25,
+        "room_to_run_long":  dist_to_resistance > 0.15,
+        "room_to_run_short": dist_to_support    > 0.15,
     }
 
 
@@ -353,13 +353,11 @@ def get_signal_strength(klines: list, ob: dict = None, lz: dict = None, ms: dict
     # ── Liquidity zones (if available) ──
     if lz:
         if long_score > short_score and not lz.get("room_to_run_long", True):
-            return {"direction": "none", "strength": 0,
-                    "reasons": [f"Resistance at {lz['nearest_resistance']:.4f} — no room"],
-                    "rsi": rsi, "macd": macd_val, "momentum": momentum, "atr_pct": atr_pct}
+            long_score -= 12
+            reasons.append(f"Resistance near {lz['nearest_resistance']:.4f}")
         if short_score > long_score and not lz.get("room_to_run_short", True):
-            return {"direction": "none", "strength": 0,
-                    "reasons": [f"Support at {lz['nearest_support']:.4f} — no room"],
-                    "rsi": rsi, "macd": macd_val, "momentum": momentum, "atr_pct": atr_pct}
+            short_score -= 12
+            reasons.append(f"Support near {lz['nearest_support']:.4f}")
 
     # ── Microstructure quality filter ──
     if ms and ms.get("quality") == "low":
