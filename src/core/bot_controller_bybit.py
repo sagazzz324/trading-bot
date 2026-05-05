@@ -156,7 +156,12 @@ def _run_bot(st: BybitState):
             elif strategy == "Scalping":
                 _run_scalping_cycle(st)
             elif strategy == "Grid":
-                _run_grid_cycle(st)
+                if _grid_available():
+                    _run_grid_cycle(st)
+                else:
+                    st.add_log("Grid no disponible - fallback a Scalping", "#F5A623")
+                    st.active_strategy = "Scalping"
+                    _run_scalping_cycle(st)
 
             wait = 60 if strategy == "Scalping" else 120
             st._stop_event.wait(timeout=wait)
@@ -242,6 +247,14 @@ def _run_grid_cycle(st: BybitState):
         tb = traceback.format_exc()
         st.add_log(f"Grid: {str(e)[:80]}", "#FF5050")
         logger.error(f"Grid cycle:\n{tb}")
+
+
+def _grid_available() -> bool:
+    try:
+        from src.strategies.grid.main import run_once  # noqa: F401
+        return True
+    except Exception:
+        return False
 
 
 def start_bybit(strategy=None) -> bool:
