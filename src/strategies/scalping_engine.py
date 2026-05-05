@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
 MIN_ATR_PCT = 0.15      # must exceed fees to have edge
-SIGNAL_THRESHOLD = 70   # raised from 55
-MIN_EDGE_GAP = 20       # long_score - short_score minimum
+SIGNAL_THRESHOLD = 60   # less strict for initial Bybit paper/shadow validation
+MIN_EDGE_GAP = 12       # require edge, but avoid starving the scanner
 
 
 # ── INDICATORS (correct implementations) ─────────────────────────────────────
@@ -106,7 +106,7 @@ def get_order_book_imbalance(client, symbol: str, depth: int = 10) -> dict:
     Imbalance > 0.6 = buy pressure, < 0.4 = sell pressure.
     """
     try:
-        book = client.client.get_order_book(symbol=symbol, limit=depth)
+        book = client.get_order_book(symbol, limit=depth)
         bid_vol = sum(float(b[1]) for b in book["bids"][:depth])
         ask_vol = sum(float(a[1]) for a in book["asks"][:depth])
         total   = bid_vol + ask_vol

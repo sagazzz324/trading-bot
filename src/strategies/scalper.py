@@ -6,6 +6,7 @@ import traceback
 import time
 import json
 import threading
+from collections import Counter
 from pathlib import Path
 from datetime import datetime
 from collections import deque
@@ -38,6 +39,7 @@ SPREAD_ASSUME  = 0.0005
 MAX_DRAWDOWN   = 0.15
 DAILY_LOSS_LIM = -50.0
 MAX_POSITIONS  = 3
+SCAN_MULTIPLIER = 5
 
 
 def load_state():
@@ -130,6 +132,13 @@ class ScalpingBot:
                 )
         except Exception:
             logger.error(f"_sync_capital_from_exchange:\n{traceback.format_exc()}")
+
+    def _summarize_rejections(self, rejections: list[str]):
+        if not rejections:
+            return
+        top = Counter(rejections).most_common(3)
+        parts = [f"{reason} x{count}" for reason, count in top]
+        print(f"⚠ Rechazos: {' | '.join(parts)}")
 
     # ── CIRCUIT BREAKERS ──────────────────────────────────────────────────────
 
@@ -599,14 +608,18 @@ class ScalpingBot:
                         n_open    = len(self.state["open_positions"])
                     targets = [s for s in WHITELIST
                                if s not in open_syms
-                               and self._correlation_allowed(s)][:10]
+                               and self._correlation_allowed(s)][: max(12, self.max_positions * SCAN_MULTIPLIER)]
                     futures = {self._anal_pool.submit(self._analyze_rest, s): s
                                for s in targets}
+                    rejections = []
                     for f in as_completed(futures):
-                        _, sig = f.result()
+                        _, sig, reject_reason = f.result()
                         if sig and n_open < self.max_positions:
                             self._exec_pool.submit(self._execute_entry, sig)
                             n_open += 1
+                        elif reject_reason:
+                            rejections.append(reject_reason)
+                    self._summarize_rejections(rejections)
                     self._check_positions_fast()
                 except Exception as e:
                     logger.error(f"poll loop:\n{traceback.format_exc()}")
@@ -619,16 +632,16 @@ class ScalpingBot:
 
             if not klines:
                 logger.error(f"_analyze_rest {symbol}: klines vacíos")
-                return symbol, None
+                return symbol, None, "sin klines"
 
             if len(klines) < 35:
                 logger.error(f"_analyze_rest {symbol}: solo {len(klines)} velas")
-                return symbol, None
+                return symbol, None, "pocas velas"
 
             sample = klines[-1]
             if sample.get("close", 0) <= 0:
                 logger.error(f"_analyze_rest {symbol}: close={sample.get('close')} inválido")
-                return symbol, None
+                return symbol, None, "close inválido"
 
             for k in klines:
                 self.buffer.push(symbol, k)
@@ -641,7 +654,7 @@ class ScalpingBot:
             ms = microstructure_score(volumes, closes, highs, lows)
             if ms["quality"] == "low":
                 logger.debug(f"_analyze_rest {symbol}: microstructure low")
-                return symbol, None
+                return symbol, None, "microstructure low"
 
             lz  = find_liquidity_zones(highs, lows, closes)
             htf = self._get_htf_trend(symbol)
@@ -653,23 +666,24 @@ class ScalpingBot:
                         f"reasons={sig.get('reasons',[])}")
 
             if sig["direction"] == "none":
-                return symbol, None
+                reason = sig.get("reasons", ["sin señal"])[0]
+                return symbol, None, reason
             if htf == "down" and sig["direction"] == "long":
                 logger.debug(f"_analyze_rest {symbol}: HTF down — skip long")
-                return symbol, None
+                return symbol, None, "htf down bloquea long"
             if htf == "up" and sig["direction"] == "short":
                 logger.debug(f"_analyze_rest {symbol}: HTF up — skip short")
-                return symbol, None
+                return symbol, None, "htf up bloquea short"
 
             sig.update({"symbol": symbol, "price": closes[-1], "htf": htf, "ob": ob})
             print(f"📡 Señal: {symbol} {sig['direction'].upper()} "
                   f"str={sig['strength']} htf={htf} "
                   f"rsi={sig.get('rsi',0):.1f}")
-            return symbol, sig
+            return symbol, sig, None
 
         except Exception as e:
             logger.error(f"_analyze_rest {symbol}:\n{traceback.format_exc()}")
-            return symbol, None
+            return symbol, None, "error análisis"
 
     # ── PUBLIC ────────────────────────────────────────────────────────────────
 
@@ -700,21 +714,25 @@ class ScalpingBot:
 
         targets = [s for s in WHITELIST
                    if s not in open_syms
-                   and self._correlation_allowed(s)][: self.max_positions * 3]
+                   and self._correlation_allowed(s)][: max(12, self.max_positions * SCAN_MULTIPLIER)]
 
         print(f"🔍 Analizando {len(targets)} símbolos...")
 
         futures = {self._anal_pool.submit(self._analyze_rest, s): s for s in targets}
         signals_found = 0
+        rejections = []
         for f in as_completed(futures):
-            _, sig = f.result()
+            _, sig, reject_reason = f.result()
             if sig:
                 signals_found += 1
                 if n_open < self.max_positions:
                     self._execute_entry(sig)
                     n_open += 1
+            elif reject_reason:
+                rejections.append(reject_reason)
 
         print(f"🔍 Scan completo — {signals_found} señales de {len(targets)} símbolos")
+        self._summarize_rejections(rejections)
         self._check_positions_fast()
         self._print_stats()
 
