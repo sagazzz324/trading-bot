@@ -8,7 +8,12 @@ from zoneinfo import ZoneInfo
 from flask import Flask, jsonify, request, Response
 from flask_socketio import SocketIO, emit
 
-from src.core.bot_controller_bybit import bybit_state, start_bybit, stop_bybit
+from src.core.bot_controller_bybit import (
+    bybit_state,
+    start_bybit,
+    stop_bybit,
+    stop_and_reset_bybit,
+)
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
@@ -175,6 +180,7 @@ def api_report():
     payload = _build_report_payload()
     stamp = datetime.now(AR_TZ).strftime("%Y%m%d-%H%M%S")
     report_json = json.dumps(payload, ensure_ascii=False, indent=2)
+    stop_and_reset_bybit(join_timeout=5.0)
     return Response(
         report_json,
         mimetype="application/json",

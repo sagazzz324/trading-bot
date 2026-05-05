@@ -37,6 +37,26 @@ class BybitState:
         self.loss_count = 0
         self.session_pnl = 0.0
 
+    def reset_session(self):
+        with self._lock:
+            self.active_strategy = "-"
+            self.regime = "-"
+            self.orch_reason = "-"
+            self.last_cycle = None
+            self.cycle_count = 0
+            self.logs = []
+            self.open_positions = []
+            self.closed_trades = []
+            self.win_count = 0
+            self.loss_count = 0
+            self.session_pnl = 0.0
+
+            if self.trading_mode == "live":
+                self.initial_balance = self.balance
+            else:
+                self.balance = 1000.0
+                self.initial_balance = 1000.0
+
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
             self.logs.insert(0, {
@@ -273,4 +293,16 @@ def start_bybit(strategy=None) -> bool:
 def stop_bybit() -> bool:
     bybit_state.running = False
     bybit_state._stop_event.set()
+    return True
+
+
+def stop_and_reset_bybit(join_timeout: float = 5.0) -> bool:
+    was_running = bybit_state.running
+    stop_bybit()
+    thread = bybit_state.thread
+    if was_running and thread and thread.is_alive():
+        thread.join(timeout=join_timeout)
+    bybit_state.thread = None
+    bybit_state._stop_event.clear()
+    bybit_state.reset_session()
     return True
