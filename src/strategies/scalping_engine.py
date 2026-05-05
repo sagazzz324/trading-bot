@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
-MIN_ATR_PCT = 0.15      # must exceed fees to have edge
+MIN_ATR_PCT = 0.04      # less strict for 1m Bybit paper/shadow discovery
 SIGNAL_THRESHOLD = 60   # less strict for initial Bybit paper/shadow validation
 MIN_EDGE_GAP = 12       # require edge, but avoid starving the scanner
 
@@ -207,16 +207,17 @@ def microstructure_score(volumes: list, closes: list, highs: list, lows: list) -
     momentum_consec = abs(sum(dirs))  # 0-3, 3 = all same direction
 
     score = 0
-    if volume_trend > 0.2:    score += 25
-    if body_ratio > 0.5:      score += 35
-    if momentum_consec >= 2:  score += 40
+    if volume_trend > 0.1:    score += 20
+    if body_ratio > 0.35:     score += 30
+    if momentum_consec >= 1:  score += 20
+    if momentum_consec >= 2:  score += 20
 
     return {
         "score":           score,
         "volume_trend":    round(volume_trend, 3),
         "body_ratio":      round(body_ratio, 3),
         "momentum_consec": momentum_consec,
-        "quality":         "high" if score >= 60 else "medium" if score >= 35 else "low"
+        "quality":         "high" if score >= 55 else "medium" if score >= 20 else "low"
     }
 
 
