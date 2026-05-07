@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from src.lab.runtime import get_runtime_profile
 from src.strategies.scalping_engine import (
     get_signal_strength, get_order_book_imbalance,
     find_liquidity_zones, microstructure_score, get_htf_trend
@@ -101,8 +102,11 @@ class ScalpingBot:
         from src.exchanges.bybit_client import BybitClient
         self.client         = BybitClient()
         self.mode           = self.client.get_execution_mode()
-        self.max_positions  = max_positions
-        self.risk_per_trade = risk_per_trade
+        self.runtime_profile = get_runtime_profile(family="scalper", market="MULTI")
+        profile_params = self.runtime_profile.get("parameters", {})
+        self.profile_name = self.runtime_profile.get("profile_id")
+        self.max_positions  = int(profile_params.get("max_positions", max_positions))
+        self.risk_per_trade = float(profile_params.get("risk_per_trade", risk_per_trade))
         self.capital        = capital
         self.initial_cap    = capital
         self.state          = load_state()
@@ -112,11 +116,17 @@ class ScalpingBot:
         self._ws            = None
         self._running       = False
         self._cooldown: dict[str,float] = {}
-        self._cooldown_sec  = 60
+        self._cooldown_sec  = int(profile_params.get("cooldown_sec", 60))
         self._htf_cache: dict[str,tuple] = {}
         self._htf_ttl       = 300
         self._lock          = threading.Lock()
         self._sync_capital_from_exchange(initial=True)
+        if self.runtime_profile:
+            logger.info(
+                "Scalper profile loaded: %s | params=%s",
+                self.profile_name,
+                profile_params,
+            )
 
     def _sync_capital_from_exchange(self, initial: bool = False):
         if self.mode != "live":

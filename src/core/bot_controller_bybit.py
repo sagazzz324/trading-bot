@@ -205,6 +205,8 @@ def _run_scalping_cycle(st: BybitState):
     from src.strategies.scalper import ScalpingBot
 
     bot = ScalpingBot(max_positions=3, risk_per_trade=0.01, capital=st.balance)
+    if getattr(bot, "profile_name", None):
+        st.add_log(f"Perfil aprobado activo · {bot.profile_name}", "#60A5FA")
     with st._lock:
         bot.state["open_positions"] = list(st.open_positions)
         bot.state["trades"] = list(reversed(st.closed_trades))
