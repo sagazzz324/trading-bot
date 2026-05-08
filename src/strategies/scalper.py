@@ -37,8 +37,11 @@ CORRELATION_GROUPS = {
     "meme":     {"DOGEUSDT"},
 }
 
-FEE_RT         = 0.002
+FEE_RT         = 0.0011
 SPREAD_ASSUME  = 0.0005
+PAPER_TAKER_FEE = 0.00055
+PAPER_LATENCY_BPS = 0.00015
+PAPER_MIN_FILL_RATIO = 0.7
 MAX_DRAWDOWN   = 0.15
 DAILY_LOSS_LIM = -50.0
 MAX_POSITIONS  = 3
@@ -346,26 +349,51 @@ class ScalpingBot:
         }
 
     def _execute_simulated_entry(self, signal: dict, pos: dict) -> dict:
-        order_meta = {"simulated": True, "mode": self.mode}
+        side = "Buy" if signal["direction"] == "long" else "Sell"
+        preview = self.client.build_order_preview(signal["symbol"], side, pos["qty"])
+        simulated_fill = self._simulate_paper_market_fill(
+            symbol=signal["symbol"],
+            side=side,
+            requested_qty=pos["qty"],
+        )
+        if not simulated_fill:
+            print(f"⚪ PAPER NO FILL {signal['symbol']} {signal['direction'].upper()} qty={pos['qty']:.6f}")
+            return None
+
+        entry_price = simulated_fill["avg_price"]
+        qty = simulated_fill["qty"]
+        fee_paid = simulated_fill["fee"]
+        direction = signal["direction"]
+        sl = round(entry_price * (1 - pos["sl_pct"] / 100), 6) if direction == "long" else round(entry_price * (1 + pos["sl_pct"] / 100), 6)
+        tp = round(entry_price * (1 + pos["tp_pct"] / 100), 6) if direction == "long" else round(entry_price * (1 - pos["tp_pct"] / 100), 6)
+        sim_pos = dict(pos)
+        sim_pos["sl"] = sl
+        sim_pos["tp"] = tp
+        sim_pos["qty"] = qty
+        sim_pos["size"] = round(simulated_fill["value"] - fee_paid, 2)
+        order_meta = {
+            "simulated": True,
+            "mode": self.mode,
+            "preview": preview,
+            "entry_book": simulated_fill,
+        }
         if self.mode == "shadow":
-            side = "Buy" if signal["direction"] == "long" else "Sell"
-            preview = self.client.build_order_preview(signal["symbol"], side, pos["qty"])
-            order_meta["preview"] = preview
             print(f"[SHADOW] preview {preview}")
         position = self._build_position_record(
             signal,
-            pos,
-            entry_price=pos["fill_price"],
-            qty=pos["qty"],
-            fee_paid=pos["fee_usdt"],
+            sim_pos,
+            entry_price=entry_price,
+            qty=qty,
+            fee_paid=fee_paid,
             order_meta=order_meta,
         )
         icon = "🟢" if signal["direction"] == "long" else "🔴"
         print(f"{icon} {signal['symbol']} {signal['direction'].upper()} "
-              f"@ ${pos['fill_price']:.4f} | {signal['strength']}/100 "
+              f"@ ${entry_price:.4f} qty={qty:.6f} fee=${fee_paid:.4f} "
+              f"| {signal['strength']}/100 "
               f"| HTF:{signal.get('htf','?')} "
               f"| OB:{signal.get('ob',{}).get('imbalance',0.5):.2f} "
-              f"| SL${pos['sl']:.4f} TP${pos['tp']:.4f}")
+              f"| SL${sl:.4f} TP${tp:.4f}")
         return position
 
     def _fetch_execution_summary(self, symbol: str, order_id: str, retries: int = 4,
@@ -450,7 +478,7 @@ class ScalpingBot:
             tp_pct = max(sl_pct * 2.5, sl_pct + FEE_RT + 0.001)
             sl = round(fill*(1-sl_pct),6) if signal["direction"]=="long" else round(fill*(1+sl_pct),6)
             tp = round(fill*(1+tp_pct),6) if signal["direction"]=="long" else round(fill*(1-tp_pct),6)
-            fee = size * FEE_RT
+            fee = size * PAPER_TAKER_FEE
             return {
                 "fill_price": round(fill,6),
                 "size":       round(size-fee,2),
@@ -494,7 +522,8 @@ class ScalpingBot:
                 pnl_pct  = (current-entry)/entry*100 if d=="long" else (entry-current)/entry*100
                 hit_sl   = current<=pos["sl_price"] if d=="long" else current>=pos["sl_price"]
                 hit_tp   = current>=pos["tp_price"] if d=="long" else current<=pos["tp_price"]
-                net_pnl  = pos["position_usdt"] * (pnl_pct - FEE_RT*100) / 100
+                est_exit_fee = float(pos.get("quantity", 0) or 0) * current * PAPER_TAKER_FEE
+                net_pnl  = pos["position_usdt"] * (pnl_pct / 100) - pos.get("fee_paid", 0) - est_exit_fee
                 if hit_tp:
                     print(f"🎯 TP {pos['symbol']} +${net_pnl:.4f}")
                     if self._close_position(pos, current, "tp", net_pnl):
@@ -526,6 +555,25 @@ class ScalpingBot:
         return self._close_simulated_position(pos, exit_price, reason, pnl)
 
     def _close_simulated_position(self, pos, exit_price, reason, pnl) -> bool:
+        side = "Sell" if pos["direction"] == "long" else "Buy"
+        simulated_fill = self._simulate_paper_market_fill(
+            symbol=pos["symbol"],
+            side=side,
+            requested_qty=float(pos.get("quantity", 0) or 0),
+        )
+        if not simulated_fill:
+            logger.warning(f"paper close {pos.get('symbol')}: no fill")
+            return False
+        exit_price = simulated_fill["avg_price"]
+        exit_fee = simulated_fill["fee"]
+        entry_value = float((pos.get("order_meta") or {}).get("entry_book", {}).get("value", 0) or 0)
+        exit_value = simulated_fill["value"]
+        gross = (
+            exit_value - entry_value
+            if pos["direction"] == "long"
+            else entry_value - exit_value
+        )
+        pnl = round(gross - pos.get("fee_paid", 0) - exit_fee, 4)
         trade = {
             **pos,
             "exit_price":  exit_price,
@@ -533,7 +581,11 @@ class ScalpingBot:
             "pnl_usdt":    round(pnl,4),
             "pnl_pct":     round((exit_price-pos["entry_price"])/pos["entry_price"]*100,4),
             "closed_at":   datetime.now(AR_TZ).isoformat(),
-            "status":      "closed"
+            "status":      "closed",
+            "order_meta":  {
+                **(pos.get("order_meta") or {}),
+                "exit_book": simulated_fill,
+            },
         }
         with self._lock:
             self.state["trades"].append(trade)
@@ -544,6 +596,56 @@ class ScalpingBot:
         self.capital += pnl
         save_state_async(self.state)
         return True
+
+    def _simulate_paper_market_fill(self, symbol: str, side: str, requested_qty: float) -> dict | None:
+        try:
+            requested_qty = float(requested_qty or 0)
+            if requested_qty <= 0:
+                return None
+            book = self.client.get_order_book(symbol, limit=10)
+            levels = book.get("asks", []) if side.lower() == "buy" else book.get("bids", [])
+            if not levels:
+                return None
+
+            remaining = requested_qty
+            consumed_qty = 0.0
+            consumed_value = 0.0
+            for price_raw, size_raw in levels:
+                price = float(price_raw)
+                level_qty = float(size_raw)
+                if price <= 0 or level_qty <= 0:
+                    continue
+                take_qty = min(remaining, level_qty)
+                consumed_qty += take_qty
+                consumed_value += take_qty * price
+                remaining -= take_qty
+                if remaining <= 1e-9:
+                    break
+
+            fill_ratio = consumed_qty / requested_qty if requested_qty > 0 else 0.0
+            if consumed_qty <= 0 or fill_ratio < PAPER_MIN_FILL_RATIO:
+                return None
+
+            avg_price = consumed_value / consumed_qty
+            if side.lower() == "buy":
+                avg_price *= (1.0 + PAPER_LATENCY_BPS)
+            else:
+                avg_price *= (1.0 - PAPER_LATENCY_BPS)
+            value = consumed_qty * avg_price
+            fee = value * PAPER_TAKER_FEE
+            return {
+                "requested_qty": round(requested_qty, 6),
+                "qty": round(consumed_qty, 6),
+                "fill_ratio": round(fill_ratio, 4),
+                "avg_price": round(avg_price, 6),
+                "value": round(value, 6),
+                "fee": round(fee, 6),
+                "side": side.capitalize(),
+                "book_levels_used": min(len(levels), 10),
+            }
+        except Exception:
+            logger.error(f"_simulate_paper_market_fill {symbol}:\n{traceback.format_exc()}")
+            return None
 
     def _close_live_position(self, pos, reason: str) -> bool:
         try:
