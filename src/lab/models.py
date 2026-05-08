@@ -10,6 +10,7 @@ class ValidationThresholds:
     min_sharpe: float = 1.5
     max_drawdown_pct: float = 15.0
     min_profit_factor: float = 1.2
+    min_trades: int = 20
     min_walk_forward_pass_rate: float = 0.7
     min_monte_carlo_pass_rate: float = 0.8
     min_permutation_pass_rate: float = 0.8
@@ -63,4 +64,3 @@ class ApprovedStrategyProfile:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-

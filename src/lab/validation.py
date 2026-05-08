@@ -39,13 +39,13 @@ def compute_metrics(trade_returns: Iterable[float]) -> PerformanceMetrics:
 
     mean_ret = float(np.mean(values))
     std_ret = float(np.std(values, ddof=1)) if values.size > 1 else 0.0
-    sharpe = 0.0 if std_ret == 0 else (mean_ret / std_ret) * math.sqrt(252)
+    sharpe = 0.0 if std_ret == 0 or values.size < 5 else (mean_ret / std_ret) * math.sqrt(252)
 
     positive = values[values > 0]
     negative = values[values < 0]
     gross_profit = float(np.sum(positive)) if positive.size else 0.0
     gross_loss = abs(float(np.sum(negative))) if negative.size else 0.0
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf") if gross_profit > 0 else 0.0
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else gross_profit if gross_profit > 0 else 0.0
     win_rate = float(np.mean(values > 0)) * 100.0
     total_return = float(equity[-1] / equity[0] - 1.0) * 100.0
     return PerformanceMetrics(
@@ -102,4 +102,3 @@ def parameter_permutations(parameters: dict[str, float], pct: float = 0.1) -> li
         high[key] = value * (1.0 + pct)
         variants.extend([low, high])
     return variants
-

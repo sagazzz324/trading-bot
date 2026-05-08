@@ -77,3 +77,25 @@ TodavÃ­a falta:
 - ejecutar validaciÃ³n real sobre SPY/BTC y otros mercados
 - correr el pipeline en paralelo dentro de la app
 - promover automÃ¡ticamente a paper/live solo los perfiles que sobrevivan
+
+### Runner inicial del laboratorio
+
+Ya existe una primera Fase 1 ejecutable:
+
+- `python lab_run.py --dataset ruta_al_csv --market BTCUSDT`
+
+Formato CSV esperado:
+
+- `timestamp,open,high,low,close,volume`
+
+El runner actual hace:
+
+- carga OHLCV local
+- separa in-sample / out-of-sample
+- busca un candidato con GA reproducible
+- corre walk-forward bÃ¡sico
+- corre monte carlo por permutaciÃ³n de trades
+- corre perturbaciÃ³n de parÃ¡metros
+- si pasa el gate, lo promociona al registry
+
+El bot no depende del runner para funcionar, pero ya puede consumir perfiles aprobados desde el registry.
