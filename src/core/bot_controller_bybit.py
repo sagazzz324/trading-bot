@@ -1,15 +1,18 @@
 import builtins
+import json
 import logging
 import threading
 import time
 import traceback
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from config.settings import TRADING_MODE
 
 logger = logging.getLogger(__name__)
 AR_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
+STATE_FILE = Path("logs/bybit_runtime_state.json")
 
 MAX_DRAWDOWN = 0.15
 DAILY_LOSS_LIM = -50.0
@@ -36,6 +39,71 @@ class BybitState:
         self.win_count = 0
         self.loss_count = 0
         self.session_pnl = 0.0
+        self._restore_runtime_state()
+
+    def _snapshot(self) -> dict:
+        return {
+            "saved_at": datetime.now(AR_TZ).isoformat(),
+            "trading_mode": self.trading_mode,
+            "strategy": self.strategy,
+            "active_strategy": self.active_strategy,
+            "regime": self.regime,
+            "orch_reason": self.orch_reason,
+            "last_cycle": self.last_cycle,
+            "cycle_count": self.cycle_count,
+            "logs": list(self.logs[:120]),
+            "open_positions": list(self.open_positions),
+            "closed_trades": list(self.closed_trades[:50]),
+            "balance": self.balance,
+            "initial_balance": self.initial_balance,
+            "win_count": self.win_count,
+            "loss_count": self.loss_count,
+            "session_pnl": self.session_pnl,
+        }
+
+    def _save_runtime_state(self):
+        try:
+            snap = self._snapshot()
+            STATE_FILE.parent.mkdir(exist_ok=True)
+            tmp_file = STATE_FILE.with_suffix(".tmp")
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(snap, f, ensure_ascii=False, indent=2)
+            tmp_file.replace(STATE_FILE)
+        except Exception:
+            logger.error(f"_save_runtime_state:\n{traceback.format_exc()}")
+
+    def _restore_runtime_state(self):
+        if not STATE_FILE.exists():
+            return
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            logger.error(f"_restore_runtime_state:\n{traceback.format_exc()}")
+            return
+
+        self.trading_mode = data.get("trading_mode", self.trading_mode)
+        self.strategy = data.get("strategy", self.strategy)
+        self.active_strategy = data.get("active_strategy", self.active_strategy)
+        self.regime = data.get("regime", self.regime)
+        self.orch_reason = data.get("orch_reason", self.orch_reason)
+        self.last_cycle = data.get("last_cycle")
+        self.cycle_count = int(data.get("cycle_count", 0) or 0)
+        self.logs = list(data.get("logs", []))[:120]
+        self.open_positions = list(data.get("open_positions", []))
+        self.closed_trades = list(data.get("closed_trades", []))[:50]
+        self.balance = float(data.get("balance", self.balance) or self.balance)
+        self.initial_balance = float(data.get("initial_balance", self.initial_balance) or self.initial_balance)
+        self.win_count = int(data.get("win_count", 0) or 0)
+        self.loss_count = int(data.get("loss_count", 0) or 0)
+        self.session_pnl = float(data.get("session_pnl", 0.0) or 0.0)
+
+    def _clear_runtime_state(self):
+        try:
+            if STATE_FILE.exists():
+                STATE_FILE.unlink()
+        except Exception:
+            logger.error(f"_clear_runtime_state:\n{traceback.format_exc()}")
 
     def reset_session(self):
         with self._lock:
@@ -56,6 +124,7 @@ class BybitState:
             else:
                 self.balance = 1000.0
                 self.initial_balance = 1000.0
+            self._save_runtime_state()
 
     def add_log(self, msg, color="#ffffff"):
         with self._lock:
@@ -66,10 +135,12 @@ class BybitState:
             })
             if len(self.logs) > 120:
                 self.logs.pop()
+            self._save_runtime_state()
 
     def add_position(self, pos):
         with self._lock:
             self.open_positions.append(pos)
+            self._save_runtime_state()
 
     def close_position(self, pos_id, exit_price, reason, pnl):
         with self._lock:
@@ -96,6 +167,7 @@ class BybitState:
                 self.win_count += 1
             else:
                 self.loss_count += 1
+            self._save_runtime_state()
 
     def get_stats(self):
         total = self.win_count + self.loss_count
@@ -141,6 +213,7 @@ def _run_bot(st: BybitState):
             st.balance = snapshot["equity"]
             if not st.closed_trades and not st.open_positions:
                 st.initial_balance = snapshot["equity"]
+            st._save_runtime_state()
         st.add_log(
             f"Bybit conectado · BTC ${price:,.2f} · free ${snapshot['free_balance']:.2f} · eq ${snapshot['equity']:.2f}",
             "#00E887",
@@ -160,6 +233,7 @@ def _run_bot(st: BybitState):
         try:
             st.cycle_count += 1
             st.last_cycle = datetime.now(AR_TZ).strftime("%H:%M:%S")
+            st._save_runtime_state()
 
             decision = orchestrator.decide()
             strategy = decision["strategy"]
@@ -245,6 +319,7 @@ def _run_scalping_cycle(st: BybitState):
             st.loss_count = bot.state.get("loss_count", st.loss_count)
             st.session_pnl = bot.state.get("session_pnl", st.session_pnl)
             st.balance = bot.capital
+            st._save_runtime_state()
 
         stats = st.get_stats()
         st.add_log(
@@ -285,6 +360,7 @@ def start_bybit(strategy=None) -> bool:
     if bybit_state.running:
         return False
 
+    bybit_state._restore_runtime_state()
     bybit_state.running = True
     bybit_state._stop_event.clear()
     bybit_state.thread = threading.Thread(target=_run_bot, args=(bybit_state,), daemon=True)
@@ -307,4 +383,5 @@ def stop_and_reset_bybit(join_timeout: float = 5.0) -> bool:
     bybit_state.thread = None
     bybit_state._stop_event.clear()
     bybit_state.reset_session()
+    bybit_state._clear_runtime_state()
     return True
