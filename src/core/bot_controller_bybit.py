@@ -21,6 +21,7 @@ DAILY_LOSS_LIM = -50.0
 class BybitState:
     def __init__(self):
         self.running = False
+        self.desired_running = False
         self.trading_mode = TRADING_MODE
         self.strategy = "Auto"
         self.active_strategy = "-"
@@ -44,6 +45,7 @@ class BybitState:
     def _snapshot(self) -> dict:
         return {
             "saved_at": datetime.now(AR_TZ).isoformat(),
+            "desired_running": self.desired_running,
             "trading_mode": self.trading_mode,
             "strategy": self.strategy,
             "active_strategy": self.active_strategy,
@@ -83,6 +85,7 @@ class BybitState:
             return
 
         self.trading_mode = data.get("trading_mode", self.trading_mode)
+        self.desired_running = bool(data.get("desired_running", False))
         self.strategy = data.get("strategy", self.strategy)
         self.active_strategy = data.get("active_strategy", self.active_strategy)
         self.regime = data.get("regime", self.regime)
@@ -361,6 +364,8 @@ def start_bybit(strategy=None) -> bool:
         return False
 
     bybit_state._restore_runtime_state()
+    bybit_state.desired_running = True
+    bybit_state._save_runtime_state()
     bybit_state.running = True
     bybit_state._stop_event.clear()
     bybit_state.thread = threading.Thread(target=_run_bot, args=(bybit_state,), daemon=True)
@@ -370,7 +375,9 @@ def start_bybit(strategy=None) -> bool:
 
 def stop_bybit() -> bool:
     bybit_state.running = False
+    bybit_state.desired_running = False
     bybit_state._stop_event.set()
+    bybit_state._save_runtime_state()
     return True
 
 
@@ -385,3 +392,9 @@ def stop_and_reset_bybit(join_timeout: float = 5.0) -> bool:
     bybit_state.reset_session()
     bybit_state._clear_runtime_state()
     return True
+
+
+def ensure_bybit_running() -> bool:
+    if bybit_state.desired_running and not bybit_state.running:
+        return start_bybit()
+    return False

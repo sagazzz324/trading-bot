@@ -10,6 +10,7 @@ from flask_socketio import SocketIO, emit
 
 from src.core.bot_controller_bybit import (
     bybit_state,
+    ensure_bybit_running,
     start_bybit,
     stop_bybit,
     stop_and_reset_bybit,
@@ -280,10 +281,12 @@ def on_stop_bybit():
 def push_loop():
     while True:
         eventlet.sleep(4)
+        ensure_bybit_running()
         socketio.emit("update", get_data())
 
 
 def run_dashboard(port=5000):
+    ensure_bybit_running()
     eventlet.spawn(push_loop)
     print(f"\n🚀 Dashboard → http://localhost:{port}\n")
     socketio.run(app, host="0.0.0.0", port=port, debug=False)
