@@ -30,6 +30,12 @@ WHITELIST = [
     "AAVEUSDT","INJUSDT","SUIUSDT","APTUSDT","ARBUSDT"
 ]
 
+MODE_UNIVERSES = {
+    "general": WHITELIST,
+    "btc": ["BTCUSDT"],
+    "eth": ["ETHUSDT"],
+}
+
 CORRELATION_GROUPS = {
     "btc_beta": {"SOLUSDT","AVAXUSDT","NEARUSDT","ATOMUSDT","DOTUSDT",
                  "LINKUSDT","AAVEUSDT","UNIUSDT","ARBUSDT","APTUSDT","INJUSDT"},
@@ -76,8 +82,8 @@ def save_state_async(s):
 # ── KLINE BUFFER ──────────────────────────────────────────────────────────────
 
 class KlineBuffer:
-    def __init__(self, maxlen=120):
-        self._data = {s: deque(maxlen=maxlen) for s in WHITELIST}
+    def __init__(self, symbols: list[str], maxlen=120):
+        self._data = {s: deque(maxlen=maxlen) for s in symbols}
         self._lock = threading.Lock()
 
     def push(self, symbol, kline):
@@ -103,10 +109,12 @@ class KlineBuffer:
 # ── MAIN BOT ──────────────────────────────────────────────────────────────────
 
 class ScalpingBot:
-    def __init__(self, max_positions=MAX_POSITIONS, risk_per_trade=0.01, capital=1000.0):
+    def __init__(self, max_positions=MAX_POSITIONS, risk_per_trade=0.01, capital=1000.0, market_mode: str = "general"):
         from src.exchanges.bybit_client import BybitClient
         self.client         = BybitClient()
         self.mode           = self.client.get_execution_mode()
+        self.market_mode    = market_mode if market_mode in MODE_UNIVERSES else "general"
+        self.symbols        = list(MODE_UNIVERSES[self.market_mode])
         self.runtime_profile = get_runtime_profile(family="scalper", market="MULTI")
         profile_params = self.runtime_profile.get("parameters", {})
         self.profile_name = self.runtime_profile.get("profile_id")
@@ -115,16 +123,18 @@ class ScalpingBot:
         self.capital        = capital
         self.initial_cap    = capital
         self.state          = load_state()
-        self.buffer         = KlineBuffer()
+        self.buffer         = KlineBuffer(self.symbols)
         self._exec_pool     = ThreadPoolExecutor(max_workers=4)
         self._anal_pool     = ThreadPoolExecutor(max_workers=8)
         self._ws            = None
         self._running       = False
         self._cooldown: dict[str,float] = {}
-        self._cooldown_sec  = int(profile_params.get("cooldown_sec", 60))
+        self._cooldown_sec  = int(profile_params.get("cooldown_sec", 90 if self.market_mode == "btc" else 60))
         self._htf_cache: dict[str,tuple] = {}
         self._htf_ttl       = 300
         self._lock          = threading.Lock()
+        self.market_profile = self._effective_thresholds()
+        self.max_positions = min(self.max_positions, int(self.market_profile["max_positions"]))
         self._sync_capital_from_exchange(initial=True)
         if self.runtime_profile:
             logger.info(
@@ -149,6 +159,25 @@ class ScalpingBot:
                 )
         except Exception:
             logger.error(f"_sync_capital_from_exchange:\n{traceback.format_exc()}")
+
+    def _effective_thresholds(self) -> dict:
+        if self.market_mode == "btc":
+            return {
+                "max_positions": 1,
+                "min_strength": 62,
+                "min_ob_imbalance": 0.58,
+            }
+        if self.market_mode == "eth":
+            return {
+                "max_positions": min(self.max_positions, 2),
+                "min_strength": 60,
+                "min_ob_imbalance": 0.55,
+            }
+        return {
+            "max_positions": self.max_positions,
+            "min_strength": 58,
+            "min_ob_imbalance": 0.54,
+        }
 
     def _summarize_rejections(self, rejections: list[str]):
         if not rejections:
@@ -213,11 +242,11 @@ class ScalpingBot:
             except Exception as e:
                 logger.error(f"seed_buffers {sym}:\n{traceback.format_exc()}")
 
-        with ThreadPoolExecutor(max_workers=10) as ex:
-            list(ex.map(fetch, WHITELIST))
+        with ThreadPoolExecutor(max_workers=min(10, max(1, len(self.symbols)))) as ex:
+            list(ex.map(fetch, self.symbols))
 
         # Verificar cuántos símbolos tienen datos válidos
-        valid = sum(1 for s in WHITELIST if len(self.buffer.get(s)) >= 35)
+        valid = sum(1 for s in self.symbols if len(self.buffer.get(s)) >= 35)
         print(f"✅ Buffers seeded — {valid}/{len(WHITELIST)} símbolos con datos válidos")
         if valid == 0:
             logger.error("CRÍTICO: ningún símbolo tiene datos — verificar API key y permisos")
@@ -228,7 +257,7 @@ class ScalpingBot:
         self._seed_buffers()
         try:
             self._ws = self.client.start_kline_ws(
-                symbols=WHITELIST,
+                symbols=self.symbols,
                 interval="1",
                 callback=self._on_kline_update
             )
@@ -291,6 +320,9 @@ class ScalpingBot:
 
             if sig["direction"] == "none":
                 return
+            if sig["strength"] < self.market_profile["min_strength"]:
+                logger.debug(f"{symbol}: strength {sig['strength']} < min {self.market_profile['min_strength']}")
+                return
             if REQUIRE_DIRECTIONAL_HTF and htf == "neutral":
                 logger.debug(f"{symbol}: HTF neutral â€” skip")
                 return
@@ -299,6 +331,14 @@ class ScalpingBot:
                 return
             if htf == "up" and sig["direction"] == "short":
                 logger.debug(f"{symbol}: HTF up — skip short")
+                return
+            imb = float(ob.get("imbalance", 0.5) or 0.5)
+            min_imb = float(self.market_profile["min_ob_imbalance"])
+            if sig["direction"] == "long" and imb < min_imb:
+                logger.debug(f"{symbol}: OB {imb:.2f} < long min {min_imb:.2f}")
+                return
+            if sig["direction"] == "short" and imb > (1.0 - min_imb):
+                logger.debug(f"{symbol}: OB {imb:.2f} > short max {1.0 - min_imb:.2f}")
                 return
 
             sig.update({"symbol": symbol, "price": closes[-1], "htf": htf, "ob": ob})
@@ -740,7 +780,7 @@ class ScalpingBot:
                     with self._lock:
                         open_syms = {p["symbol"] for p in self.state["open_positions"]}
                         n_open    = len(self.state["open_positions"])
-                    targets = [s for s in WHITELIST
+                    targets = [s for s in self.symbols
                                if s not in open_syms
                                and self._correlation_allowed(s)][: max(12, self.max_positions * SCAN_MULTIPLIER)]
                     futures = {self._anal_pool.submit(self._analyze_rest, s): s
@@ -802,6 +842,8 @@ class ScalpingBot:
             if sig["direction"] == "none":
                 reason = sig.get("reasons", ["sin señal"])[0]
                 return symbol, None, reason
+            if sig["strength"] < self.market_profile["min_strength"]:
+                return symbol, None, f"strength {sig['strength']} < {self.market_profile['min_strength']}"
             if REQUIRE_DIRECTIONAL_HTF and htf == "neutral":
                 return symbol, None, "htf neutral"
             if htf == "down" and sig["direction"] == "long":
@@ -810,6 +852,12 @@ class ScalpingBot:
             if htf == "up" and sig["direction"] == "short":
                 logger.debug(f"_analyze_rest {symbol}: HTF up — skip short")
                 return symbol, None, "htf up bloquea short"
+            imb = float(ob.get("imbalance", 0.5) or 0.5)
+            min_imb = float(self.market_profile["min_ob_imbalance"])
+            if sig["direction"] == "long" and imb < min_imb:
+                return symbol, None, f"ob {imb:.2f} < long {min_imb:.2f}"
+            if sig["direction"] == "short" and imb > (1.0 - min_imb):
+                return symbol, None, f"ob {imb:.2f} > short {1.0 - min_imb:.2f}"
 
             sig.update({"symbol": symbol, "price": closes[-1], "htf": htf, "ob": ob})
             print(f"📡 Señal: {symbol} {sig['direction'].upper()} "
@@ -848,7 +896,7 @@ class ScalpingBot:
             open_syms = {p["symbol"] for p in self.state["open_positions"]}
             n_open    = len(self.state["open_positions"])
 
-        targets = [s for s in WHITELIST
+        targets = [s for s in self.symbols
                    if s not in open_syms
                    and self._correlation_allowed(s)][: max(12, self.max_positions * SCAN_MULTIPLIER)]
 

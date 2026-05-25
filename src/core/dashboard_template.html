@@ -169,6 +169,16 @@ button{background:none;border:none;cursor:pointer;font-family:inherit;color:inhe
 }
 
 .i-nav{display:flex;align-items:center;gap:2px}
+.i-mode-group{display:flex;align-items:center;gap:4px;margin:0 4px}
+.i-mode-btn{
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:1.2px;text-transform:uppercase;
+  padding:6px 10px;border-radius:100px;
+  color:var(--text-muted);background:rgba(255,255,255,0.04);
+  border:1px solid transparent;transition:all .2s ease;
+}
+.i-mode-btn.active{color:var(--text);background:rgba(255,255,255,0.09);border-color:var(--border-hi)}
+.i-mode-btn:hover:not(.active){color:var(--text-dim)}
 .i-tab{
   font-size:12px;font-weight:600;
   padding:7px 14px;border-radius:100px;
@@ -949,8 +959,11 @@ function applyBybit(b){
   setEl('d-last-cycle', b.last_cycle||'—');
   setEl('d-cycle-count', b.cycle_count||0);
   setEl('d-strategy', b.strategy||'—');
-  setEl('d-mode', (b.trading_mode||'paper').toUpperCase());
+  setEl('d-mode', `${(b.trading_mode||'paper').toUpperCase()} · ${(b.market_mode||selectedMarketMode||'btc').toUpperCase()}`);
   setEl('d-active-strategy2', b.active_strategy||'—');
+  if(!b.running){
+    setMarketModeUI((b.market_mode||'btc').toLowerCase());
+  }
 
   // Landing stats (live update)
   document.getElementById('lp-balance').textContent = fmt$(b.bankroll);
@@ -987,6 +1000,48 @@ function ensureReportButton(){
 
 ensureReportButton();
 
+let selectedMarketMode = 'btc';
+
+function setMarketModeUI(mode){
+  selectedMarketMode = mode;
+  document.querySelectorAll('.i-mode-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
+function ensureMarketModeSelector(){
+  if(document.getElementById('i-mode-group')) return;
+  const island = document.getElementById('island');
+  const toggle = document.getElementById('btn-toggle');
+  if(!island || !toggle) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'i-mode-group';
+  wrap.id = 'i-mode-group';
+
+  [
+    ['general', 'GEN'],
+    ['btc', 'BTC'],
+    ['eth', 'ETH']
+  ].forEach(([mode, label])=>{
+    const btn = document.createElement('button');
+    btn.className = 'i-mode-btn';
+    btn.dataset.mode = mode;
+    btn.textContent = label;
+    btn.addEventListener('click', ()=>{
+      setMarketModeUI(mode);
+      const running = document.getElementById('i-dot').classList.contains('live');
+      showToast(running ? `Modo ${mode.toUpperCase()} guardado · aplicá con restart` : `Modo ${mode.toUpperCase()} listo para iniciar`, '#60A5FA');
+    });
+    wrap.appendChild(btn);
+  });
+
+  island.insertBefore(wrap, toggle);
+  setMarketModeUI(selectedMarketMode);
+}
+
+ensureMarketModeSelector();
+
 const socket = io({transports:['websocket','polling']});
 socket.on('connect',()=>{ console.log('WS connected'); });
 socket.on('update', data=>{ if(data.bybit) applyBybit(data.bybit); });
@@ -999,7 +1054,7 @@ document.getElementById('btn-toggle').addEventListener('click',()=>{
     socket.emit('stop_bybit');
     showToast('Bot stopped', '#F87171');
   } else {
-    socket.emit('start_bybit', {strategy:'Auto'});
+    socket.emit('start_bybit', {strategy:selectedMarketMode});
     showToast('Bot starting…', '#34D399');
   }
 });

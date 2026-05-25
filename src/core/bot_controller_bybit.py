@@ -23,6 +23,7 @@ class BybitState:
         self.running = False
         self.desired_running = False
         self.trading_mode = TRADING_MODE
+        self.market_mode = "btc"
         self.strategy = "Auto"
         self.active_strategy = "-"
         self.regime = "-"
@@ -47,6 +48,7 @@ class BybitState:
             "saved_at": datetime.now(AR_TZ).isoformat(),
             "desired_running": self.desired_running,
             "trading_mode": self.trading_mode,
+            "market_mode": self.market_mode,
             "strategy": self.strategy,
             "active_strategy": self.active_strategy,
             "regime": self.regime,
@@ -85,6 +87,7 @@ class BybitState:
             return
 
         self.trading_mode = data.get("trading_mode", self.trading_mode)
+        self.market_mode = data.get("market_mode", self.market_mode)
         self.desired_running = bool(data.get("desired_running", False))
         self.strategy = data.get("strategy", self.strategy)
         self.active_strategy = data.get("active_strategy", self.active_strategy)
@@ -185,6 +188,7 @@ class BybitState:
             "regime": self.regime,
             "orch_reason": self.orch_reason,
             "trading_mode": self.trading_mode,
+            "market_mode": self.market_mode,
         }
 
 
@@ -203,7 +207,7 @@ def _circuit_ok(st: BybitState) -> bool:
 
 
 def _run_bot(st: BybitState):
-    st.add_log(f"Bot Bybit iniciado · modo {st.trading_mode}", "#00E887")
+    st.add_log(f"Bot Bybit iniciado · modo {st.trading_mode} · mercado {st.market_mode}", "#00E887")
 
     try:
         from src.exchanges.bybit_client import BybitClient
@@ -281,7 +285,12 @@ def _run_bot(st: BybitState):
 def _run_scalping_cycle(st: BybitState):
     from src.strategies.scalper import ScalpingBot
 
-    bot = ScalpingBot(max_positions=3, risk_per_trade=0.01, capital=st.balance)
+    bot = ScalpingBot(
+        max_positions=3,
+        risk_per_trade=0.01,
+        capital=st.balance,
+        market_mode=st.market_mode,
+    )
     if getattr(bot, "profile_name", None):
         st.add_log(f"Perfil aprobado activo · {bot.profile_name}", "#60A5FA")
     with st._lock:
@@ -364,6 +373,8 @@ def start_bybit(strategy=None) -> bool:
         return False
 
     bybit_state._restore_runtime_state()
+    requested_mode = (strategy or bybit_state.market_mode or "btc").strip().lower() if isinstance(strategy, str) else (bybit_state.market_mode or "btc")
+    bybit_state.market_mode = requested_mode if requested_mode in {"general", "btc", "eth"} else "btc"
     bybit_state.desired_running = True
     bybit_state._save_runtime_state()
     bybit_state.running = True
