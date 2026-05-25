@@ -46,6 +46,8 @@ MAX_DRAWDOWN   = 0.15
 DAILY_LOSS_LIM = -50.0
 MAX_POSITIONS  = 3
 SCAN_MULTIPLIER = 5
+MAX_HOLD_MIN   = 18
+REQUIRE_DIRECTIONAL_HTF = True
 
 
 def load_state():
@@ -289,6 +291,9 @@ class ScalpingBot:
 
             if sig["direction"] == "none":
                 return
+            if REQUIRE_DIRECTIONAL_HTF and htf == "neutral":
+                logger.debug(f"{symbol}: HTF neutral â€” skip")
+                return
             if htf == "down" and sig["direction"] == "long":
                 logger.debug(f"{symbol}: HTF down — skip long")
                 return
@@ -325,6 +330,7 @@ class ScalpingBot:
     def _build_position_record(self, signal: dict, pos: dict, *,
                                entry_price: float, qty: float, fee_paid: float,
                                order_meta: dict | None = None) -> dict:
+        opened_at = datetime.now(AR_TZ).isoformat()
         return {
             "id":            len(self.state["trades"]) + 1,
             "symbol":        signal["symbol"],
@@ -342,7 +348,8 @@ class ScalpingBot:
             "rsi":           signal.get("rsi", 50),
             "htf_trend":     signal.get("htf", "neutral"),
             "ob_imbalance":  signal.get("ob", {}).get("imbalance", 0.5),
-            "timestamp":     datetime.now(AR_TZ).isoformat(),
+            "timestamp":     opened_at,
+            "opened_at":     opened_at,
             "status":        "open",
             "mode":          self.mode,
             "order_meta":    order_meta or {},
@@ -474,8 +481,8 @@ class ScalpingBot:
                 self.capital * self.risk_per_trade * signal["strength"] / 100,
                 self.capital * 0.05
             ))
-            sl_pct = max(atr_pct * 1.5, 0.3) / 100
-            tp_pct = max(sl_pct * 2.5, sl_pct + FEE_RT + 0.001)
+            sl_pct = max(atr_pct * 1.8, 0.4) / 100
+            tp_pct = max(sl_pct * 1.35, sl_pct + FEE_RT + 0.0006)
             sl = round(fill*(1-sl_pct),6) if signal["direction"]=="long" else round(fill*(1+sl_pct),6)
             tp = round(fill*(1+tp_pct),6) if signal["direction"]=="long" else round(fill*(1-tp_pct),6)
             fee = size * PAPER_TAKER_FEE
@@ -519,6 +526,14 @@ class ScalpingBot:
                     continue
                 entry = pos["entry_price"]
                 d     = pos["direction"]
+                opened_raw = pos.get("opened_at") or pos.get("timestamp")
+                age_min = 0.0
+                if opened_raw:
+                    try:
+                        opened_at = datetime.fromisoformat(opened_raw)
+                        age_min = max(0.0, (datetime.now(AR_TZ) - opened_at).total_seconds() / 60)
+                    except Exception:
+                        age_min = 0.0
                 pnl_pct  = (current-entry)/entry*100 if d=="long" else (entry-current)/entry*100
                 hit_sl   = current<=pos["sl_price"] if d=="long" else current>=pos["sl_price"]
                 hit_tp   = current>=pos["tp_price"] if d=="long" else current<=pos["tp_price"]
@@ -531,6 +546,11 @@ class ScalpingBot:
                 elif hit_sl:
                     print(f"🛑 SL {pos['symbol']} -${abs(net_pnl):.4f}")
                     if self._close_position(pos, current, "sl", net_pnl):
+                        closed.append(pos["id"])
+                elif age_min >= MAX_HOLD_MIN:
+                    label = "TIME WIN" if net_pnl >= 0 else "TIME CUT"
+                    print(f"{label} {pos['symbol']} {age_min:.1f}m ${net_pnl:+.4f}")
+                    if self._close_position(pos, current, "time", net_pnl):
                         closed.append(pos["id"])
                 elif pnl_pct > 1.0:
                     new_sl  = round(current*0.997,6) if d=="long" else round(current*1.003,6)
@@ -782,6 +802,8 @@ class ScalpingBot:
             if sig["direction"] == "none":
                 reason = sig.get("reasons", ["sin señal"])[0]
                 return symbol, None, reason
+            if REQUIRE_DIRECTIONAL_HTF and htf == "neutral":
+                return symbol, None, "htf neutral"
             if htf == "down" and sig["direction"] == "long":
                 logger.debug(f"_analyze_rest {symbol}: HTF down — skip long")
                 return symbol, None, "htf down bloquea long"

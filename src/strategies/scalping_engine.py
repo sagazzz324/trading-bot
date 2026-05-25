@@ -5,9 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
-MIN_ATR_PCT = 0.04      # less strict for 1m Bybit paper/shadow discovery
-SIGNAL_THRESHOLD = 50   # allow more setups during Bybit validation
-MIN_EDGE_GAP = 3        # small edge is enough in paper/shadow discovery
+MIN_ATR_PCT = 0.05      # require a bit more movement so fees/slippage matter less
+SIGNAL_THRESHOLD = 58   # higher conviction baseline
+MIN_EDGE_GAP = 8        # avoid marginal ties that ended in many stops
 
 
 # ── INDICATORS (correct implementations) ─────────────────────────────────────

@@ -9,9 +9,9 @@ import time
 logger = logging.getLogger(__name__)
 
 # Thresholds
-SLOPE_TREND_THR  = 0.0008   # |slope| > thr = trending → Scalping
-SLOPE_LATERAL_THR = 0.0003  # |slope| < thr = lateral  → Grid
-VOL_SPIKE_MULT   = 2.2       # ATR > avg * mult         → Pause
+SLOPE_TREND_THR   = 0.00075  # |slope| > thr = trending → Scalping
+SLOPE_LATERAL_THR = 0.00025  # |slope| < thr = lateral  → Pause
+VOL_SPIKE_MULT    = 2.2      # ATR > avg * mult         → Pause
 
 
 def _ema(values: list, period: int) -> float:
@@ -120,19 +120,17 @@ class StrategyOrchestrator:
                 }
             elif slope < SLOPE_LATERAL_THR:
                 result = {
-                    "strategy": "Grid",
-                    "reason":   f"Mercado lateral — slope {slope:.5f} | ATR {atr_pct:.2f}%",
+                    "strategy": "Pause",
+                    "reason":   f"Mercado lateral — sin edge claro para scalping | slope {slope:.5f} | ATR {atr_pct:.2f}%",
                     "regime":   "lateral",
                     "slope":    round(slope, 5),
                     "atr_pct":  round(atr_pct, 3),
                     "vol_ratio": round(vol_ratio, 2),
                 }
             else:
-                # Zona gris — mantener estrategia anterior o Scalping por defecto
-                prev = self._cache.get("strategy", "Scalping")
                 result = {
-                    "strategy": prev,
-                    "reason":   f"Zona indefinida — manteniendo {prev} | slope {slope:.5f}",
+                    "strategy": "Pause",
+                    "reason":   f"Zona indefinida — esperando mejor tendencia | slope {slope:.5f}",
                     "regime":   "unclear",
                     "slope":    round(slope, 5),
                     "atr_pct":  round(atr_pct, 3),
@@ -150,7 +148,7 @@ class StrategyOrchestrator:
 
     def _fallback(self, reason: str) -> dict:
         return {
-            "strategy": "Scalping",
+            "strategy": "Pause",
             "reason":   f"Fallback: {reason}",
             "regime":   "unknown",
             "slope":    0.0,
