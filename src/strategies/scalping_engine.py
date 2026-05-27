@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 FEE_RT = 0.002          # 0.1% × 2 round-trip
-MIN_ATR_PCT = 0.05      # require a bit more movement so fees/slippage matter less
+MIN_ATR_PCT = 0.045     # require some movement, but not so much that BTC mode starves
 SIGNAL_THRESHOLD = 58   # higher conviction baseline
 MIN_EDGE_GAP = 8        # avoid marginal ties that ended in many stops
 

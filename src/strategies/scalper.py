@@ -129,7 +129,7 @@ class ScalpingBot:
         self._ws            = None
         self._running       = False
         self._cooldown: dict[str,float] = {}
-        self._cooldown_sec  = int(profile_params.get("cooldown_sec", 90 if self.market_mode == "btc" else 60))
+        self._cooldown_sec  = int(profile_params.get("cooldown_sec", 60 if self.market_mode == "btc" else 60))
         self._htf_cache: dict[str,tuple] = {}
         self._htf_ttl       = 300
         self._lock          = threading.Lock()
@@ -164,7 +164,7 @@ class ScalpingBot:
         if self.market_mode == "btc":
             return {
                 "max_positions": 1,
-                "min_strength": 62,
+                "min_strength": 60,
                 "min_ob_imbalance": 0.58,
             }
         if self.market_mode == "eth":
